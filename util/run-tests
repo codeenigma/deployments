@@ -1,0 +1,136 @@
+#!/bin/bash
+#
+# Wrapper script to bootstrap Drupal and iterate through a series of tests.
+#
+# Designed for Jenkins to execute during a deployment, but can really be run
+# by anyone.
+#
+# Written by mig5 for CodeEnigma
+# May 2012
+#
+#
+# The first argument required is a DocumentRoot dir. Ideally we can change this
+# to a Drush alias at some point, but right now we want to run the tests on
+# the *new* soon-to-be-live build, and the Drush alias still references the previous
+# successful build at this point.
+ROOT=$1
+TEST_TYPE=$2
+TEST_ARG=$3
+#
+# An array of tests we'll want to run
+TESTS=(
+  coder
+  simpletest
+)
+
+# Show a usage help message when necessary.
+usage() {
+cat << EOF
+usage: $0 @alias
+
+This script bootstraps a Drupal site via its Drush alias and runs tests.
+EOF
+}
+
+# Find Drush in the path
+find_drush() {
+  if which drush 2> /dev/null > /dev/null && which drush | grep -v 'no drush in' > /dev/null; then
+    DRUSH=drush
+  else
+    echo "Could not find Drush in the path! Exiting"
+    exit 1
+  fi
+}
+
+# Test that the drush alias provided was valid
+check_alias() {
+  # Abort if we were not given a Drush alias as an argument to work with.
+  if [[ -z $ALIAS ]]; then
+    echo "You didn't provide a Drush alias! Please pass one of the following as an argument next time:"
+    $DRUSH sa
+    usage
+    exit 1
+  fi
+
+  # Abort if the alias doesn't seem to be valid
+  `$DRUSH sa | grep ^$ALIAS$ > /dev/null`
+  if [ $? -eq 1 ]; then 
+    echo "This Drush alias doesn't appear to be valid! Please check your alias name or add it in /etc/drush"
+    exit 1
+  fi
+}
+
+# Check that there's a valid site install here
+check_directory() {
+  if [[ -z $ROOT ]]; then
+    echo "You didn't provide a path to the top-level dir of this project!"
+    usage
+    exit 1
+  fi
+  if ! [[ -d $ROOT/sites/default ]]; then
+    echo "No such directory exists! Are you sure the site is in $ROOT?"
+    exit 1
+  fi
+}
+
+# Test to see if the variable has been set on this site that says it should have
+# tests run on it.
+# If the variable is set, we assume that simpletest and coder modules are present
+# and will attempt to run their drush commands.
+# If tests were not enabled, that's ok. But if they were enabled and the drush
+# test commands were not present, that is not ok.
+test_for_tests() {
+  ENABLED_TESTS=
+  for TEST in ${TESTS[@]}; do
+    $DRUSH $ALIAS vget ce_execute_$TEST > /dev/null 2>&1
+    if [ $? -eq 1 ]; then
+      echo "$TEST test was not found to be enabled! Enable the tests by running drush $ALIAS vset ce_execute_$TEST 1"
+    else
+      echo "${TEST} test was found to be enabled! Now we'll try and actually run the tests."
+      # Push the enabled test into the ENABLED_TESTS array.
+      ENABLED_TESTS=("${ENABLED_TESTS[@]}" "${TEST}")
+    fi
+  done
+  exit 0
+}
+
+# Iterate through the enabled tests and run them.
+run_tests() {
+  #for TEST in ${ENABLED_TESTS[@]}; do
+  #  $DRUSH $TEST something-or-other
+  #done
+  if [ $TEST_TYPE == "simpletest" ]; then
+    $DRUSH -r $ROOT test-run $TEST_ARG
+  elif [ $TEST_TYPE == "coder" ]; then
+    $DRUSH -r $ROOT coder-review no-empty major security sql style $TEST_ARG
+  else
+    echo "Didn't understand this test type $TEST_TYPE"
+    exit 1
+  fi
+}
+
+# Main code
+main() {
+  if [[ -z $TEST_TYPE ]] || [[ -z $TEST_ARG ]]; then
+    echo "You didn't provide a test type (coder or simpletest) or any argument (what test to run)! Exiting"
+    usage
+    exit 1
+  fi
+
+  # Find Drush in the $PATH
+  find_drush
+
+  # Check that a Drush alias was provided and that it is valid.
+  #check_alias
+
+  # Check that the path to the site is valid
+  check_directory
+
+  # Test for enabled tests
+  # test_for_tests
+
+  # @TODO run tests
+  run_tests  
+}
+
+main

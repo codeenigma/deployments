@@ -1,0 +1,91 @@
+#!/bin/bash
+
+# A simple color function to report errors in red
+color() {
+  printf '\033[%sm%s\033[m\n' "$@"
+ # usage color "31;5" "error message"
+ # 0 default
+ # 5 blink, 1 strong, 4 underlined
+ # fg: 31 red,  32 green, 33 yellow, 34 blue, 35 purple, 36 cyan, 37 white
+ # bg: 40 black, 41 red, 44 blue, 45 purple
+}
+
+usage()
+{
+cat << EOF
+usage: $0 ARGUMENT OPTIONS
+
+This script will revert a build to its previous build.
+
+ARGUMENTS:
+  -b	Build directory to set the symlink to
+  -d    Database to restore 
+  -s    Symlink to point at the build directory
+  -a    Drush alias for this site
+  -h	This help message.
+EOF
+}
+
+# Parse the args
+while getopts ":b:d:s:a:h" OPTION
+do
+  case $OPTION in
+    h)
+      usage
+      exit
+      ;;
+    b)
+      BUILD=$OPTARG
+      ;;
+    d)
+      DATABASE=$OPTARG
+      ;;
+    s)
+      SYMLINK=$OPTARG
+      ;;
+    a)
+      ALIAS=$OPTARG
+      ;;
+    ?)
+      usage
+      exit
+      ;;
+  esac
+done
+
+# Check for appropriate arguments and options
+
+# No task provided
+if [[ -z $BUILD ]]; then
+  color '31;1' "You didn't provide a build to restore! Pass one as an argument with -b"
+  usage
+  exit 1
+fi
+
+if [[ -z $DATABASE ]]; then
+  color '31;1' "You didn't provide a database to restore! Pass one as an argument with -d"
+  usage
+  exit 1
+fi
+
+if [[ ! -d $BUILD ]]; then
+  echo "That directory $BUILD doesn't exist!"
+  exit
+fi
+
+if [[ ! -f $DATABASE ]]; then
+  echo "That database $DATABASE doesn't exist!"
+  exit
+fi
+
+# Revert the symlink
+echo "===> Switching the symlink back to the old build"
+unlink $SYMLINK || exit 1
+ln -s $BUILD $SYMLINK || exit 1
+
+# Revert the database
+echo "===> Reverting the database from backup $DATABASE"
+drush -y @$ALIAS sql-drop
+zcat $DATABASE | drush @$ALIAS sql-cli || exit 1
+
+echo "REVERT COMPLETE. Check your site! :)"
