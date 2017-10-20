@@ -59,7 +59,7 @@ We are continually looking to reduce this list of assumptions and dependencies, 
 ## Application specific dependencies
 
 * [composer](https://getcomposer.org/) (Drupal > 8 or Symfony)
-* [drush](http://www.drush.org) (Drupal)
+* [drush](http://www.drush.org) (Drupal) - installed at `/usr/local/bin/drush`
 * [wp-cli](http://wp-cli.org) (WordPress)
 * [Ruby](https://www.ruby-lang.org) (Drupal data obfuscation)
 
