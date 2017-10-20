@@ -15,6 +15,7 @@ Here is an overview of the kinds of things these build scripts allow you to do:
 
 ## General
 
+* specify target server(s) in a repository config file
 * stand up initial builds of WordPress and Drupal automatically
 * provision of a "seed" database
 * supports clusters of app servers
@@ -69,6 +70,8 @@ If you use a MySQL (or similar) database (so clearly Drupal, WordPress and some 
 Clone this repository into a location of your choice on your CI server (usually Jenkins).
 
 Create a means to trigger the Fabric scripts (usually a "Freestyle project" in Jenkins with a trigger based on repository change).
+
+Ensure your application is either in a 'www' repository in the repository or has a link to './www' committed to the repository and pointing at the relative application location within the repository (the scripts expect to find an app in 'www').
 
 An example trigger command, typically placed in an Execute Shell box in Jenkins, looks like this - example uses Drupal:
 
