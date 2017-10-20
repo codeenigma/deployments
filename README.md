@@ -42,6 +42,8 @@ Because as a company we mostly specialise in Drupal, a lot of the best features 
 * database update handling
 * automatic provisioning of Drush aliases
 * automatic configuration of Drupal cron
+* synchronise databases between environments
+* obfuscate sensitive data
 
 # Dependencies
 
