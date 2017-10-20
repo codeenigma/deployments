@@ -71,7 +71,16 @@ Clone this repository into a location of your choice on your CI server (usually 
 
 Create a means to trigger the Fabric scripts (usually a "Freestyle project" in Jenkins with a trigger based on repository change).
 
-Ensure your application is either in a 'www' repository in the repository or has a link to './www' committed to the repository and pointing at the relative application location within the repository (the scripts expect to find an app in 'www').
+Ensure your application is either in a `www` repository in the repository or has a link to `./www` committed to the repository and pointing at the relative application location within the repository (the scripts expect to find an app in `www`).
+
+Ensure your application has a `config.ini` file in the repository root, which contains at least the lines necessary to direct the deployment to a server, for example:
+
+```
+[drupal8]
+example-drupal=dev1.codeenigma.com
+```
+
+'drupal8' is the build type (you may choose a string), 'example-drupal' is the repo name, as used below in the call to the script and 'dev1.codeenignma.com' is the hostname of the server to deploy to. We are building more comprehensive examples of the `config.ini` file in [our example-drupal project](https://github.com/codeenigma/example-drupal/blob/8.x/config.ini).
 
 An example trigger command, typically placed in an Execute Shell box in Jenkins, looks like this - example uses Drupal:
 
