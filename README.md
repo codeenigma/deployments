@@ -33,6 +33,7 @@ Because as a company we mostly specialise in Drupal, a lot of the best features 
 * inject environment-specific Drupal settings safely
 * [Behat](http://behat.org) tests - run Behat tests automatically using Selenium
 * [Simpletest](http://www.simpletest.org) unit tests - run Simpletest automatically
+* [Coder module](https://www.drupal.org/project/coder) support - automatically check code style when building
 * [Features module](https://www.drupal.org/project/features) support - often used for configuration in code in Drupal 7
 * [Read Only Mode module](https://www.drupal.org/project/readonlymode) support - for deployments without going offline
 * [Environment Indicator module](https://www.drupal.org/project/environment_indicator) support - for colour-coded environment notification for administrators
