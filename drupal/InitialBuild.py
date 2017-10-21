@@ -46,7 +46,7 @@ def initial_build_create_files_symlink(repo, branch, build):
 # Stuff to do when this is the initial build
 @task
 @roles('app_primary')
-def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config, drupal_version, cluster=False):
+def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config, drupal_version, sanitised_password, cluster=False):
   print "===> This looks like the first build! We have some things to do.."
 
   drupal8 = False
@@ -163,13 +163,15 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
   # or not.
   if buildtype == "custombranch" and sanitise == "yes":
     print "===> Sanitising database..."
-    sanitised_password = 'kiloh6Ca'
+    if sanitised_password is None:
+      sanitised_password = common.Utils._gen_passwd()
     with cd("%s/sites/default" % sitedir):
       with settings(warn_only=True):
         if run("drush -y sql-sanitize --sanitize-email=%s+%%uid@codeenigma.uk --sanitize-password=%s" % (repo, sanitised_password)).failed:
           print "Could not sanitise database. Aborting this build."
           raise SystemError("Could not sanitise database. Aborting this build.")
         else:
+          print "===> Data sanitised, passwords set to %s" % sanitised_password
           print "Sanitised database."
 
   # If this is dev/staging, we want to sanitise the database ASAP.

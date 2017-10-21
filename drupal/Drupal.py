@@ -81,7 +81,7 @@ def generate_drush_cron(repo, branch):
 # This function is used to get a fresh database of the site to import into the custom
 # branch site during the initial_build() step
 @task
-def prepare_database(repo, branch, build, syncbranch, orig_host, sanitise, drupal_version, freshinstall=True):
+def prepare_database(repo, branch, build, syncbranch, orig_host, sanitise, drupal_version, sanitised_password, freshinstall=True):
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.read_config_file()
   now = common.Utils._gen_datetime()
@@ -202,9 +202,11 @@ def prepare_database(repo, branch, build, syncbranch, orig_host, sanitise, drupa
           raise SystemError("Cannot import %s database into %s. Reverting database and aborting." % (syncbranch, repo))
         else:
           if sanitise == "yes":
-            sanitised_password = 'kiloh6Ca'
+            if sanitised_password is None:
+              sanitised_password = common.Utils._gen_passwd()
             print "===> Sanitising database..."
             run("drush @%s_%s -y sql-sanitize --sanitize-email=%s+%%uid@codeenigma.uk --sanitize-password=%s" % (repo, branch, repo, sanitised_password))
+            print "===> Data sanitised, passwords set to %s" % sanitised_password
           print "===> %s database imported." % syncbranch
 
       # Tidying up on host server

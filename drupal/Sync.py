@@ -178,7 +178,10 @@ def sync_db(orig_host, shortname, staging_branch, prod_branch, fresh_database, s
     run("bzcat ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | drush @%s_%s sql-cli " % (shortname, now, shortname, staging_branch))
     # Set all users to the supplied e-mail address/password for stage testing
     if sanitise == 'yes':
+      if sanitised_password is None:
+        sanitised_password = common.Utils._gen_passwd()
       run("drush @%s_%s -y sql-sanitize --sanitize-email=%s+%%uid@codeenigma.uk --sanitize-password=%s" % (shortname, staging_branch, shortname, sanitised_password))
+      print "===> Data sanitised, passwords set to %s" % sanitised_password
   run("rm ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2" % (shortname, now))
 
 
