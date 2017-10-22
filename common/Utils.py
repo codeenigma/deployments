@@ -120,13 +120,13 @@ def adjust_live_symlink(repo, branch, build, buildtype=None):
 
 
 @task
-def statuscake_state(statuscakekey, statuscakeid, state=""):
+def statuscake_state(statuscakeuser, statuscakekey, statuscakeid, state=""):
   if state == "pause":
     # If we have StatusCake information, pause the checks
     if statuscakekey is not None:
       if statuscakeid is not None:
         print "===> Pausing StatusCake job with ID %s" % statuscakeid
-        run('curl -H "API: %s" -H "Username: codeenigma" -d "TestID=%s&Paused=1" -X PUT https://app.statuscake.com/API/Tests/Update' % (statuscakekey, statuscakeid))
+        run('curl -H "API: %s" -H "Username: %s" -d "TestID=%s&Paused=1" -X PUT https://app.statuscake.com/API/Tests/Update' % (statuscakekey, statuscakeuser, statuscakeid))
         # Return a boolean to raise the statuscake_paused flag
         return True
       else:
@@ -138,7 +138,7 @@ def statuscake_state(statuscakekey, statuscakeid, state=""):
       if statuscakeid is not None:
         # Default action, resume the checks
         print "===> Resuming StatusCake job with ID %s" % statuscakeid
-        run('curl -H "API: %s" -H "Username: codeenigma" -d "TestID=%s&Paused=0" -X PUT https://app.statuscake.com/API/Tests/Update' % (statuscakekey, statuscakeid))
+        run('curl -H "API: %s" -H "Username: %s" -d "TestID=%s&Paused=0" -X PUT https://app.statuscake.com/API/Tests/Update' % (statuscakekey, statuscakeuser, statuscakeid))
   # Catch all return value so we cannot set statuscake_paused to an ambiguous value
   return False
 

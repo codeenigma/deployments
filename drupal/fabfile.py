@@ -31,7 +31,7 @@ config = common.ConfigFile.read_config_file()
 
 
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, sanitised_password=None):
+def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, sanitised_password=None):
 
   # Define variables
   drupal_version = None
@@ -100,7 +100,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
   url = common.Utils.generate_url(url, repo, branch)
 
   # Pause StatusCake monitoring
-  statuscake_paused = common.Utils.statuscake_state(statuscakekey, statuscakeid, "pause")
+  statuscake_paused = common.Utils.statuscake_state(statuscakeuser, statuscakekey, statuscakeid, "pause")
 
   # Run the tasks.
   # --------------
@@ -268,7 +268,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
 
     # Resume StatusCake monitoring
     if statuscake_paused:
-      common.Utils.statuscake_state(statuscakekey, statuscakeid)
+      common.Utils.statuscake_state(statuscakeuser, statuscakekey, statuscakeid)
 
     if behat_config:
       if buildtype in behat_config['behat_buildtypes']:

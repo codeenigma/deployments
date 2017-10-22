@@ -31,7 +31,7 @@ config = common.ConfigFile.read_config_file()
 # New 'main()' task which should replace the deployment.sh wrapper, and support repo -> host mapping
 #####
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False):
+def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False):
   dontbuild = False
 
   # Define variables
@@ -103,7 +103,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
   url = common.Utils.generate_url(url, repo, branch)
 
   # Pause StatusCake monitoring
-  statuscake_paused = common.Utils.statuscake_state(statuscakekey, statuscakeid, "pause")
+  statuscake_paused = common.Utils.statuscake_state(statuscakeuser, statuscakekey, statuscakeid, "pause")
 
   # Run the tasks.
   # --------------
@@ -169,6 +169,6 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
 
     # Resume StatusCake monitoring
     if statuscake_paused:
-      common.Utils.statuscake_state(statuscakekey, statuscakeid)
+      common.Utils.statuscake_state(statuscakeuser, statuscakekey, statuscakeid)
 
     execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, hosts=env.roledefs['app_all'])
