@@ -1,8 +1,6 @@
-##########################################
-#										 #
-# CODE ENIGMA JENKINS DEPLOYMENT SCRIPTS #
-#										 #
-##########################################
+# Code Enigma Deployment Scripts
+
+## Developer notes
 
 To support a new type of application:
 

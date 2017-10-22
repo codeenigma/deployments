@@ -56,6 +56,7 @@ We are continually looking to reduce this list of assumptions and dependencies, 
 * a 'jenkins' user with a home directory and public key of the CI user on target app server(s)
 * passwordless sudo for the 'jenkins' user on the target app server(s)
 * Git installed on the target app server(s)
+* [cachetool](https://github.com/gordalina/cachetool) for clearing the PHP opcode cache
 
 ## Application specific dependencies
 
