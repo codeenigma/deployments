@@ -43,15 +43,9 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
            print "===> Host is %s" % env.host
            break
 
-  # Try and work out what to do if we didn't find any host in the map for this project.
+  # Didn't find any host in the map for this project.
   if env.host is None:
-    if buildtype == "prod":
-      raise ValueError("You wanted to deploy to prod but we couldn't find a host in the map file for repo %s. So we're aborting to be safe." % repo)
-    if buildtype == "dev":
-      env.host = 'dev1.codeenigma.com'
-    if buildtype == "stage":
-      env.host = 'stage1.codeenigma.com'
-    print "===> We didn't find a host for this repo name. But it's a %s build, so we'll presume %s" % (buildtype, env.host)
+    raise ValueError("===> You wanted to deploy a build but we couldn't find a host in the map file for repo %s so we're aborting." % repo)
 
   # Pick the user to SSH as
   user = "jenkins"
