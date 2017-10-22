@@ -87,12 +87,8 @@ def main(repo, branch, buildtype, url=None, restartvarnish="yes", restartwebserv
   with settings(hide('warnings', 'stderr'), warn_only=True):
     services = ['apache2', 'httpd', 'nginx', 'varnish']
     for service in services:
-      # @TODO: wtf emlyn??
-      if service == 'apache2' and env.host == 'rbkc-stage1.codeenigma.net':
-        pass
-      else:
-        common.Services.clear_php_cache()
-        if nginx_restart == 'yes':
-          common.Services.reload_webserver()
-        if varnish_restart == 'yes':
-          common.Services.clear_varnish_cache()
+      common.Services.clear_php_cache()
+      if nginx_restart == 'yes':
+        common.Services.reload_webserver()
+      if varnish_restart == 'yes':
+        common.Services.clear_varnish_cache()
