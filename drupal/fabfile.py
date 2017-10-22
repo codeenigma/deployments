@@ -31,7 +31,7 @@ config = common.ConfigFile.read_config_file()
 
 
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, sanitised_password=None):
+def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None):
 
   # Define variables
   drupal_version = None
@@ -135,12 +135,12 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
       execute(Drupal.run_composer_install, repo, branch, build)
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
-      Drupal.prepare_database(repo, branch, build, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password)
+      Drupal.prepare_database(repo, branch, build, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
 
     execute(common.Utils.create_config_directory, hosts=env.roledefs['app_all'])
     execute(common.Utils.create_shared_directory, hosts=env.roledefs['app_all'])
     execute(InitialBuild.initial_build_create_live_symlink, repo, branch, build)
-    execute(InitialBuild.initial_build, repo, url, branch, build, profile, buildtype, sanitise, config, drupal_version, sanitised_password, cluster)
+    execute(InitialBuild.initial_build, repo, url, branch, build, profile, buildtype, sanitise, config, drupal_version, sanitised_password, sanitised_email, cluster)
     execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build)
     execute(InitialBuild.initial_build_move_settings, repo, branch)
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype)
@@ -201,7 +201,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
     if drupal_version != '8':
       importconfig = "no"
     if freshdatabase == "Yes" and buildtype == "custombranch":
-      Drupal.prepare_database(repo, branch, build, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, False)
+      Drupal.prepare_database(repo, branch, build, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email, False)
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build)
     execute(Drupal.environment_indicator, repo, branch, build, buildtype, drupal_version)

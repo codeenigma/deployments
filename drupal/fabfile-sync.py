@@ -52,7 +52,7 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
         # Database syncing
         if synctype == 'db' or synctype == 'both':
           Sync.backup_db(shortname, staging_branch)
-          Sync.sync_db(orig_host, shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, config)
+          Sync.sync_db(orig_host, shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config)
           Sync.drush_updatedb(orig_host, shortname, staging_branch)
 
         # Files syncing (uploads)
