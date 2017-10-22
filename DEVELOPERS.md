@@ -13,7 +13,7 @@ directory (e.g. `ln -s common ../common`).
 3. Create a fabfile.py file in your new directory for your main() 
 function only.
 
-4. Create a __init__.py file in your new directory to force Fabric to
+4. Create a \__init__.py file in your new directory to force Fabric to
 autoload any modules you create.
 
 5. Create all functions (including 'main') using Fabric's inbuild Task
@@ -23,6 +23,7 @@ http://docs.fabfile.org/en/1.13/usage/tasks.html#the-task-decorator
 6. Create new .py files in your new directory for each group of tasks
 you wish to call in your main() function in fabfile.py, for example:
 
+```
 drupal
 |
  -- __init__.py (required by Fabric to autoload modules)
@@ -38,6 +39,7 @@ drupal
      -- ConfigFile.py
      -- Services.py
      -- Utils.py
+```
      
 7. If you create tasks that are useful in a broader context, for 
 example service restarts on servers, add them to a .py file in the 
@@ -51,7 +53,7 @@ your function return a variable.
 
 ** PLEASE DO NOT EVER MAKE THESE JENKINS SCRIPTS CUSTOMER SPECIFIC **
 
-Supporting clusters:
+## Supporting clusters`
 
 You can use the roles() decorator in your modules, it will work:
 http://docs.fabfile.org/en/1.13/api/core/decorators.html#fabric.decorators.roles
