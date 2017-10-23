@@ -244,7 +244,7 @@ def new_site_force_dbupdate(repo, branch, build, mapping, sites):
 
 @task
 @roles('app_all')
-def new_site_build_vhost(repo, branch, mapping, sites):
+def new_site_build_vhost(repo, branch, mapping, sites, webserverport):
   for alias,buildsite in mapping.iteritems():
     if buildsite in sites:
       url = generate_multisite_url(alias, branch)
@@ -257,6 +257,13 @@ def new_site_build_vhost(repo, branch, mapping, sites):
       # Work out whether we are running Apache or Nginx (compensating for RedHat which uses httpd as name)
       # Assume Nginx by default
       webserver = "nginx"
+      # Copy Nginx vhost to server(s)
+      print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
+      script_dir = os.path.dirname(os.path.realpath(__file__))
+      if put(script_dir + '/../util/vhosts/%s/*' % webserver, '/etc/%s/sites-available' % webserver, mode=0755, use_sudo=True).failed:
+        raise SystemExit("===> Couldn't copy over our dummy vhosts! Aborting.")
+      else:
+        print "===> Dummy vhosts copied to app server(s)."
       with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
         services = ['apache2', 'httpd']
         for service in services:
@@ -272,6 +279,7 @@ def new_site_build_vhost(repo, branch, mapping, sites):
 
       sudo("cp /etc/%s/sites-available/dummy.conf /etc/%s/sites-available/%s.conf" % (webserver, webserver, url))
       sudo("sed -i s/dummyfqdn/%s/g /etc/%s/sites-available/%s.conf" % (url, webserver, url))
+      sudo("sed -i s/dummyport/%s/g /etc/%s/sites-available/%s.conf" % (webserverport, webserver, url))
       sudo("sed -i s/dummy/%s.%s/g /etc/%s/sites-available/%s.conf" % (repo, branch, webserver, url))
       sudo("ln -s /etc/%s/sites-available/%s.conf /etc/%s/sites-enabled/%s.conf" % (webserver, url, webserver, url))
       url_output = url.lower()

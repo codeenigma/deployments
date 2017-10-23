@@ -214,7 +214,7 @@ def initial_build_move_settings(repo, branch):
 # Copy the dummy vhost and change values.
 @task
 @roles('app_all')
-def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_cert, ssl_ip, httpauth_pass, drupal_common_config):
+def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_cert, ssl_ip, httpauth_pass, drupal_common_config, webserverport):
   # Some quick clean-up from earlier, delete the 'shared' settings.inc
   with settings(warn_only=True):
     if run("stat /var/www/shared/%s_%s.settings.inc" % (repo, branch)).return_code == 0:
@@ -245,6 +245,13 @@ def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_ce
     # Currently, this only works when the webserver in question is nginx.
     # TODO: make this work with nginx *and* apache
     if webserver == "nginx":
+      # Copy Nginx vhost to server(s)
+      print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
+      script_dir = os.path.dirname(os.path.realpath(__file__))
+      if put(script_dir + '/../util/vhosts/%s/*' % webserver, '/etc/%s/sites-available' % webserver, mode=0755, use_sudo=True).failed:
+        raise SystemExit("===> Couldn't copy over our dummy vhosts! Aborting.")
+      else:
+        print "===> Dummy vhosts copied to app server(s)."
       if ssl_enabled:
         if ssl_cert is None:
           # If ssl_enabled is True in config.ini, ssl_cert MUST contain the name of the ssl cert
@@ -252,7 +259,7 @@ def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_ce
           print "What? SSL is enabled for this feature branch build, but the SSL file name hasn't been passed. We cannot proceed. Abort build."
           raise SystemError("What? SSL is enabled for this feature branch build, but the SSL file name hasn't been passed. We cannot proceed. Abort build.")
         else:
-          # Set which dummy vhist file to use.
+          # Set which dummy vhost file to use.
           dummy_file = 'dummy_feature_branch_ssl.conf'
           with settings(warn_only=True):
             # Check that the ssl_cert files exist. If they don't, revert to using wildcard.codeenigma.net.
@@ -273,6 +280,15 @@ def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_ce
         # If ssl_enabled is False, just use a the default feature branch vhost.
         dummy_file = 'dummy_feature_branch.conf'
     else:
+      # Copy Apache vhost to server(s)
+      if webserver == 'httpd':
+        dummydir = 'apache2'
+      print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
+      script_dir = os.path.dirname(os.path.realpath(__file__))
+      if put(script_dir + '/../util/vhosts/%s/*' % dummydir, '/etc/%s/sites-available' % webserver, mode=0755, use_sudo=True).failed:
+        raise SystemExit("===> Couldn't copy over our dummy vhosts! Aborting.")
+      else:
+        print "===> Dummy vhosts copied to app server(s)."
       #dummy_file = 'dummy_http.conf' if webserver == 'nginx' else 'dummy.conf'
       dummy_file = 'dummy.conf'
 
@@ -304,6 +320,7 @@ def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_ce
     sudo("cp /etc/%s/sites-available/dummy.conf /etc/%s/sites-available/%s.conf" % (webserver, webserver, url))
 
   sudo("sed -i s/dummyfqdn/%s/g /etc/%s/sites-available/%s.conf" % (url, webserver, url))
+  sudo("sed -i s/dummyport/%s/g /etc/%s/sites-available/%s.conf" % (webserverport, webserver, url))
   sudo("sed -i s/dummy/%s.%s/g /etc/%s/sites-available/%s.conf" % (repo, branch, webserver, url))
   sudo("ln -s /etc/%s/sites-available/%s.conf /etc/%s/sites-enabled/%s.conf" % (webserver, url, webserver, url))
   url_output = url.lower()

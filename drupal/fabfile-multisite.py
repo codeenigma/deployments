@@ -31,7 +31,7 @@ config = common.ConfigFile.read_config_file()
 # New 'main()' task which should replace the deployment.sh wrapper, and support repo -> host mapping
 #####
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False):
+def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, webserverport='8080'):
   dontbuild = False
 
   # Define variables
@@ -137,7 +137,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
       execute(Multisite.new_site_create_database, repo, branch, build, buildtype, profile, mapping, new_sites, drupal_version)
       execute(Multisite.new_site_copy_settings, repo, branch, build, mapping, new_sites)
       execute(Multisite.new_site_force_dbupdate, repo, branch, build, mapping, new_sites)
-      execute(Multisite.new_site_build_vhost, repo, branch, mapping, new_sites)
+      execute(Multisite.new_site_build_vhost, repo, branch, mapping, new_sites, webserverport)
       execute(Multisite.generate_drush_alias, repo, branch, mapping, new_sites)
       execute(Multisite.generate_drush_cron, repo, branch, mapping, new_sites)
       execute(Multisite.new_site_fix_perms, repo, branch, mapping, new_sites, drupal_version)

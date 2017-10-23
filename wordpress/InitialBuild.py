@@ -9,7 +9,7 @@ from common.Utils import *
 
 # Stuff to do when this is the initial build
 @task
-def initial_build(repo, url, branch, build, profile):
+def initial_build(repo, url, branch, build, profile, webserverport):
   print "===> This looks like the first build! We have some things to do.."
 
   print "===> Setting the live document root symlink"
@@ -54,6 +54,13 @@ def initial_build(repo, url, branch, build, profile):
   webserver = "nginx"
 
   print "===> Setting up an %s vhost" % webserver
+  # Copy Nginx vhost to server(s)
+  print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
+  script_dir = os.path.dirname(os.path.realpath(__file__))
+  if put(script_dir + '/../util/vhosts/%s/wp-*' % webserver, '/etc/%s/sites-available' % webserver, mode=0755, use_sudo=True).failed:
+    raise SystemExit("===> Couldn't copy over our dummy vhosts! Aborting.")
+  else:
+    print "===> Dummy vhosts copied to app server(s)."
   # Abort if the vhost already exists - something strange has happened here,
   # perhaps we shouldn't have been doing a fresh install at all
   with settings(warn_only=True):
@@ -64,6 +71,7 @@ def initial_build(repo, url, branch, build, profile):
   sudo("cp /etc/%s/sites-available/wp-dummy.conf /etc/%s/sites-available/%s.conf" % (webserver, webserver, url))
 
   sudo("sed -i s/dummyfqdn/%s/g /etc/%s/sites-available/%s.conf" % (url, webserver, url))
+  sudo("sed -i s/dummyport/%s/g /etc/%s/sites-available/%s.conf" % (webserverport, webserver, url))
   sudo("sed -i s/dummy/%s.%s/g /etc/%s/sites-available/%s.conf" % (repo, branch, webserver, url))
   sudo("ln -s /etc/%s/sites-available/%s.conf /etc/%s/sites-enabled/%s.conf" % (webserver, url, webserver, url))
   print "***** Your URL is http://%s *****" % url

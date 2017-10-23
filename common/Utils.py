@@ -360,6 +360,8 @@ def perform_client_sync_hook(path_to_application, buildtype, stage):
 
 
 # Protecting a vhost with a username and password.
+# Note, the dummy vhosts need to already exist - this function is currently only used from
+# within initial_build_vhost() which handles copying the dummy vhosts to the server(s).
 @task
 def create_httpauth(webserver, repo, branch, url, httpauth_pass):
   with settings(warn_only=True):
