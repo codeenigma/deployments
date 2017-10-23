@@ -281,6 +281,7 @@ def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_ce
         dummy_file = 'dummy_feature_branch.conf'
     else:
       # Copy Apache vhost to server(s)
+      dummydir = webserver
       if webserver == 'httpd':
         dummydir = 'apache2'
       print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
