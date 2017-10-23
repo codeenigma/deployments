@@ -76,18 +76,6 @@ def initial_build(repo, url, branch, build, profile, webserverport):
   sudo("ln -s /etc/%s/sites-available/%s.conf /etc/%s/sites-enabled/%s.conf" % (webserver, url, webserver, url))
   print "***** Your URL is http://%s *****" % url
 
-# Greg: This is all Drupal specific, so for the moment commenting for a simple build.
-  # If this is dev/staging, we want to sanitise the database ASAP.
-#  dev_stage_servers = ['dev1.codeenigma.com', 'dev2.codeenigma.com', 'dev3.codeenigma.com', 'stage1.codeenigma.com', 'stage2.codeenigma.com', 'stage3.codeenigma.com']
-#  dev_stage_server = [server for server in dev_stage_servers if env.host in server]
-
-#  if dev_stage_server:
-#    print "===> Sanitising database"
-#    with cd("/var/www/live.%s.%s/www/sites/default" % (repo, branch)):
-#      run("drush sql-query \"UPDATE users SET mail = CONCAT(name, '@example.com')\"")
-#      run("drush sql-query \"UPDATE users SET mail = 'support@codeenigma.com' WHERE uid = 1\"")
-#      run("drush user-password `drush uinf 1 | grep name | cut -d\: -f2` --password=admin")
-
   print "===> Moving wp-config.php to shared area /var/www/shared/%s_%s.wp-config.inc. Do an 'include' of this in your main wp-config.php, or else it will be symlinked directly as wp-config.php" % (repo, branch)
   sudo("mv /var/www/live.%s.%s/www/wp-config.php /var/www/shared/%s_%s.wp-config.inc; ln -s /var/www/shared/%s_%s.wp-config.inc /var/www/live.%s.%s/www/wp-config.php" % (repo, branch, repo, branch, repo, branch, repo, branch))
   sudo("chown jenkins:www-data /var/www/shared/%s_%s.wp-config.inc" % (repo, branch))

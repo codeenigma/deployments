@@ -176,21 +176,6 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
           print "===> Data sanitised, email domain set to %s, passwords set to %s" % (sanitised_email, sanitised_password)
           print "Sanitised database."
 
-  # If this is dev/staging, we want to sanitise the database ASAP.
-  dev_stage_servers = ['dev1.codeenigma.com', 'dev2.codeenigma.com', 'dev3.codeenigma.com',
-                       'dev1.codeenigma.net', 'dev2.codeenigma.net', 'dev3.codeenigma.net',
-                       'stage1.codeenigma.com', 'stage2.codeenigma.com', 'stage3.codeenigma.com',
-                       'stage1.codeenigma.net', 'stage2.codeenigma.net', 'stage3.codeenigma.net'
-                      ]
-  dev_stage_server = [server for server in dev_stage_servers if env.host in server]
-
-  if dev_stage_server and drupal_version != '8':
-    print "===> Sanitising database"
-    with cd("/var/www/live.%s.%s/www/sites/default" % (repo, branch)):
-      run("drush sql-query \"UPDATE users SET mail = CONCAT(name, '@example.com')\"")
-      run("drush sql-query \"UPDATE users SET mail = 'support@codeenigma.com' WHERE uid = 1\"")
-      run("drush user-password `drush uinf 1 | grep name | cut -d\: -f2` --password=admin")
-
   if drupal_version == '8':
     # If the site is Drupal 8, after the initial build, the config directory will have incorrect permissions, which is not ideal.
     print "===> Correcting config directory permissions and ownership..."
