@@ -6,7 +6,12 @@ import string
 # Small function to revert db
 @task
 def _revert_db(repo, branch, build):
-  run("if [ -f ~jenkins/dbbackups/%s_%s_prior_to_%s.sql.gz ]; then drush -y @%s_%s sql-drop; zcat ~jenkins/dbbackups/%s_%s_prior_to_%s.sql.gz | drush @%s_%s sql-cli; fi" % (repo, branch, build, repo, branch, repo, branch, build, repo, branch))
+  print "===> Dropping all tables"
+  run("if [ -f ~jenkins/dbbackups/%s_%s_prior_to_%s.sql.gz ]; then drush -y @%s_%s sql-drop" % (repo, branch, build, repo, branch))
+  print "===> Waiting 5 seconds to let MySQL internals catch up"
+  time.sleep(5)
+  print "===> Restoring the database from backup"
+  run("zcat ~jenkins/dbbackups/%s_%s_prior_to_%s.sql.gz | drush @%s_%s sql-cli; fi" % (repo, branch, build, repo, branch))
 
 # Function to revert settings.php change for when a build fails and database is reverted
 @task

@@ -235,7 +235,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
       if not this_build == live_build:
         Revert._revert_db(repo, branch, build)
         Revert._revert_settings(repo, branch, build)
-        raise SystemExit("Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
+        raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if importconfig == "yes":
         execute(Drupal.config_import, repo, branch, build, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
@@ -253,7 +253,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
       if not this_build == live_build:
         Revert._revert_db(repo, branch, build)
         Revert._revert_settings(repo, branch, build)
-        raise SystemExit("Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
+        raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if importconfig == "yes":
         execute(Drupal.config_import, repo, branch, build, drupal_version) # This will revert database, settings and live symlink if it fails.
