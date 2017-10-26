@@ -59,11 +59,11 @@ while [ $COUNTER -lt 10 ]; do
     continue
   else
     echo "Creating a database for $NEWDB"
-    sudo mysql --defaults-file=/etc/mysql/debian.cnf -e 'CREATE DATABASE \`${NEWDB}\`' || exit 1
+    sudo mysql --defaults-file=/etc/mysql/debian.cnf -e "CREATE DATABASE \`${NEWDB}\`" || exit 1
     echo "Generating a user/pass for database $NEWDB"
     for host in $(echo $APP_HOSTS | tr "," "\n"); do
       echo "sudo mysql --defaults-file=/etc/mysql/debian.cnf -e 'GRANT ALL ON \`${NEWDB}\`.* to \"${NEWDB}\"@\"${host}\" IDENTIFIED BY \"${PASS}\"'"
-      sudo mysql --defaults-file=/etc/mysql/debian.cnf -e 'GRANT ALL ON \`${NEWDB}\`.* TO "${NEWDB}"@"${host}" IDENTIFIED BY "${PASS}"'
+      sudo mysql --defaults-file=/etc/mysql/debian.cnf -e "GRANT ALL ON \`${NEWDB}\`.* TO \"${NEWDB}\"@\"${host}\" IDENTIFIED BY \"${PASS}\""
     done
     break
   fi
