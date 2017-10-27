@@ -143,7 +143,25 @@ def new_site_files(repo, branch, build, mapping, sites):
 
 @task
 @roles('app_primary')
-def new_site_create_database(repo, branch, build, buildtype, profile, mapping, sites, drupal_version):
+def new_site_create_database(repo, branch, build, buildtype, profile, mapping, sites, drupal_version, cluster, rds, config):
+
+  # For clusters we need to do some extra things
+  app_ip_override = False
+  if cluster:
+    # This is the Database host that we need to insert into Drupal settings.php. It is different from the main db host because it might be a floating IP
+    dbhost = config.get('DrupalDBHost', 'dbhost')
+    # Convert a list of apps back into a string, to pass to the mysqlprepare script for setting appropriate GRANTs to the database
+    apps_list = ",".join(env.roledefs['app_all'])
+
+    if config.has_section('AppIPs'):
+      app_ip_override = True
+      apps_ip_list = ",".join(env.roledefs['app_ip_all'])
+
+  if app_ip_override:
+    list_of_app_servers = apps_ip_list
+  else:
+    list_of_app_servers = env.host
+
   drupal8 = False
   sitedir = "/var/www/%s_%s_%s/www" % (repo, branch, build)
 
@@ -161,6 +179,8 @@ def new_site_create_database(repo, branch, build, buildtype, profile, mapping, s
   else:
     try_import = False
     dbscript = "mysqlpreparenoimport_multisite"
+    if cluster and rds:
+      dbscript = "mysqlpreparenoimport_multisite_rds"
 
   if drupal_version == '8':
     drupal8 = True
@@ -170,7 +190,7 @@ def new_site_create_database(repo, branch, build, buildtype, profile, mapping, s
   print "===> Will use the script %s.sh for preparing the database" % dbscript
 
   script_dir = os.path.dirname(os.path.realpath(__file__))
-  scripts_to_copy = [script_dir + '/../util/mysqlpreparenoimport_multisite.sh', script_dir + '/../util/mysqlprepare_multisite.sh']
+  scripts_to_copy = [script_dir + '/../util/mysqlpreparenoimport_multisite.sh', script_dir + '/../util/mysqlprepare_multisite.sh', script_dir + '/../util/mysqlpreparenoimport_multisite_rds.sh']
 
   for each_script in scripts_to_copy:
     if put(each_script, '/home/jenkins', mode=0755).failed:
@@ -203,13 +223,18 @@ def new_site_create_database(repo, branch, build, buildtype, profile, mapping, s
             print "Cannot find a %s.sql.bz2 file. We'll install without importing a database." % buildsite
             try_import = False
             dbscript = "mysqlpreparenoimport_multisite"
+            if cluster and rds:
+              dbscript = "mysqlpreparenoimport_multisite_rds"
           else:
             sudo("bunzip2 /var/www/%s_%s_%s/db/%s.sql.bz2" % (repo, branch, build, buildsite))
             # mysqlprepare.sh <databasename> <databasepass> <site_root> <branch> <dumpfile> <url>
             sudo("/home/jenkins/%s.sh %s %s /var/www/%s_%s_%s/www %s $(find /var/www/%s_%s_%s/db -type f -name %s.sql) %s" % (dbscript, alias, newpass, repo, branch, build, branch, repo, branch, build, buildsite, buildsite))
 
         if not try_import:
-          sudo("/home/jenkins/%s.sh %s %s /var/www/%s_%s_%s/www %s %s" % (dbscript, alias, newpass, repo, branch, build, branch, buildsite))
+          if dbscript == "mysqlpreparenoimport_multisite_rds":
+            sudo("/home/jenkins/%s.sh %s %s %s /var/www/%s_%s_%s/www %s %s %s %s" % (dbscript, alias, newpass, repo, branch, build, branch, buildsite, list_of_app_servers, drupal8))
+          else:
+            sudo("/home/jenkins/%s.sh %s %s /var/www/%s_%s_%s/www %s %s" % (dbscript, alias, newpass, repo, branch, build, branch, buildsite))
 
       sudo("mv /var/www/%s_%s_%s/www/sites/%s/settings.php /var/www/shared/%s_%s.settings.inc" % (repo, branch, build, buildsite, alias, branch))
 
