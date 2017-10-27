@@ -92,6 +92,8 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
     else:
       if cluster:
         dbscript = "mysqlpreparenoimport_remote"
+        if rds:
+          dbscript = "mysqlpreparenoimport_rds"
       else:
         dbscript = "mysqlpreparenoimport"
 
