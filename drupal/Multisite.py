@@ -232,7 +232,7 @@ def new_site_create_database(repo, branch, build, buildtype, profile, mapping, s
 
         if not try_import:
           if dbscript == "mysqlpreparenoimport_multisite_rds":
-            sudo("/home/jenkins/%s.sh %s %s %s /var/www/%s_%s_%s/www %s %s %s %s" % (dbscript, alias, newpass, repo, branch, build, branch, buildsite, list_of_app_servers, drupal8))
+            sudo("/home/jenkins/%s.sh %s %s /var/www/%s_%s_%s/www %s %s %s %s" % (dbscript, alias, newpass, repo, branch, build, branch, buildsite, list_of_app_servers, drupal8))
           else:
             sudo("/home/jenkins/%s.sh %s %s /var/www/%s_%s_%s/www %s %s" % (dbscript, alias, newpass, repo, branch, build, branch, buildsite))
 
