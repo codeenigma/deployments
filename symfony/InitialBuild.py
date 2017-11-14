@@ -19,3 +19,5 @@ def initial_config(repo, buildtype, build):
     raise SystemExit("Could not create sessions directory")
   if sudo("mkdir /var/www/shared/%s_%s_data" % (repo, buildtype)).failed:
     raise SystemExit("Could not create data directory")
+  if sudo("mkdir /var/www/shared/%s_%s_uploads" % (repo, buildtype)).failed:
+    raise SystemExit("Could not create uploads directory")

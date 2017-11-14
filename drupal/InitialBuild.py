@@ -46,7 +46,7 @@ def initial_build_create_files_symlink(repo, branch, build):
 # Stuff to do when this is the initial build
 @task
 @roles('app_primary')
-def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config, drupal_version, sanitised_password, sanitised_email, cluster=False):
+def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config, drupal_version, sanitised_password, sanitised_email, cluster=False, rds=False):
   print "===> This looks like the first build! We have some things to do.."
 
   drupal8 = False
@@ -79,6 +79,8 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
   if drupal_version == '8':
     if cluster:
       dbscript = "mysqlpreparenoimport_remote"
+      if rds:
+        dbscript = "mysqlpreparenoimport_rds"
     else:
       dbscript = "mysqlpreparenoimport"
   else:
@@ -90,8 +92,12 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
     else:
       if cluster:
         dbscript = "mysqlpreparenoimport_remote"
+        if rds:
+          dbscript = "mysqlpreparenoimport_rds"
       else:
         dbscript = "mysqlpreparenoimport"
+
+
   print "===> Will use the script %s.sh for preparing the database" % dbscript
 
   # Copy database script to server(s)

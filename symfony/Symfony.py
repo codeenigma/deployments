@@ -119,15 +119,19 @@ def symlink_resources(repo, buildtype, build):
     if run("ln -s /var/www/shared/%s_%s_sessions /var/www/%s_%s_%s/var/sessions" % (repo, buildtype, repo, buildtype, build)).failed:
       print "Could not symlink in sessions directory."
       raise SystemExit("Could not symlink in sessions directory.")
+    if run("ln -s /var/www/shared/%s_%s_uploads /var/www/%s_%s_%s/web/uploads" % (repo, buildtype, repo, buildtype, build)).failed:
+      print "Could not symlink in uploads directory."
+      raise SystemExit("Could not symlink in uploads directory.")
 
 
+# TODO: This should be a build hook example
 @task
 @roles('app_all')
 def symlink_ckfinder_files(repo, buildtype, build):
   print "===> Symlinking in ckfinder files directory, /var/www/shared/%s_%s_userfiles, to web/userfiles" % (repo, buildtype)
   sudo("ln -s /var/www/shared/%s_%s_userfiles /var/www/%s_%s_%s/web/userfiles" % (repo, buildtype, repo, buildtype, build))
 
-
+# TODO: This should be a build hook example
 @task
 @roles('app_all')
 def ckfinder_install(repo, buildtype, build, console_buildtype):
@@ -223,3 +227,9 @@ def fix_perms_ownership(repo, buildtype, build):
     else:
       sudo("find /var/www/shared/%s_%s_sessions -type d -print0 | xargs -r -0 chmod 770" % (repo, buildtype))
       sudo("find /var/www/shared/%s_%s_sessions -type f -print0 | xargs -r -0 chmod 660" % (repo, buildtype))
+    if sudo("chown -R www-data:jenkins /var/www/shared/%s_%s_uploads" % (repo, buildtype)).failed:
+      print "Could not set uploads ownership."
+      raise SystemExit("Could not set uploads ownership.")
+    else:
+      sudo("find /var/www/shared/%s_%s_uploads -type d -print0 | xargs -r -0 chmod 775" % (repo, buildtype))
+      sudo("find /var/www/shared/%s_%s_uploads -type f -print0 | xargs -r -0 chmod 664" % (repo, buildtype))

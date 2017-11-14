@@ -43,8 +43,15 @@ def main(repo, repourl, branch, build, buildtype, symassets="nosym", keepbuilds=
   user = 'jenkins'
   env.host_string = '%s@%s' % (user, env.host)
 
+  # Let's allow developers to perform some pre-build actions if they need to
+  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
+
   common.Utils.clone_repo(repo, repourl, branch, build)
   common.Utils.adjust_live_symlink(repo, branch, build)
   if symassets == "sym":
     Flat.symlink_assets(repo, branch, build)
+
+  # Let's allow developers to perform some post-build actions if they need to
+  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
+
   common.Utils.remove_old_builds(repo, branch, keepbuilds)
