@@ -85,6 +85,14 @@ def update_resources(repo, buildtype, build):
                 print "Could not add a Data symlink, even though we tried"
           else:
             print "Found an existing Data directory in the repo, ignoring"
+      print "===> Dealing with uploads directories - should be /var/www/shared/%s_%s_uploads" % (repo, buildtype)
+      if(exists("/var/www/shared/%s_%s_uploads" % (repo, buildtype))):
+          print "Uploads directory found! Symlinking in"
+          if(not exists("/var/www/%s_%s_%s/web/uploads" % (repo, buildtype, build))):
+            if sudo ("ln -s /var/www/shared/%s_%s_uploads /var/www/%s_%s_%s/web/uploads" % (repo, buildtype, repo, buildtype, build)).failed:
+                print "Could not add an uploads symlink, even though we tried"
+          else:
+            print "Found an existing uploads directory in the repo, ignoring"
   # Assuming Symfony 3 or higher
   else:
     with settings(warn_only=True):
