@@ -22,25 +22,20 @@ config = common.ConfigFile.read_config_file()
 
 
 @task
-def main(repo, repourl, branch, build, buildtype, symassets="nosym", keepbuilds=10):
-  # We need to iterate through the options in the map and find the right host based on
-  # whether the repo name matches any of the options, as they may not be exactly identical
-  if config.has_section(buildtype):
-    for option in config.options(buildtype):
-       line = config.get(buildtype, option)
-       line = line.split(',')
-       for entry in line:
-         if option.strip() in repo:
-           env.host = entry.strip()
-           print "===> Host is %s" % env.host
-           break
+def main(repo, repourl, branch, build, buildtype, symassets="nosym", keepbuilds=10, cluster=False):
+  # Set our host_string based on user@host
+  user = 'jenkins'
+
+  # Define primary host
+  common.Utils.define_host(config, buildtype, repo)
+
+  # Define server roles (if applicable)
+  common.Utils.define_roles(config, cluster)
 
   # Didn't find any host in the map for this project.
   if env.host is None:
     raise ValueError("===> You wanted to deploy a build but we couldn't find a host in the map file for repo %s so we're aborting." % repo)
 
-  # Set our host_string based on user@host
-  user = 'jenkins'
   env.host_string = '%s@%s' % (user, env.host)
 
   # Let's allow developers to perform some pre-build actions if they need to
