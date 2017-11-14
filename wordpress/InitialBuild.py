@@ -15,6 +15,12 @@ def initial_build(repo, url, branch, build, profile, webserverport):
   print "===> Setting the live document root symlink"
   sudo("ln -s /var/www/%s_%s_%s /var/www/live.%s.%s" % (repo, branch, build, repo, branch))
 
+  if not exists("/var/www/shared"):
+    if sudo("mkdir /var/www/shared").failed:
+      raise SystemExit("There was no 'shared' directory on the server and we could not create it either")
+    else:
+      print "==> Created a new /var/www/shared directory for shared assets on this server"
+
   print "===> Making the shared files dir and setting symlink"
   sudo("mkdir -p /var/www/shared/%s_%s_uploads" % (repo, branch))
   sudo("chown www-data:staff /var/www/shared/%s_%s_uploads" % (repo, branch))
