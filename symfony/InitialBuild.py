@@ -13,6 +13,9 @@ from Symfony import *
 @roles('app_primary')
 def initial_config(repo, buildtype, build):
   print "===> Looks like a first build, preparing common files and directories..."
+  # Try and make a config directory, just in case
+  if sudo("mkdir -p /var/www/config").failed:
+    raise SystemExit("Could not create shared config directory")
   if sudo("mkdir -p /var/www/shared/%s_%s_logs" % (repo, buildtype)).failed:
     raise SystemExit("Could not create logs directory")
   if sudo("mkdir -p /var/www/shared/%s_%s_sessions" % (repo, buildtype)).failed:
