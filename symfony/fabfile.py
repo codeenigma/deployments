@@ -27,7 +27,7 @@ config = common.ConfigFile.read_config_file()
 
 
 @task
-def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, buildtype_override=False, ckfinder=False, keepbackup=False, migrations=False, cluster=False):
+def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, buildtype_override=False, ckfinder=False, keepbackup=False, migrations=False, cluster=False, with_no_dev=True):
 
   user = 'jenkins'
 
@@ -84,7 +84,7 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
     if run("stat /var/www/%s_%s_%s/vendor" % (repo, buildtype, build)).failed:
       # Generally we want to run as prod because dev just enables developer tools
       # If someone wants to override this, we can pass "dev" as buildtype_override above
-      execute(Symfony.composer_install, repo, buildtype, build, console_buildtype)
+      execute(Symfony.composer_install, repo, buildtype, build, console_buildtype, with_no_dev)
   if migrations:
     execute(Symfony.run_migrations, repo, buildtype, build, console_buildtype)
 
