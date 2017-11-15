@@ -170,7 +170,7 @@ def set_symfony_env(repo, buildtype, build, console_buildtype):
 @task
 @roles('app_all')
 def composer_install(repo, buildtype, build, console_buildtype, with_no_dev):
-  if with_no_dev is true:
+  if with_no_dev is True:
     print "===> Running composer install with --no-dev option"
     if run("cd /var/www/%s_%s_%s; SYMFONY_ENV=%s composer install --no-dev --no-interaction" % (repo, buildtype, build, console_buildtype)).failed:
       print "Could not run composer install."
