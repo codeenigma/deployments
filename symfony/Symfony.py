@@ -85,6 +85,14 @@ def update_resources(repo, buildtype, build):
                 print "Could not add a Data symlink, even though we tried"
           else:
             print "Found an existing Data directory in the repo, ignoring"
+      print "===> Dealing with uploads directories - should be /var/www/shared/%s_%s_uploads" % (repo, buildtype)
+      if(exists("/var/www/shared/%s_%s_uploads" % (repo, buildtype))):
+          print "Uploads directory found! Symlinking in"
+          if(not exists("/var/www/%s_%s_%s/web/uploads" % (repo, buildtype, build))):
+            if sudo ("ln -s /var/www/shared/%s_%s_uploads /var/www/%s_%s_%s/web/uploads" % (repo, buildtype, repo, buildtype, build)).failed:
+                print "Could not add an uploads symlink, even though we tried"
+          else:
+            print "Found an existing uploads directory in the repo, ignoring"
   # Assuming Symfony 3 or higher
   else:
     with settings(warn_only=True):
@@ -161,14 +169,19 @@ def set_symfony_env(repo, buildtype, build, console_buildtype):
 
 @task
 @roles('app_all')
-def composer_install(repo, buildtype, build, console_buildtype):
-  print "===> Running composer install"
-  if run("cd /var/www/%s_%s_%s; SYMFONY_ENV=%s composer install --no-dev --no-interaction" % (repo, buildtype, build, console_buildtype)).failed:
-    print "Could not run composer install."
-    raise SystemExit("Could not run composer install.")
+def composer_install(repo, buildtype, build, console_buildtype, with_no_dev):
+  if with_no_dev is True:
+    print "===> Running composer install with --no-dev option"
+    if run("cd /var/www/%s_%s_%s; SYMFONY_ENV=%s composer install --no-dev --no-interaction" % (repo, buildtype, build, console_buildtype)).failed:
+      print "Could not run composer install."
+      raise SystemExit("Could not run composer install.")
   else:
-    print "===> Fixing up perms and ownership..."
-    fix_perms_ownership(repo, buildtype, build)
+    print "===> Running composer install without --no-dev option"
+    if run("cd /var/www/%s_%s_%s; SYMFONY_ENV=%s composer install --no-interaction" % (repo, buildtype, build, console_buildtype)).failed:
+      print "Could not run composer install."
+      raise SystemExit("Could not run composer install.")
+  print "===> Fixing up perms and ownership..."
+  fix_perms_ownership(repo, buildtype, build)
 
 
 @task

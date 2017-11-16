@@ -168,6 +168,11 @@ def sync_db(orig_host, shortname, staging_branch, prod_branch, fresh_database, s
   print "===> Sending database dumps to destination server"
   local('scp /tmp/dbbackups/drupal_%s_%s_from_prod.sql.bz2 %s:~/dbbackups/' % (shortname, now, env.host_string))
   local('rm /tmp/dbbackups/drupal_%s_%s_from_prod.sql.bz2' % (shortname, now))
+
+  print "===> Check the production database has actually been copied down"
+  if run("stat /home/jenkins/dbbackups/drupal_%s_%s_from_prod.sql.bz2" % (shortname, now)).failed:
+    raise SystemExit("Nope, production database hasn't been copied down. Abort now, as the stage site will go down if we proceed.")
+
   print "===> Importing the drupal database"
   # Need to drop all tables first in case there are existing tables that have to be ADDED from an upgrade
   run("drush @%s_%s -y sql-drop" % (shortname, staging_branch))

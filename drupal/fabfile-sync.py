@@ -21,7 +21,7 @@ global config
 config = common.ConfigFile.read_config_file('sync.ini', False)
 
 @task
-def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database='no', sanitise='yes', sanitised_password=None):
+def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database='no', sanitise='yes', sanitised_password=None, sanitised_email=None):
   # Set the variables we need.
   drupal_version = None
   # Run the tasks.

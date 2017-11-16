@@ -184,7 +184,7 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
 
   if drupal_version == '8':
     # If the site is Drupal 8, after the initial build, the config directory will have incorrect permissions, which is not ideal.
-    print "===> Correcting config directory permissions and ownership..."
+    print "===> Correcting files directory permissions and ownership..."
     sudo("chown -R jenkins:www-data /var/www/shared/%s_%s_files" % (repo, branch))
     sudo("chmod 775 /var/www/shared/%s_%s_files" % (repo, branch))
 
@@ -197,6 +197,9 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
 def initial_build_move_settings(repo, branch):
   # Prepare the settings.inc file after installation
   print "===> Copying %s_%s.settings.inc from shared to config area /var/www/config/%s_%s.settings.inc. Do an 'include' of this in your main settings.php, or else it will be symlinked directly as settings.php" % (repo, branch, repo, branch)
+  # Try and make a config directory, just in case
+  if sudo("mkdir -p /var/www/config").failed:
+    raise SystemExit("Could not create shared config directory")
   sudo("cp /var/www/shared/%s_%s.settings.inc /var/www/config/%s_%s.settings.inc" % (repo, branch, repo, branch))
   sudo("chown jenkins:www-data /var/www/config/%s_%s.settings.inc" % (repo, branch))
   sudo("chmod 644 /var/www/config/%s_%s.settings.inc" % (repo, branch))
