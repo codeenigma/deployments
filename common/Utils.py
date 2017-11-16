@@ -106,17 +106,18 @@ def remove_old_builds(repo, branch, keepbuilds, buildtype=None):
 # this happens after database changes have been applied in drush_updatedb()
 @task
 def adjust_live_symlink(repo, branch, build, buildtype=None):
-  print "===> Removing current symlink to previous live codebase"
+  # Use branch as buildtype if none provided
   if buildtype == None:
-    sudo("unlink /var/www/live.%s.%s" % (repo, branch))
-  else:
+    print "===> No buildtype provided, using branch name %s instead" % branch
+    buildtype = branch
+
+  # Checking for a symlink, in certain edge cases there may not be one
+  if run("stat /var/www/live.%s.%s" % (repo, buildtype)).succeeded:
+    print "===> Removing current symlink to previous live codebase"
     sudo("unlink /var/www/live.%s.%s" % (repo, buildtype))
 
   print "===> Setting new symlink to new live codebase"
-  if buildtype == None:
-    sudo("ln -s /var/www/%s_%s_%s /var/www/live.%s.%s" % (repo, branch, build, repo, branch))
-  else:
-    sudo("ln -s /var/www/%s_%s_%s /var/www/live.%s.%s" % (repo, buildtype, build, repo, buildtype))
+  sudo("ln -s /var/www/%s_%s_%s /var/www/live.%s.%s" % (repo, buildtype, build, repo, buildtype))
 
 
 @task
