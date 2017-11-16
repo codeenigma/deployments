@@ -112,9 +112,10 @@ def adjust_live_symlink(repo, branch, build, buildtype=None):
     buildtype = branch
 
   # Checking for a symlink, in certain edge cases there may not be one
-  if run("stat /var/www/live.%s.%s" % (repo, buildtype)).succeeded:
-    print "===> Removing current symlink to previous live codebase"
-    sudo("unlink /var/www/live.%s.%s" % (repo, buildtype))
+  with settings(warn_only=True):
+    if run("stat /var/www/live.%s.%s" % (repo, buildtype)).succeeded:
+      print "===> Removing current symlink to previous live codebase"
+      sudo("unlink /var/www/live.%s.%s" % (repo, buildtype))
 
   print "===> Setting new symlink to new live codebase"
   sudo("ln -s /var/www/%s_%s_%s /var/www/live.%s.%s" % (repo, buildtype, build, repo, buildtype))
