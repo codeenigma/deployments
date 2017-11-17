@@ -2,6 +2,7 @@ from fabric.api import *
 from fabric.contrib.files import sed
 import random
 import string
+import time
 
 # Small function to revert db
 @task
