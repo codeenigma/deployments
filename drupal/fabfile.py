@@ -25,13 +25,14 @@ from FeatureBranches import *
 # pesky 'stdin is not a tty' messages when using sudo
 env.shell = '/bin/bash -c'
 
-# Read the config.ini file from repo, if it exists
 global config
-config = common.ConfigFile.read_config_file()
 
 
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', rds=False):
+def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', rds=False, config_filename='config.ini'):
+
+  # Read the config.ini file from repo, if it exists
+  config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
 
   # Define variables
   drupal_version = None
