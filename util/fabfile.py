@@ -24,17 +24,17 @@ def main(jenkins_server=None, scripts_path="/var/lib/jenkins/scripts", branch="m
   env.host_string = '%s@%s' % (user, env.host)
 
   with settings(warn_only=True):
-    if run(scripts_path).return_code == 0:
-      print "===> Found our scripts directory at %s" % scripts_path
-    else:
+    if run("stat %s" % scripts_path).failed:
       print "===> Scripts directory %s not present, we'll try and make it" % scripts_path
       if sudo("mkdir -p %s" % scripts_path).failed:
         raise SystemExit("===> Scripts directory %s did not exist and we couldn't make it either. Aborting." % scripts_path)
       else:
         print "===> Ensuring good permissions on new directory %s" % scripts_path
         sudo("chown -R %s:%s %s" % (user, user, scripts_path))
+    else:
+      print "===> Found our scripts directory at %s" % scripts_path
 
   with cd(scripts_path):
-    common.Utils._sshagent_run("git pull origin %s" % branch)
+    common.Utils._sshagent_run("git pull origin %s" % branch, ssh_key)
 
   print ("####### BUILD COMPLETE. Branch %s was refreshed on server %s at path %s" % (branch, scripts_path, env.host))

@@ -31,6 +31,11 @@ config = common.ConfigFile.read_config_file()
 #####
 @task
 def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserverport='8080'):
+  # Set SSH key if needed
+  ssh_key = None
+  if "git@github.com" in repourl:
+    ssh_key = "/var/lib/jenkins/.ssh/id_rsa_github"
+
   # We need to iterate through the options in the map and find the right host based on
   # whether the repo name matches any of the options, as they may not be exactly identical
   if config.has_section(buildtype):
@@ -71,7 +76,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
   if fresh_install == True:
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
     try:
-      common.Utils.clone_repo(repo, repourl, branch, build)
+      common.Utils.clone_repo(repo, repourl, branch, build, ssh_key)
       InitialBuild.initial_build(repo, url, branch, build, profile, webserverport)
       common.Services.clear_php_cache()
       common.Services.clear_varnish_cache()
@@ -86,7 +91,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
     previous_db = common.Utils.get_previous_db(repo, cleanbranch, build)
     #cron_disable(repo, branch)
     WordPress.backup_db(repo, branch, build, previous_build)
-    common.Utils.clone_repo(repo, repourl, branch, build)
+    common.Utils.clone_repo(repo, repourl, branch, build, ssh_key)
     AdjustConfiguration.adjust_wp_config(repo, branch, build)
     AdjustConfiguration.adjust_files_symlink(repo, branch, build)
     #server_specific_tasks(repo, branch, build)
