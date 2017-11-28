@@ -34,7 +34,9 @@ def main(jenkins_server=None, scripts_path="/var/lib/jenkins/scripts", branch="m
     else:
       print "===> Found our scripts directory at %s" % scripts_path
 
-  with cd(scripts_path):
-    common.Utils._sshagent_run("git pull origin %s" % branch, ssh_key)
+  if run("stat %s/.git" % scripts_path).failed:
+    raise SystemExit("===> Scripts directory %s is not a Git repository. Aborting." % scripts_path)
+  else:
+    common.Utils._sshagent_run("cd %s; git pull origin %s" % (scripts_path, branch), ssh_key)
 
   print ("####### BUILD COMPLETE. Branch %s was refreshed on server %s at path %s" % (branch, scripts_path, env.host))
