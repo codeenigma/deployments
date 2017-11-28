@@ -12,13 +12,16 @@ import common.ConfigFile
 # Runs a command with SSH agent forwarding enabled.
 # At time of writing, Fabric (and paramiko) can't forward your SSH agent.
 @task
-def _sshagent_run(cmd):
+def _sshagent_run(cmd, ssh_key=None):
   # catch the port number to pass to ssh
-  if "git@github.com" in cmd:
-    # These repos are at github, for which we have a different key we need to add to the agent in order to clone them
-    print local('ssh-agent bash -c \'ssh-add /var/lib/jenkins/.ssh/id_rsa_github; ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t -A %s "%s"\'' % (env.host, cmd))
-  else:
+  if ssh_key is None:
     print local('ssh-agent bash -c \'ssh-add; ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t -A %s "%s"\'' % (env.host, cmd))
+  else:
+    if local("stat %s" % ssh_key).failed:
+      raise SystemExit("===> No ssh key found at %s on the server. Aborting." % ssh_key)
+    else:
+      # A different key has been specified, we need to add to the agent in order to carry out this command
+      print local('ssh-agent bash -c \'ssh-add %s; ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t -A %s "%s"\'' % (ssh_key, env.host, cmd))
 
 
 # Helper script to generate a random password
@@ -63,11 +66,13 @@ def get_previous_db(repo, branch, build):
 
 # Git clone the repo to /var/www/project_branch_build_BUILDID
 @task
-def clone_repo(repo, repourl, branch, build, buildtype=None):
+def clone_repo(repo, repourl, branch, build, buildtype=None, ssh_key=None):
   if buildtype == None:
     cleanbranch = branch.replace('/', '-')
+
     print "===> Cloning %s from %s" % (repo, repourl)
-    _sshagent_run("git clone --branch %s %s ~jenkins/%s_%s_%s" % (branch, repourl, repo, cleanbranch, build))
+    _sshagent_run("git clone --branch %s %s ~jenkins/%s_%s_%s" % (branch, repourl, repo, cleanbranch, build), ssh_key)
+
     with settings(warn_only=True):
       if run("ls -1 ~jenkins/%s_%s_%s" % (repo, cleanbranch, build)).failed:
         raise SystemExit("Could not clone the repository to create a new build! Aborting")
@@ -76,7 +81,8 @@ def clone_repo(repo, repourl, branch, build, buildtype=None):
         raise SystemExit("Could not move the build into place in /var/www/! Aborting")
   else:
     print "===> Cloning %s from %s" % (repo, repourl)
-    _sshagent_run("git clone --branch %s %s ~jenkins/%s_%s_%s" % (branch, repourl, repo, buildtype, build))
+    _sshagent_run("git clone --branch %s %s ~jenkins/%s_%s_%s" % (branch, repourl, repo, cleanbranch, build), ssh_key)
+
     with settings(warn_only=True):
       if run("ls -1 ~jenkins/%s_%s_%s" % (repo, buildtype, build)).failed:
         raise SystemExit("Could not clone the repository to create a new build! Aborting")

@@ -102,7 +102,7 @@ Drupal scripts are the most mature, as our specialism is as a Drupal development
 
 ## General
 
-* our `_sshagent_run()` function needs to support a path to a private key
+* our `_sshagent_run()` now supports a path to a private key, however some deploy scripts need updating to allow it to be passed to the `main()` function
 * Nginx is the preferred web server, Apache support isn there and it mostly works, but the initial build parts for WordPress and Drupal may be shaky
 * some manual manipulation of vhosts might be required if you do not like the default URL format
 * we're working around some challenges with regard to supporting [AWS RDS](https://aws.amazon.com/rds/) for MySQL initial builds and initial builds in cluster environments generally

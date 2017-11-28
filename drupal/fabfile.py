@@ -38,6 +38,11 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
   drupal_version = None
   user = "jenkins"
 
+  # Set SSH key if needed
+  ssh_key = None
+  if "git@github.com" in repourl:
+    ssh_key = "/var/lib/jenkins/.ssh/id_rsa_github"
+
   global varnish_restart
   varnish_restart = restartvarnish
   readonlymode = "maintenance"
@@ -115,7 +120,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
 
   if fresh_install == True:
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
-    execute(common.Utils.clone_repo, repo, repourl, branch, build, hosts=env.roledefs['app_all'])
+    execute(common.Utils.clone_repo, repo, repourl, branch, build, ssh_key, hosts=env.roledefs['app_all'])
 
     # Gitflow workflow means '/' in branch names, need to clean up.
     branch = common.Utils.generate_branch_name(branch)
@@ -184,7 +189,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
     previous_db = common.Utils.get_previous_db(repo, cleanbranch, build)
     execute(Drupal.backup_db, repo, cleanbranch, build)
 
-    execute(common.Utils.clone_repo, repo, repourl, branch, build, hosts=env.roledefs['app_all'])
+    execute(common.Utils.clone_repo, repo, repourl, branch, build, ssh_key, hosts=env.roledefs['app_all'])
 
     # Gitflow workflow means '/' in branch names, need to clean up.
     branch = common.Utils.generate_branch_name(branch)

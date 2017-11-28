@@ -50,6 +50,11 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
   behat_config = None
   tests_failed = False
 
+  # Set SSH key if needed
+  ssh_key = None
+  if "git@github.com" in repourl:
+    ssh_key = "/var/lib/jenkins/.ssh/id_rsa_github"
+
   # Define primary host
   common.Utils.define_host(config, buildtype, repo)
 
@@ -111,7 +116,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
   if dontbuild:
     print "===> Not actually doing a proper build. This is a debugging build."
   else:
-    execute(common.Utils.clone_repo, repo, repourl, branch, build)
+    execute(common.Utils.clone_repo, repo, repourl, branch, build, ssh_key)
 
     # Gitflow workflow means '/' in branch names, need to clean up.
     branch = common.Utils.generate_branch_name(branch)
