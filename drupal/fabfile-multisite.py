@@ -132,7 +132,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
     if drupal_version != '8':
       importconfig = "no"
 
-    if drupal_version == '8':
+    if drupal_version == '8' and composer is True:
       execute(Drupal.run_composer_install, repo, branch, build)
 
     new_sites = Multisite.check_for_new_installs(repo, branch, build, mapping)
