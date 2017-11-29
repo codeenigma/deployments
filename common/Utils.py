@@ -81,7 +81,7 @@ def clone_repo(repo, repourl, branch, build, buildtype=None, ssh_key=None):
         raise SystemExit("Could not move the build into place in /var/www/! Aborting")
   else:
     print "===> Cloning %s from %s" % (repo, repourl)
-    _sshagent_run("git clone --branch %s %s ~jenkins/%s_%s_%s" % (branch, repourl, repo, cleanbranch, build), ssh_key)
+    _sshagent_run("git clone --branch %s %s ~jenkins/%s_%s_%s" % (branch, repourl, repo, buildtype, build), ssh_key)
 
     with settings(warn_only=True):
       if run("ls -1 ~jenkins/%s_%s_%s" % (repo, buildtype, build)).failed:

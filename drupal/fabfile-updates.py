@@ -73,7 +73,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", r
   if fresh_install == True:
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
     try:
-      common.Utils.clone_repo(repo, repourl, branch, build, ssh_key)
+      common.Utils.clone_repo(repo, repourl, branch, build, None, ssh_key)
       InitialBuild.initial_build(repo, url, branch, build, profile)
       AdjustConfiguration.adjust_drushrc_php(repo, branch, build)
       common.Services.clear_php_cache()
@@ -91,7 +91,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", r
     previous_db = common.Utils.get_previous_db(repo, cleanbranch, build)
 
     Drupal.backup_db(repo, branch, build)
-    common.Utils.clone_repo(repo, repourl, branch, build, ssh_key)
+    common.Utils.clone_repo(repo, repourl, branch, build, None, ssh_key)
     Updates.merge_prod(repo, branch, build)
     AdjustConfiguration.adjust_settings_php(repo, branch, build, previous_build, buildtype)
     AdjustConfiguration.adjust_drushrc_php(repo, branch, build)
