@@ -116,7 +116,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
   if dontbuild:
     print "===> Not actually doing a proper build. This is a debugging build."
   else:
-    execute(common.Utils.clone_repo, repo, repourl, branch, build, ssh_key)
+    execute(common.Utils.clone_repo, repo, repourl, branch, build, None, ssh_key)
 
     # Gitflow workflow means '/' in branch names, need to clean up.
     branch = common.Utils.generate_branch_name(branch)

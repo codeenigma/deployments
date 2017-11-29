@@ -76,7 +76,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
   if fresh_install == True:
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
     try:
-      common.Utils.clone_repo(repo, repourl, branch, build, ssh_key)
+      common.Utils.clone_repo(repo, repourl, branch, build, None, ssh_key)
       InitialBuild.initial_build(repo, url, branch, build, profile, webserverport)
       common.Services.clear_php_cache()
       common.Services.clear_varnish_cache()
@@ -91,7 +91,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
     previous_db = common.Utils.get_previous_db(repo, cleanbranch, build)
     #cron_disable(repo, branch)
     WordPress.backup_db(repo, branch, build, previous_build)
-    common.Utils.clone_repo(repo, repourl, branch, build, ssh_key)
+    common.Utils.clone_repo(repo, repourl, branch, build, None, ssh_key)
     AdjustConfiguration.adjust_wp_config(repo, branch, build)
     AdjustConfiguration.adjust_files_symlink(repo, branch, build)
     #server_specific_tasks(repo, branch, build)
