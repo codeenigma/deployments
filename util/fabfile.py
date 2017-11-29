@@ -39,4 +39,4 @@ def main(jenkins_server=None, scripts_path="/var/lib/jenkins/scripts", branch="m
   else:
     common.Utils._sshagent_run("cd %s; git pull origin %s" % (scripts_path, branch), ssh_key)
 
-  print ("####### BUILD COMPLETE. Branch %s was refreshed on server %s at path %s" % (branch, scripts_path, env.host))
+  print ("####### SCRIPTS UPDATED. Branch %s was refreshed on server %s at path %s" % (branch, scripts_path, env.host))

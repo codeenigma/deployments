@@ -29,7 +29,7 @@ global config
 
 
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', rds=False, config_filename='config.ini'):
+def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', rds=False, composer=True, config_filename='config.ini'):
 
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
@@ -137,7 +137,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
 
     if drupal_version != '8':
       importconfig = "no"
-    if drupal_version == '8':
+    if drupal_version == '8' and composer is True:
       execute(Drupal.run_composer_install, repo, branch, build)
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
@@ -212,7 +212,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build)
     execute(Drupal.environment_indicator, repo, branch, build, buildtype, drupal_version)
     execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build)
-    if drupal_version == '8':
+    if drupal_version == '8' and composer is True:
       execute(Drupal.run_composer_install, repo, branch, build)
 
     # Let's allow developers to perform some actions right after Drupal is built
