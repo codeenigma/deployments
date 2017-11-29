@@ -31,6 +31,11 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
 
   user = 'jenkins'
 
+  # Set SSH key if needed
+  ssh_key = None
+  if "git@github.com" in repourl:
+    ssh_key = "/var/lib/jenkins/.ssh/id_rsa_github"
+
   # Define primary host
   common.Utils.define_host(config, buildtype, repo)
 
@@ -63,7 +68,7 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
       if keepbackup:
         execute(Symfony.backup_db, repo, console_buildtype, build)
 
-  execute(common.Utils.clone_repo, repo, repourl, branch, build, buildtype, hosts=env.roledefs['app_all'])
+  execute(common.Utils.clone_repo, repo, repourl, branch, build, buildtype, ssh_key, hosts=env.roledefs['app_all'])
   symfony_version = Symfony.determine_symfony_version(repo, buildtype, build)
   print "===> Checking symfony_version: %s" % symfony_version
   execute(Symfony.update_resources, repo, buildtype, build)

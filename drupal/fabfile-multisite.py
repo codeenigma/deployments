@@ -31,7 +31,7 @@ config = common.ConfigFile.read_config_file()
 # New 'main()' task which should replace the deployment.sh wrapper, and support repo -> host mapping
 #####
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, webserverport='8080', rds=False):
+def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, webserverport='8080', rds=False, composer=True):
   dontbuild = False
 
   # Define variables
@@ -49,6 +49,11 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
   statuscake_paused = False
   behat_config = None
   tests_failed = False
+
+  # Set SSH key if needed
+  ssh_key = None
+  if "git@github.com" in repourl:
+    ssh_key = "/var/lib/jenkins/.ssh/id_rsa_github"
 
   # Define primary host
   common.Utils.define_host(config, buildtype, repo)
@@ -111,7 +116,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
   if dontbuild:
     print "===> Not actually doing a proper build. This is a debugging build."
   else:
-    execute(common.Utils.clone_repo, repo, repourl, branch, build)
+    execute(common.Utils.clone_repo, repo, repourl, branch, build, ssh_key)
 
     # Gitflow workflow means '/' in branch names, need to clean up.
     branch = common.Utils.generate_branch_name(branch)

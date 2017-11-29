@@ -5,6 +5,17 @@ import string
 import ConfigParser
 
 
+# This task is a wrapper for read_config_file() to
+# optionally allow a config file per buildtype
+@task
+def buildtype_config_file(buildtype, config_filename='config.ini', abort_if_missing=True, fullpath=False, remote=False):
+  cwd = os.getcwd()
+  buildtype_config_filename = buildtype + '.' + config_filename
+  if os.path.isfile(cwd + '/' + buildtype_config_filename):
+    config_filename = buildtype_config_filename
+  return read_config_file(config_filename, abort_if_missing, fullpath, remote)
+
+
 @task
 def read_config_file(config_filename='config.ini', abort_if_missing=True, fullpath=False, remote=False):
   # Fetch the host to deploy to, from the mapfile, according to its repo and build type

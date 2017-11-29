@@ -25,17 +25,23 @@ from FeatureBranches import *
 # pesky 'stdin is not a tty' messages when using sudo
 env.shell = '/bin/bash -c'
 
-# Read the config.ini file from repo, if it exists
 global config
-config = common.ConfigFile.read_config_file()
 
 
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', rds=False):
+def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', rds=False, composer=True, config_filename='config.ini'):
+
+  # Read the config.ini file from repo, if it exists
+  config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
 
   # Define variables
   drupal_version = None
   user = "jenkins"
+
+  # Set SSH key if needed
+  ssh_key = None
+  if "git@github.com" in repourl:
+    ssh_key = "/var/lib/jenkins/.ssh/id_rsa_github"
 
   global varnish_restart
   varnish_restart = restartvarnish
@@ -114,7 +120,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
 
   if fresh_install == True:
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
-    execute(common.Utils.clone_repo, repo, repourl, branch, build, hosts=env.roledefs['app_all'])
+    execute(common.Utils.clone_repo, repo, repourl, branch, build, ssh_key, hosts=env.roledefs['app_all'])
 
     # Gitflow workflow means '/' in branch names, need to clean up.
     branch = common.Utils.generate_branch_name(branch)
@@ -131,7 +137,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
 
     if drupal_version != '8':
       importconfig = "no"
-    if drupal_version == '8':
+    if drupal_version == '8' and composer is True:
       execute(Drupal.run_composer_install, repo, branch, build)
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
@@ -183,7 +189,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
     previous_db = common.Utils.get_previous_db(repo, cleanbranch, build)
     execute(Drupal.backup_db, repo, cleanbranch, build)
 
-    execute(common.Utils.clone_repo, repo, repourl, branch, build, hosts=env.roledefs['app_all'])
+    execute(common.Utils.clone_repo, repo, repourl, branch, build, ssh_key, hosts=env.roledefs['app_all'])
 
     # Gitflow workflow means '/' in branch names, need to clean up.
     branch = common.Utils.generate_branch_name(branch)
@@ -206,7 +212,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build)
     execute(Drupal.environment_indicator, repo, branch, build, buildtype, drupal_version)
     execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build)
-    if drupal_version == '8':
+    if drupal_version == '8' and composer is True:
       execute(Drupal.run_composer_install, repo, branch, build)
 
     # Let's allow developers to perform some actions right after Drupal is built

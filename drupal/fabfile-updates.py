@@ -52,6 +52,11 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", r
   # Set our host_string based on user@host
   env.host_string = '%s@%s' % (user, env.host)
 
+  # Set SSH key if needed
+  ssh_key = None
+  if "git@github.com" in repourl:
+    ssh_key = "/var/lib/jenkins/.ssh/id_rsa_github"
+
   # Set a URL if one wasn't already provided
   if url is None:
     url = "%s.%s.%s" % (repo, branch, env.host)
@@ -68,7 +73,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", r
   if fresh_install == True:
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
     try:
-      common.Utils.clone_repo(repo, repourl, branch, build)
+      common.Utils.clone_repo(repo, repourl, branch, build, ssh_key)
       InitialBuild.initial_build(repo, url, branch, build, profile)
       AdjustConfiguration.adjust_drushrc_php(repo, branch, build)
       common.Services.clear_php_cache()
@@ -86,7 +91,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", r
     previous_db = common.Utils.get_previous_db(repo, cleanbranch, build)
 
     Drupal.backup_db(repo, branch, build)
-    common.Utils.clone_repo(repo, repourl, branch, build)
+    common.Utils.clone_repo(repo, repourl, branch, build, ssh_key)
     Updates.merge_prod(repo, branch, build)
     AdjustConfiguration.adjust_settings_php(repo, branch, build, previous_build, buildtype)
     AdjustConfiguration.adjust_drushrc_php(repo, branch, build)

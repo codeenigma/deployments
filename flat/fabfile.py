@@ -26,6 +26,11 @@ def main(repo, repourl, branch, build, buildtype, symassets="nosym", keepbuilds=
   # Set our host_string based on user@host
   user = 'jenkins'
 
+  # Set SSH key if needed
+  ssh_key = None
+  if "git@github.com" in repourl:
+    ssh_key = "/var/lib/jenkins/.ssh/id_rsa_github"
+
   # Define primary host
   common.Utils.define_host(config, buildtype, repo)
 
@@ -41,7 +46,7 @@ def main(repo, repourl, branch, build, buildtype, symassets="nosym", keepbuilds=
   # Let's allow developers to perform some pre-build actions if they need to
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
 
-  common.Utils.clone_repo(repo, repourl, branch, build)
+  common.Utils.clone_repo(repo, repourl, branch, build, ssh_key)
   common.Utils.adjust_live_symlink(repo, branch, build)
   if symassets == "sym":
     Flat.symlink_assets(repo, branch, build)
