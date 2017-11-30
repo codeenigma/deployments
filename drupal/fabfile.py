@@ -143,19 +143,23 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
       # For now custombranch builds to clusters cannot work
       Drupal.prepare_database(repo, branch, build, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
 
+    # Check for expected shared directories
     execute(common.Utils.create_config_directory, hosts=env.roledefs['app_all'])
     execute(common.Utils.create_shared_directory, hosts=env.roledefs['app_all'])
+    # Build out Drupal
     execute(InitialBuild.initial_build_create_live_symlink, repo, branch, build)
     execute(InitialBuild.initial_build, repo, url, branch, build, profile, buildtype, sanitise, config, drupal_version, sanitised_password, sanitised_email, cluster, rds)
     execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build)
     execute(InitialBuild.initial_build_move_settings, repo, branch)
+    # Configure the server
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype)
     execute(InitialBuild.initial_build_vhost, repo, url, branch, build, buildtype, FeatureBranches.ssl_enabled, FeatureBranches.ssl_cert, FeatureBranches.ssl_ip, FeatureBranches.httpauth_pass, FeatureBranches.drupal_common_config, webserverport)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build)
-    execute(Drupal.environment_indicator, repo, branch, build, buildtype, drupal_version)
+    # Restart services
     execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
     execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
     execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
+    # Do some final Drupal config tweaking
     execute(InitialBuild.generate_drush_alias, repo, url, branch)
     execute(Drupal.secure_admin_password, repo, branch, build, drupal_version)
     execute(Drupal.generate_drush_cron, repo, branch)
@@ -176,6 +180,9 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
     # Let's allow developers to perform some post-build actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-initial', hosts=env.roledefs['app_all'])
+
+    # Now everything should be in a good state, let's enable environment indicator, if present
+    execute(Drupal.environment_indicator, repo, branch, build, buildtype, drupal_version)
 
     # If any of our tests failed, abort the job
     # r23697
@@ -210,17 +217,20 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
       Drupal.prepare_database(repo, branch, build, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email, False)
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build)
-    execute(Drupal.environment_indicator, repo, branch, build, buildtype, drupal_version)
     execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build)
+    # Run composer if we need to
     if drupal_version == '8' and composer is True:
       execute(Drupal.run_composer_install, repo, branch, build)
 
     # Let's allow developers to perform some actions right after Drupal is built
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
 
+    # Export the config if we need to (Drupal 8+)
     if config_export:
       execute(StandardHooks.config_export, repo, branch, build, drupal_version)
     execute(Drupal.drush_status, repo, branch, build, revert_settings=True)
+
+    # Time to update the database!
     if doupdates == "Yes":
       execute(Drupal.go_offline, repo, branch, build, readonlymode, drupal_version)
       execute(Drupal.drush_clear_cache, repo, branch, build, drupal_version)
@@ -264,6 +274,8 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
       if importconfig == "yes":
         execute(Drupal.config_import, repo, branch, build, drupal_version) # This will revert database, settings and live symlink if it fails.
       execute(Drupal.secure_admin_password, repo, branch, build, drupal_version)
+
+    # Final clean up and run tests, if applicable
     execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
     execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
     execute(Drupal.generate_drush_cron, repo, branch)
@@ -271,6 +283,9 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
 
     # Let's allow developers to perform some post-build actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
+
+    # Now everything should be in a good state, let's enable environment indicator, if present
+    execute(Drupal.environment_indicator, repo, branch, build, buildtype, drupal_version)
 
     # Resume StatusCake monitoring
     if statuscake_paused:
