@@ -184,6 +184,8 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
     else:
       print "===> No behat tests."
 
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', hosts=env.roledefs['app_all'])
+
     # If any of our tests failed, abort the job
     # r23697
     if tests_failed:
@@ -296,6 +298,8 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
         tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
     else:
         print "===> No behat tests."
+
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', hosts=env.roledefs['app_all'])
 
     #commit_new_db(repo, repourl, url, build, branch)
     execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, hosts=env.roledefs['app_all'])
