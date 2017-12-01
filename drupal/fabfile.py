@@ -171,18 +171,18 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
     if buildtype == "custombranch":
       FeatureBranches.initial_db_and_config(repo, branch, build, importconfig, drupal_version)
 
-    if behat_config:
-      if buildtype in behat_config['behat_buildtypes']:
-        tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
-    else:
-      print "===> No behat tests."
-
     # Let's allow developers to perform some post-build actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-initial', hosts=env.roledefs['app_all'])
 
     # Now everything should be in a good state, let's enable environment indicator, if present
     execute(Drupal.environment_indicator, repo, branch, build, buildtype, drupal_version)
+
+    if behat_config:
+      if buildtype in behat_config['behat_buildtypes']:
+        tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+    else:
+      print "===> No behat tests."
 
     # If any of our tests failed, abort the job
     # r23697
