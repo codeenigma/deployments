@@ -221,7 +221,7 @@ def prepare_database(repo, branch, build, syncbranch, orig_host, sanitise, drupa
 # Function to install composer
 @task
 @roles('app_all')
-def run_composer_install(repo, branch, build):
+def run_composer_install(repo, branch, build, composer_lock):
   print "===> Running composer install on newly cloned codebase"
 
   # Apparently sometimes people keep Drupal 8's composer.json file in repo root.
@@ -232,6 +232,12 @@ def run_composer_install(repo, branch, build):
       path = "/var/www/%s_%s_%s/www" % (repo, branch, build)
 
     print "path is %s" % path
+
+  # Sometimes we will want to remove composer.lock prior to installing
+  with settings(warn_only=True):
+    print "===> Removing composer.lock prior to attempting an install"
+    if composer_lock == False:
+      run ("rm %s/composer.lock" % path)
 
   run("cd %s && composer install" % (path))
 
