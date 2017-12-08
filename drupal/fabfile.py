@@ -133,7 +133,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
   if config.has_section("Features"):
     fra = config.getboolean("Features", "fra")
     if fra == True:
-      branches = Drupal.drush_fra_branches(config)
+      branches = Drupal.drush_fra_branches(config, branch)
   readonlymode = Drupal.configure_readonlymode(config)
 
   # These are our standard deployment hooks, such as config_export
