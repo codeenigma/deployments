@@ -300,7 +300,7 @@ def drush_fra(repo, branch, build, drupal_version):
     else:
       print "===> Reverting all features..."
       with settings(warn_only=True):
-        if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y fra'" % (repo, branch, build)).failed:
+        if sudo("su -s /bin/bash www-data -c 'drush -y fra'" % (repo, branch, build)).failed:
           print "Could not revert features! Reverting database and settings..."
           Revert._revert_db(repo, branch, build)
           Revert._revert_settings(repo, branch, build)
