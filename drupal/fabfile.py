@@ -60,6 +60,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
     if config.has_option("Build", "url"):
       url = config.get("Build", "url")
       print "===> site url will be %s", url
+
+  if config.has_section("Drupal"):
+    print "===> We have some Drupal options in config.ini"
     # Choose an install profile for initial build
     if config.has_option("Drupal", "profile"):
       profile = config.get("Drupal", "profile")
@@ -76,6 +79,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
     if config.has_option("Drupal", "import_config"):
       import_config = config.getboolean("Drupal", "import_config")
       print "===> the Drupal 8 config import flag is set to %s", import_config
+
+  if config.has_section("Composer"):
+    print "===> We have some composer options in config.ini"
     # Choose whether or not to composer install
     if config.has_option("Composer", "composer"):
       composer = config.getboolean("Composer", "composer")
