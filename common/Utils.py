@@ -30,6 +30,12 @@ def _gen_passwd(N=8):
   return ''.join(random.choice(string.ascii_letters + string.digits) for x in range(N))
 
 
+# Helper script to generate a random token
+@task
+def _gen_token():
+  return uuid.uuid4().hex
+
+
 # Generate a timestamp for NOW
 @task
 def _gen_datetime():
@@ -398,3 +404,83 @@ def create_httpauth(webserver, repo, branch, url, httpauth_pass):
         # Replace the #auth_basic_user_file with auth_basic_user_file, so we're setting the
         # path to the file with HTTP auth credentials
         sed(vhost, auth_basic_user_file, auth_basic_user_file_replace, limit='', use_sudo=True, backup='', flags="i", shell=False)
+
+
+# Zip up and password protect a file, then upload it to an S3 bucket
+@task
+def s3_upload(shortname, branch, method, file_name, bucket_name, region="eu-west-1"):
+  zip_password = _gen_passwd()
+  zip_token = _gen_token()
+  now = time.strftime("%Y%m%d%H%M%S", time.gmtime())
+
+  upload_to_s3 = False
+
+  method = check_package(method)
+
+  with lcd("/tmp/s3-uploads"):
+    if method == "7zip":
+      print "===> Zipping up file with 7zip..."
+      if local("7za a -tzip -p%s -mem=AES256 %s-%s_%s%s-%s.zip %s-%s_%s.sql.bz2" % (zip_password, shortname, branch, file_name, now, zip_token, shortname, branch, file_name)).failed:
+        print "ERROR: Could not zip up file using 7zip. Contact a system administrator."
+        raise SystemError("Could not zip up file using 7zip. Contact a system administrator.")
+      else:
+        print "SUCCESS: File has been zipped up. You will need to extract it using 7za e FILENAME and entering the password (which will be provided down below if all else goes well), when prompted."
+        upload_to_s3 = True
+    elif method == "zip":
+      print "===> Zipping up file with zip..."
+      if local("zip -P %s %s-%s_%s%s-%s.zip %s-%s_%s.sql.bz2" % (zip_password, shortname, branch, file_name, now, zip_token, shortname, branch, file_name)).failed:
+        print "ERROR: Could not zip up file using zip. Contact a system administrator."
+        raise SystemError("Could not zip up file using zip. Contact a system administrator.")
+      else:
+        print "SUCCESS: File has been zipped up. You will need to extract it using unzip FILENAME and entering the password (which will be provided down below if all else goes well), when prompted."
+        upload_to_s3 = True
+    else:
+      print "ERROR: Invalid method chosen."
+
+  if upload_to_s3 == False:
+    print "There were previous errors, so aborting!"
+    raise SystemError("There were previous errors, so aborting!")
+  else:
+    print "===> Uploading %s %s file to an S3 bucket." % (shortname, branch)
+    local("sudo s3cmd put /tmp/s3-uploads/%s-%s_%s%s-%s.zip s3://%s/%s-%s_%s%s-%s.zip" % (shortname, branch, file_name, now, zip_token, bucket_name, shortname, branch, file_name, now, zip_token))
+
+    # Remove file from /tmp
+    local("sudo rm -f /tmp/s3-uploads/%s-%s_%s%s-%s.zip" % (shortname, branch, file_name, now, zip_token))
+    local("sudo rm -f /tmp/s3-uploads/%s-%s_%s.sql.bz2" % (shortname, branch, file_name))
+
+    print "===> File uploaded! Please find details below to download and extract the file. The file will be deleted in 7 days as of now."
+    # @TODO
+    print "S3 bucket URL: https://s3-%s.amazonaws.com/%s/%s-%s_%s%s-%s.zip" % (region, bucket_name, shortname, branch, file_name, now, zip_token)
+    print "Zip password: %s" % zip_password
+
+
+# Helper function to ensure a zip method exists on a Jenkins server
+@task
+def check_package(method):
+  supported_methods = ['zip', '7zip']
+  # Check if the method selected is actually supported by this script
+  if method not in supported_methods:
+    print "ERROR: Woah, the method %s is not supported by this script. Contact a system administrator. Aborting build." % method
+    raise SystemError("Woah, the method %s is not supported by this script. Contact a system administrator. Aborting build." % method)
+  else:
+    print "===> First, check that %s exists on the Jenkins server..." % method
+    if method == "7zip":
+      dpkg_check = 'p7zip-full'
+      fallback_method = 'zip'
+    else:
+      dpkg_check = method
+      fallback_method = 'p7zip-full'
+
+    with settings(warn_only=True):
+      if local("dpkg -s %s | grep 'install ok'" % dpkg_check).return_code != 0:
+        print "ERROR: The selected method, %s, could not be found on the server. Checking fallback method..." % method
+        if local("dpkg -s %s | grep 'install ok'" % fallback_method). return_code != 0:
+          print "ERROR: The fallback method, %s, also could not be found. Aborting build." % fallback_method
+          raise SystemError("The chosen method, %s, and the fallback method, %s, both could not be found. Aborting build." % (method, fallback_method))
+        else:
+          print "Fallback method, %s, found. Using that to compress and password protect file." % fallback_method
+          method = fallback_method
+      else:
+        print "Chosen method, %s, found. Using that to compress and password protect file." % method
+
+    return method
