@@ -48,6 +48,7 @@ def get_database(shortname, branch, santise):
   # Let's dump the database into a bzip2 file
   print "===> Dumping database into bzip2 file..."
   if santise == "yes":
+    # @TODO: this will need Drupal 8 support!
     # We need to run a special mysqldump command to obfustcate the database
     with settings(hide('running', 'stdout', 'stderr')):
       dbname = run("drush @%s_%s status  Database\ name | awk {'print $4'} | head -1" % (shortname, branch))

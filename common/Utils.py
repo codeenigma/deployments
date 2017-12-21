@@ -408,7 +408,7 @@ def create_httpauth(webserver, repo, branch, url, httpauth_pass):
 
 # Zip up and password protect a file, then upload it to an S3 bucket
 @task
-def s3_upload(shortname, branch, method, file_name, bucket_name, region="eu-west-1"):
+def s3_upload(shortname, branch, method, file_name, bucket_name, tmp_dir="s3-uploads", region="eu-west-1"):
   zip_password = _gen_passwd()
   zip_token = _gen_token()
   now = time.strftime("%Y%m%d%H%M%S", time.gmtime())
@@ -417,7 +417,7 @@ def s3_upload(shortname, branch, method, file_name, bucket_name, region="eu-west
 
   method = check_package(method)
 
-  with lcd("/tmp/s3-uploads"):
+  with lcd("/tmp/%s", tmp_dir):
     if method == "7zip":
       print "===> Zipping up file with 7zip..."
       if local("7za a -tzip -p%s -mem=AES256 %s-%s_%s%s-%s.zip %s-%s_%s.sql.bz2" % (zip_password, shortname, branch, file_name, now, zip_token, shortname, branch, file_name)).failed:
@@ -442,11 +442,11 @@ def s3_upload(shortname, branch, method, file_name, bucket_name, region="eu-west
     raise SystemError("There were previous errors, so aborting!")
   else:
     print "===> Uploading %s %s file to an S3 bucket." % (shortname, branch)
-    local("sudo s3cmd put /tmp/s3-uploads/%s-%s_%s%s-%s.zip s3://%s/%s-%s_%s%s-%s.zip" % (shortname, branch, file_name, now, zip_token, bucket_name, shortname, branch, file_name, now, zip_token))
+    local("sudo s3cmd put /tmp/%s/%s-%s_%s%s-%s.zip s3://%s/%s-%s_%s%s-%s.zip" % (tmp_dir, shortname, branch, file_name, now, zip_token, bucket_name, shortname, branch, file_name, now, zip_token))
 
     # Remove file from /tmp
-    local("sudo rm -f /tmp/s3-uploads/%s-%s_%s%s-%s.zip" % (shortname, branch, file_name, now, zip_token))
-    local("sudo rm -f /tmp/s3-uploads/%s-%s_%s.sql.bz2" % (shortname, branch, file_name))
+    local("sudo rm -f /tmp/%s/%s-%s_%s%s-%s.zip" % (tmp_dir, shortname, branch, file_name, now, zip_token))
+    local("sudo rm -f /tmp/%s/%s-%s_%s.sql.bz2" % (tmp_dir, shortname, branch, file_name))
 
     print "===> File uploaded! Please find details below to download and extract the file. The file will be deleted in 7 days as of now."
     # @TODO
