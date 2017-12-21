@@ -524,3 +524,17 @@ def secure_admin_password(repo, branch, build, drupal_version):
       else:
         run('drush sqlq "UPDATE users SET name = \'%s\' WHERE uid = 1"' % u1name)
       run("drush upwd %s --password='%s'" % (u1name, u1pass))
+
+
+# Check if node access table will get rebuilt and warn if necessary
+@task
+def check_node_access(repo, branch):
+  with settings(warn_only=True):
+    node_access_needs_rebuild = run("drush @%s_%s php-eval 'echo node_access_needs_rebuild();'" % (repo, branch))
+    if node_access_needs_rebuild == 1:
+      print "####### WARNING: this release needs the content access table to be rebuilt. This is an intrusive operation that imply the site needs to stay in maintenance mode untill the whole process is finished."
+      print "####### Depending on the number of nodes and the complexity of access rules, this can take several hours. Be sure to either plan the release appropriately, or when possible use alternative method that are not intrusive."
+      print "####### We recommend you consider this module: https://www.drupal.org/project/node_access_rebuild_progressive"
+      # @TODO - we could send an email here as well
+    else:
+      print "===> Node access rebuild check completed, as far as we can tell this build is safe"

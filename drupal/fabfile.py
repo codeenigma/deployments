@@ -314,7 +314,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
         execute(Drupal.config_import, repo, branch, build, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
       execute(Drupal.secure_admin_password, repo, branch, build, drupal_version)
       execute(Drupal.go_online, repo, branch, build, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
+      execute(Drupal.check_node_access, repo, branch)
+
     else:
+      print "####### WARNING: by skipping database updates we cannot check if the node access table will be rebuilt. If it will this is an intrusive action that may result in an extended outage."
       execute(Drupal.drush_status, repo, branch, build, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       # Cannot use try: because execute() return not compatible.
