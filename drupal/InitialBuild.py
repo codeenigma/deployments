@@ -43,6 +43,36 @@ def initial_build_create_files_symlink(repo, branch, build):
   print "===> Creating files symlink"
   sudo("ln -s /var/www/shared/%s_%s_files /var/www/%s_%s_%s/www/sites/default/files" % (repo, branch, repo, branch, build))
 
+
+# Run database updates, just in case. Separate function to the main Drupal one
+# as we cannot revert database or settings.php during an initial build.
+@task
+@roles('app_primary')
+def initial_build_updatedb(repo, branch, build, drupal_version):
+  print "===> Running any database hook updates"
+  with settings(warn_only=True):
+    if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y updatedb'" % (repo, branch, build)).failed:
+      raise SystemExit("Could not apply database updates! Everything else has been done, but failing the build to alert to the fact database updates could not be run.")
+    if drupal_version == '8':
+      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y entity-updates'" % (repo, branch, build)).failed:
+        print "Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
+  print "===> Database updates applied"
+
+
+# Function used by Drupal 8 builds to import site config
+@task
+@roles('app_primary')
+def initial_build_config_import(repo, branch, build, drupal_version):
+  with settings(warn_only=True):
+    # Check to see if this is a Drupal 8 build
+    if drupal_version == '8':
+      print "===> Importing configuration for Drupal 8 site..."
+      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cim'" % (repo, branch, build)).failed:
+        raise SystemExit("Could not import configuration! Failing the initial build.")
+      else:
+        print "===> Configuration imported."
+
+
 # Stuff to do when this is the initial build
 @task
 @roles('app_primary')
