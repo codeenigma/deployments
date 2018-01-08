@@ -139,7 +139,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
   if config.has_section("Features"):
     fra = config.getboolean("Features", "fra")
     if fra == True:
-      branches = Drupal.drush_fra_branches(config)
+      branches = Drupal.drush_fra_branches(config, branch)
   readonlymode = Drupal.configure_readonlymode(config)
 
   # These are our standard deployment hooks, such as config_export
@@ -225,6 +225,13 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
     # webserver vhost, so the issue can be fixed and the job re-run.
     if buildtype == "custombranch":
       FeatureBranches.initial_db_and_config(repo, branch, build, import_config, drupal_version)
+    else:
+      execute(InitialBuild.initial_build_updatedb, repo, branch, build, drupal_version)
+      execute(Drupal.drush_clear_cache, repo, branch, build, drupal_version)
+      if import_config:
+        execute(InitialBuild.initial_build_config_import, repo, branch, build, drupal_version)
+        execute(Drupal.drush_clear_cache, repo, branch, build, drupal_version)
+
 
     # Let's allow developers to perform some post-build actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
