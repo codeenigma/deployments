@@ -242,6 +242,7 @@ def run_composer_install(repo, branch, build, composer_lock):
     print "===> Removing composer.lock prior to attempting an install"
     if composer_lock == False:
       run ("rm %s/composer.lock" % path)
+      run ("rm -R %s/vendor" % path)
 
   run("cd %s && composer install" % (path))
 
