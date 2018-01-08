@@ -29,7 +29,7 @@ global config
 
 
 @task
-def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', rds=False, config_filename='config.ini'):
+def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', rds=False, autoscale=None, config_filename='config.ini'):
 
   # Set some default config options
   user = "jenkins"
@@ -117,7 +117,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
   common.Utils.define_host(config, buildtype, repo)
 
   # Define server roles (if applicable)
-  common.Utils.define_roles(config, cluster)
+  common.Utils.define_roles(config, cluster, autoscale)
 
   # Check where we're deploying to - abort if nothing set in config.ini
   if env.host is None:

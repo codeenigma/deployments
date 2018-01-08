@@ -4,6 +4,8 @@ import random
 import string
 import os
 import time
+# Import AWS tools
+import boto3
 # Custom Code Enigma modules
 import common.ConfigFile
 
@@ -175,7 +177,11 @@ def define_host(config, buildtype, repo):
 
 # Configure server roles for clusters (if applicable)
 @task
-def define_roles(config, cluster):
+def define_roles(config, cluster, autoscale=None, aws_credentials='/home/jenkins/.aws/credentials', aws_autoscale_group='prod-asg-prod'):
+  # Catch people who've set both cluster and autoscale, can't be both!
+  if cluster and autoscale:
+    raise SystemError("### You cannot be BOTH a traditional cluster AND an autoscale build. Aborting!")
+
   # Need to set up server roles for clusters
   if cluster:
     print "===> This is a cluster, setting up server roles"
@@ -222,6 +228,41 @@ def define_roles(config, cluster):
     env.host = all_apps[0]
     print "===> Host is %s" % env.host
 
+  elif autoscale:
+    # Load in AWS credentials from autoscale variable
+    aws_config = read_config_file(aws_credentials, abort_if_missing=True, fullpath=True)
+    # Blank the apps array, just in case
+    all_apps = []
+    # Make sure we have AWS credentials
+    if config.has_section(autoscale):
+      print "===> We have AWS credentials for %s" % autoscale
+      aws_region = config.get(autoscale, "region")
+    else:
+      raise SystemError("### Autoscale build but no credentials found for %s. Aborting!" % autoscale)
+    # Set up our AWS CLI sessions
+    session = boto3.Session(profile_name=autoscale, region_name=aws_region)
+    ec2_client = session.client('ec2', region_name=aws_region)
+    as_client = session.client('autoscaling', region_name=aws_region)
+
+    # Get AutoScaling Group
+    groups = as_client.describe_auto_scaling_groups()
+    # Filter for instances only in an ASG that matches our project name, as passed in above
+    for group in groups['AutoScalingGroups']:
+      if group['AutoScalingGroupName'].startswith(aws_autoscale_group):
+        # Get a list of DNS names of instances in the autoscale group
+        for instance in group['Instances']:
+          response = ec2_client.describe_instances(InstanceIds = [instance['InstanceId']])
+          all_apps.append(response['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]['PrivateIpAddress'])
+    if not all_apps:
+      all_apps.sort()
+      # Set up roles
+      env.roledefs = {
+        'app_all': all_apps,
+        'app_primary': [ all_apps[0] ],
+      }
+    else:
+      raise SystemError("### Autoscale build but no servers found for cluster named %s with credentials for %s. Aborting!" % (aws_autoscale_group, autoscale))
+
   # Not a cluster, so give all roles to single host
   else:
     print "===> This is *NOT* a cluster, setting all server roles to %s" % env.host
@@ -232,6 +273,7 @@ def define_roles(config, cluster):
         'db_primary': [ env.host ],
         'memcache_all': [ env.host ],
     }
+
 
 # Creating required application directories
 @task
@@ -245,6 +287,7 @@ def create_config_directory():
     else:
       print "===> Config directory already exists"
 
+
 @task
 def create_shared_directory():
   with settings(warn_only=True):
@@ -255,6 +298,7 @@ def create_shared_directory():
       print "===> Shared directory created"
     else:
       print "===> Shared directory already exists"
+
 
 @task
 def perform_client_deploy_hook(repo, branch, build, buildtype, config, stage):
