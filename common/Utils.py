@@ -528,3 +528,16 @@ def check_package(method):
         print "Chosen method, %s, found. Using that to compress and password protect file." % method
 
     return method
+
+
+# Tarball up an application for future fresh EC2 instances entering an autoscale group
+@task
+@roles('app_primary')
+def tarball_up_to_s3(repo, buildtype, build, autoscale):
+  with cd("/var/www/%s_%s_%s" % (repo, buildtype, build)):
+    print("===> Tarballing up the build to S3 for future EC2 instances")
+    sudo("rm -f /tmp/%s.tar.gz" % repo)
+    run("tar -zcf /tmp/%s.tar.gz ." % repo)
+    run('export AWS_PROFILE="%s"' % repo)
+    run("sudo /usr/local/bin/aws s3 cp /tmp/%s.tar.gz s3://current-%s-production" % (repo, autoscale))
+    sudo("rm -f /tmp/%s.tar.gz" % repo)

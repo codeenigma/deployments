@@ -355,9 +355,13 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
       if buildtype in behat_config['behat_buildtypes']:
         tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
     else:
-        print "===> No behat tests."
+      print "===> No behat tests."
 
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', hosts=env.roledefs['app_all'])
+
+    # If this is autoscale at AWS, let's update the tarball in S3
+    if autoscale:
+      execute(common.Utils.tarball_up_to_s3, repo, buildtype, build, autoscale)
 
     #commit_new_db(repo, repourl, url, build, branch)
     execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, hosts=env.roledefs['app_all'])
