@@ -29,7 +29,7 @@ global config
 
 
 @task
-def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', rds=False, config_filename='config.ini'):
+def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', rds=False, autoscale=None, config_filename='config.ini'):
 
   # Set some default config options
   user = "jenkins"
@@ -117,7 +117,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
   common.Utils.define_host(config, buildtype, repo)
 
   # Define server roles (if applicable)
-  common.Utils.define_roles(config, cluster)
+  common.Utils.define_roles(config, cluster, autoscale)
 
   # Check where we're deploying to - abort if nothing set in config.ini
   if env.host is None:
@@ -321,7 +321,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
         execute(Drupal.config_import, repo, branch, build, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
       execute(Drupal.secure_admin_password, repo, branch, build, drupal_version)
       execute(Drupal.go_online, repo, branch, build, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
+      execute(Drupal.check_node_access, repo, branch)
+
     else:
+      print "####### WARNING: by skipping database updates we cannot check if the node access table will be rebuilt. If it will this is an intrusive action that may result in an extended outage."
       execute(Drupal.drush_status, repo, branch, build, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       # Cannot use try: because execute() return not compatible.
@@ -359,9 +362,13 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
       if buildtype in behat_config['behat_buildtypes']:
         tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
     else:
-        print "===> No behat tests."
+      print "===> No behat tests."
 
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', hosts=env.roledefs['app_all'])
+
+    # If this is autoscale at AWS, let's update the tarball in S3
+    if autoscale:
+      execute(common.Utils.tarball_up_to_s3, repo, buildtype, build, autoscale)
 
     #commit_new_db(repo, repourl, url, build, branch)
     execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, hosts=env.roledefs['app_all'])
