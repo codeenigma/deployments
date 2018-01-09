@@ -50,13 +50,15 @@ Because as a company we mostly specialise in Drupal, a lot of the best features 
 
 We are continually looking to reduce this list of assumptions and dependencies, but for now in order to use these scripts you must meet the following criteria:
 
-* Linux CI server with Fabric installed
+* Linux CI server with [Fabric](http://www.fabfile.org) installed
 * a 'jenkins' user on the CI server which is used to trigger commands
 * Linux target app server(s) (Debian will work best without modification)
 * a 'jenkins' user with a home directory and public key of the CI user on target app server(s)
 * passwordless sudo for the 'jenkins' user on the target app server(s)
 * Git installed on the target app server(s)
 * [cachetool](https://github.com/gordalina/cachetool) for clearing the PHP opcode cache
+* [AWS CLI](https://aws.amazon.com/cli/) for interacting with the AWS API from the Linux terminal
+* [boto3](https://github.com/boto/boto3) for accessing the AWS CLI via Python
 
 ## Application specific dependencies
 
