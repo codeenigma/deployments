@@ -253,7 +253,7 @@ def define_roles(config, cluster, autoscale=None, aws_credentials='/home/jenkins
         for instance in group['Instances']:
           response = ec2_client.describe_instances(InstanceIds = [instance['InstanceId']])
           all_apps.append(response['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]['PrivateIpAddress'])
-    if not all_apps:
+    if all_apps:
       all_apps.sort()
       # Set up roles
       env.roledefs = {
