@@ -10,6 +10,7 @@ import common.Utils
 import DrupalUtils
 
 
+@task
 def main(shortname, branch, bucket_name, method='zip', sanitise='yes'):
   print "===> You want to download a database dump for %s %s. Let's start by fetching a fresh database..." % (shortname, branch)
 
