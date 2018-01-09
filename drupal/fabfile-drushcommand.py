@@ -12,6 +12,7 @@ import Drupal
 env.shell = '/bin/bash -c'
 
 
+@task
 def main(shortname, branch, command, backup=True):
   with settings(warn_only=True):
     if run('drush sa | grep ^@%s_%s$ > /dev/null' % (shortname, branch)).failed:
