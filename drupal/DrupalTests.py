@@ -156,7 +156,7 @@ def run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, junit, dru
           test_method = '-f progress -o std -f junit -o xml'
         else:
           test_method = '-f pretty -o std'
-        if run("bin/behat --tags=\"%s\" %s" % (test_tags, test_method)).failed:
+        if run("bin/behat -v --tags=\"%s\" %s" % (test_tags, test_method)).failed:
           print "Behat tests seem to have failed!"
           tests_failed = True
         else:
