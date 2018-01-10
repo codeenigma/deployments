@@ -4,6 +4,7 @@ import random
 import string
 import os
 import time
+import uuid
 # Import AWS tools
 import boto3
 # Custom Code Enigma modules
