@@ -51,6 +51,8 @@ def read_config_file(config_filename='config.ini', abort_if_missing=True, fullpa
         local_config_path = cwd + '/autoscale-config.ini'
       local("echo '%s' > %s" % (config_file_contents, local_config_path))
       config_file.read(local_config_path)
+      if autoscale:
+        local("rm %s" % local_config_path)
       return config_file
     # Otherwise, abort the build / report missing file.
     else:
