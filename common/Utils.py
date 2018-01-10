@@ -231,7 +231,7 @@ def define_roles(config, cluster, autoscale=None, aws_credentials='/home/jenkins
 
   elif autoscale:
     # Load in AWS credentials from autoscale variable
-    aws_config = common.ConfigFile.read_config_file(aws_credentials, abort_if_missing=True, fullpath=True, remote=True, autoscale=autoscale)
+    aws_config = common.ConfigFile.read_config_file(aws_credentials, abort_if_missing=True, fullpath=True)
     # Blank the apps array, just in case
     all_apps = []
     # Make sure we have AWS credentials
