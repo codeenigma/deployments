@@ -16,7 +16,7 @@ def main(shortname, branch, bucket_name, method='zip', sanitise='yes'):
 
   try:
     DrupalUtils.get_database(shortname, branch, sanitise)
-    common.Utils.s3_upload(shortname, branch, method, shortname, bucket_name)
+    common.Utils.s3_upload(shortname, branch, method, "database_dump", bucket_name, "client-db-dumps")
   except:
     e = sys.exc_info()[1]
     raise SystemError(e)
