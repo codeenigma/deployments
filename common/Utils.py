@@ -235,9 +235,9 @@ def define_roles(config, cluster, autoscale=None, aws_credentials='/home/jenkins
     # Blank the apps array, just in case
     all_apps = []
     # Make sure we have AWS credentials
-    if config.has_section(autoscale):
+    if aws_config.has_section(autoscale):
       print "===> We have AWS credentials for %s" % autoscale
-      aws_region = config.get(autoscale, "region")
+      aws_region = aws_config.get(autoscale, "region")
     else:
       raise SystemError("### Autoscale build but no credentials found for %s. Aborting!" % autoscale)
     # Set up our AWS CLI sessions
