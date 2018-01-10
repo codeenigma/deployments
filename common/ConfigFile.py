@@ -18,7 +18,7 @@ def buildtype_config_file(buildtype, config_filename='config.ini', abort_if_miss
 
 
 @task
-def read_config_file(config_filename='config.ini', abort_if_missing=True, fullpath=False, remote=False):
+def read_config_file(config_filename='config.ini', abort_if_missing=True, fullpath=False, remote=False, autoscale=None):
   # Fetch the host to deploy to, from the mapfile, according to its repo and build type
   config_file = ConfigParser.RawConfigParser()
   # Force case-sensitivity
@@ -45,7 +45,10 @@ def read_config_file(config_filename='config.ini', abort_if_missing=True, fullpa
     print "===> Trying to read REMOTE file %s if it is present" % path_to_config_file
     if run("find %s -type f" % path_to_config_file).return_code == 0:
       config_file_contents = run("cat %s" % path_to_config_file)
-      local_config_path = cwd + '/config.ini'
+      if autoscale is None:
+        local_config_path = cwd + '/config.ini'
+      else:
+        local_config_path = cwd + '/autoscale-config.ini'
       local("echo '%s' > %s" % (config_file_contents, local_config_path))
       config_file.read(local_config_path)
       return config_file
