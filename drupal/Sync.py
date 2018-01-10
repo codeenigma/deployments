@@ -148,10 +148,10 @@ def sync_db(orig_host, shortname, staging_branch, prod_branch, fresh_database, s
       else:
         print "===> Obfuscate script copied to %s:/home/jenkins/drupal-obfuscate.rb - obfuscating data" % env.host
         with settings(hide('running', 'stdout', 'stderr')):
-          dbname = run("drush @%s_%s status  Database\ name | awk {'print $4'} | head -1" % (shortname, syncbranch))
-          dbuser = run("drush @%s_%s status  Database\ user | awk {'print $4'} | head -1" % (shortname, syncbranch))
-          dbpass = run("drush @%s_%s --show-passwords status  Database\ pass | awk {'print $4'} | head -1" % (shortname, syncbranch))
-          dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (shortname, syncbranch))
+          dbname = run("drush @%s_%s status  Database\ name | awk {'print $4'} | head -1" % (shortname, prod_branch))
+          dbuser = run("drush @%s_%s status  Database\ user | awk {'print $4'} | head -1" % (shortname, prod_branch))
+          dbpass = run("drush @%s_%s --show-passwords status  Database\ pass | awk {'print $4'} | head -1" % (shortname, prod_branch))
+          dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (shortname, prod_branch))
           run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, shortname, now))
     else:
       run('drush @%s_%s sql-dump | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (shortname, prod_branch, shortname, now))
