@@ -260,6 +260,10 @@ def define_roles(config, cluster, autoscale=None, aws_credentials='/home/jenkins
         'app_all': all_apps,
         'app_primary': [ all_apps[0] ],
       }
+
+      # Autoscale config overwrites host data so we need to set it
+      env.host = all_apps[0]
+      print "===> Host is %s" % env.host
     else:
       raise SystemError("### Autoscale build but no servers found for cluster named %s with credentials for %s. Aborting!" % (aws_autoscale_group, autoscale))
 
