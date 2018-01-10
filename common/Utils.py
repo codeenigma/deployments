@@ -254,13 +254,17 @@ def define_roles(config, cluster, autoscale=None, aws_credentials='/home/jenkins
         for instance in group['Instances']:
           response = ec2_client.describe_instances(InstanceIds = [instance['InstanceId']])
           all_apps.append(response['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]['PrivateIpAddress'])
-    if not all_apps:
+    if all_apps:
       all_apps.sort()
       # Set up roles
       env.roledefs = {
         'app_all': all_apps,
         'app_primary': [ all_apps[0] ],
       }
+
+      # Autoscale config overwrites host data so we need to set it
+      env.host = all_apps[0]
+      print "===> Host is %s" % env.host
     else:
       raise SystemError("### Autoscale build but no servers found for cluster named %s with credentials for %s. Aborting!" % (aws_autoscale_group, autoscale))
 
