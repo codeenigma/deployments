@@ -466,7 +466,7 @@ def s3_upload(shortname, branch, method, file_name, bucket_name, tmp_dir="s3-upl
 
   method = check_package(method)
 
-  with lcd("/tmp/%s", tmp_dir):
+  with lcd("/tmp/%s" % tmp_dir):
     if method == "7zip":
       print "===> Zipping up file with 7zip..."
       if local("7za a -tzip -p%s -mem=AES256 %s-%s_%s%s-%s.zip %s-%s_%s.sql.bz2" % (zip_password, shortname, branch, file_name, now, zip_token, shortname, branch, file_name)).failed:
