@@ -79,6 +79,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
     if config.has_option("Drupal", "import_config"):
       import_config = config.getboolean("Drupal", "import_config")
       print "===> the Drupal 8 config import flag is set to %s", import_config
+  # We also need to figure out the Drupal version
+  # Don't use execute() because it returns an array of values returned keyed by hostname
+  drupal_version = DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config)
+  print "===> the drupal_version variable is set to %s" % drupal_version
 
   if config.has_section("Composer"):
     print "===> We have some composer options in config.ini"
@@ -184,10 +188,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
     # Let's allow developers to perform some early actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
 
-    # Because execute() returns an array of values returned keyed by hostname
-    drupal_version = DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config)
-    print "===> Set drupal_version variable to %s" % drupal_version
-
     # @TODO: This will be a bug when Drupal 9 comes out!
     # We need to cast version as an integer and use < 8
     if drupal_version != '8':
@@ -219,6 +219,12 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
     execute(Drupal.secure_admin_password, repo, branch, build, drupal_version)
     execute(Drupal.generate_drush_cron, repo, branch)
 
+    # If this is autoscale at AWS, we need to remove *.settings.php from autoscale initial build folders
+    if autoscale:
+      with settings(warn_only=True):
+        run("rm -R /var/www/%s/www/sites/default/*.settings.php" % repo)
+        print "===> Removed *.settings.php from initial autoscale app folders"
+
     # If this is a custom/feature branch deployment, we want to run drush updb. If it fails,
     # the build will fail, but because this is being run at the end, there shouldn't need to be
     # any manual clean-up first. Everything else will have run, such as generate drush alias and
@@ -231,7 +237,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
       if import_config:
         execute(InitialBuild.initial_build_config_import, repo, branch, build, drupal_version)
         execute(Drupal.drush_clear_cache, repo, branch, build, drupal_version)
-
 
     # Let's allow developers to perform some post-build actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
@@ -271,10 +276,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
     # Let's allow developers to perform some early actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
 
-    # Because execute() returns an array of values returned keyed by hostname
-    drupal_version = DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config)
-    print "===> Set drupal_version variable to %s" % drupal_version
-
     if drupal_version != '8':
       import_config = False
     if freshdatabase == "Yes" and buildtype == "custombranch":
@@ -288,6 +289,12 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
 
     # Let's allow developers to perform some actions right after Drupal is built
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
+
+    # If this is autoscale at AWS, we need to remove *.settings.php from autoscale initial build folders
+    if autoscale:
+      with settings(warn_only=True):
+        run("rm -R /var/www/%s/www/sites/default/*.settings.php" % repo)
+        print "===> Removed *.settings.php from initial autoscale app folders"
 
     # Export the config if we need to (Drupal 8+)
     if config_export:
