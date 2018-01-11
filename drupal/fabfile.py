@@ -90,10 +90,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
     if config.has_option("Drupal", "import_config"):
       import_config = config.getboolean("Drupal", "import_config")
       print "===> the Drupal 8 config import flag is set to %s", import_config
-  # We also need to figure out the Drupal version
-  # Don't use execute() because it returns an array of values returned keyed by hostname
-  drupal_version = DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config)
-  print "===> the drupal_version variable is set to %s" % drupal_version
 
   if config.has_section("Composer"):
     print "===> We have some composer options in config.ini"
@@ -170,6 +166,11 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
   if fresh_install == True:
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
     execute(common.Utils.clone_repo, repo, repourl, branch, build, None, ssh_key, hosts=env.roledefs['app_all'])
+
+    # Now we have the codebase we can figure out the Drupal version
+    # Don't use execute() because it returns an array of values returned keyed by hostname
+    drupal_version = DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config)
+    print "===> the drupal_version variable is set to %s" % drupal_version
 
     # Gitflow workflow means '/' in branch names, need to clean up.
     branch = common.Utils.generate_branch_name(branch)
@@ -258,6 +259,11 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
     execute(Drupal.backup_db, repo, cleanbranch, build)
 
     execute(common.Utils.clone_repo, repo, repourl, branch, build, None, ssh_key, hosts=env.roledefs['app_all'])
+
+    # Now we have the codebase we can figure out the Drupal version
+    # Don't use execute() because it returns an array of values returned keyed by hostname
+    drupal_version = DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config)
+    print "===> the drupal_version variable is set to %s" % drupal_version
 
     # Gitflow workflow means '/' in branch names, need to clean up.
     branch = common.Utils.generate_branch_name(branch)
