@@ -221,8 +221,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
 
     # If this is autoscale at AWS, we need to remove *.settings.php from autoscale initial build folders
     if autoscale:
-      run("rm -R /var/www/%s/www/sites/default/*.settings.php" % repo)
-      print "===> Removed *.settings.php from initial autoscale app folders"
+      with settings(warn_only=True):
+        run("rm -R /var/www/%s/www/sites/default/*.settings.php" % repo)
+        print "===> Removed *.settings.php from initial autoscale app folders"
 
     # If this is a custom/feature branch deployment, we want to run drush updb. If it fails,
     # the build will fail, but because this is being run at the end, there shouldn't need to be
@@ -291,8 +292,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
 
     # If this is autoscale at AWS, we need to remove *.settings.php from autoscale initial build folders
     if autoscale:
-      run("rm -R /var/www/%s/www/sites/default/*.settings.php" % repo)
-      print "===> Removed *.settings.php from initial autoscale app folders"
+      with settings(warn_only=True):
+        run("rm -R /var/www/%s/www/sites/default/*.settings.php" % repo)
+        print "===> Removed *.settings.php from initial autoscale app folders"
 
     # Export the config if we need to (Drupal 8+)
     if config_export:
