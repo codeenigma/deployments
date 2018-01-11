@@ -69,7 +69,7 @@ include_once($file);
         else:
           #print "%s already has a file_exists() check, so it wasn't appened to the bottom of the settings.inc file." % settings_file
           print "%s already has a file_exists() check. We need to replace the build number so the newer %s.settings.php file is used." % (settings_file, buildtype)
-          replace_string = "/var/www/.*\.settings\.php"
+          replace_string = "/var/www/.+_.+_build_[0-9]+/.+\.settings\.php"
           replace_with = "/var/www/%s_%s_%s/www/sites/default/%s.settings.php" % (repo, branch, build, buildtype)
           sed(settings_file, replace_string, replace_with, limit='', use_sudo=True, backup='.bak', flags="i", shell=False)
     else:
@@ -96,7 +96,7 @@ if (file_exists($file)) {
         else:
           #print "%s already has a file_exists() check, so it wasn't appened to the bottom of the settings.inc file." % settings_file
           print "%s already has a file_exists() check. We need to replace the build number so the newer %s.settings.php file is used." % (settings_file, buildtype)
-          replace_string = "/var/www/.*\.settings\.php"
+          replace_string = "/var/www/.+_.+_build_[0-9]+/.+\.settings\.php"
           replace_with = "/var/www/%s_%s_%s/www/sites/default/%s.settings.php" % (repo, branch, build, buildtype)
           sed(settings_file, replace_string, replace_with, limit='', use_sudo=True, backup='.bak', flags="i", shell=False)
       # 10. Let's see if there's a settings.php file in sites/default. If not, we'll symlink in our settings.inc.
