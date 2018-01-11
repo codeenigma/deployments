@@ -49,6 +49,17 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
 
+  # Now we need to figure out what server(s) we're working with
+  # Define primary host
+  common.Utils.define_host(config, buildtype, repo)
+  # Define server roles (if applicable)
+  common.Utils.define_roles(config, cluster, autoscale)
+  # Check where we're deploying to - abort if nothing set in config.ini
+  if env.host is None:
+    raise ValueError("===> You wanted to deploy a build but we couldn't find a host in the map file for repo %s so we're aborting." % repo)
+  # Set our host_string based on user@host
+  env.host_string = '%s@%s' % (user, env.host)
+
   # Now let's fetch alterations to those defaults from config.ini, if present
   if config.has_section("Build"):
     print "===> We have some build options in config.ini"
@@ -110,25 +121,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
   statuscake_paused = False
   behat_config = None
   tests_failed = False
-
-  #httpauth_pass = None
-  #ssl_enabled = False
-  #ssl_cert = None
-  #ssl_ip = None
-  #drupal_common_config = None
-
-  # Define primary host
-  common.Utils.define_host(config, buildtype, repo)
-
-  # Define server roles (if applicable)
-  common.Utils.define_roles(config, cluster, autoscale)
-
-  # Check where we're deploying to - abort if nothing set in config.ini
-  if env.host is None:
-    raise ValueError("===> You wanted to deploy a build but we couldn't find a host in the map file for repo %s so we're aborting." % repo)
-
-  # Set our host_string based on user@host
-  env.host_string = '%s@%s' % (user, env.host)
 
   # Compile variables for feature branch builds (if applicable)
   FeatureBranches.configure_feature_branch(buildtype, config, branch)
