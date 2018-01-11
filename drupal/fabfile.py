@@ -167,16 +167,16 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
     execute(common.Utils.clone_repo, repo, repourl, branch, build, None, ssh_key, hosts=env.roledefs['app_all'])
 
-    # Now we have the codebase we can figure out the Drupal version
-    # Don't use execute() because it returns an array of values returned keyed by hostname
-    drupal_version = DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config)
-    print "===> the drupal_version variable is set to %s" % drupal_version
-
     # Gitflow workflow means '/' in branch names, need to clean up.
     branch = common.Utils.generate_branch_name(branch)
     print "===> Branch is %s" % branch
 
     print "===> URL is http://%s" % url
+
+    # Now we have the codebase and a clean branch name we can figure out the Drupal version
+    # Don't use execute() because it returns an array of values returned keyed by hostname
+    drupal_version = DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config)
+    print "===> the drupal_version variable is set to %s" % drupal_version
 
     # Let's allow developers to perform some early actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
@@ -260,16 +260,16 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, freshdatabase="
 
     execute(common.Utils.clone_repo, repo, repourl, branch, build, None, ssh_key, hosts=env.roledefs['app_all'])
 
-    # Now we have the codebase we can figure out the Drupal version
-    # Don't use execute() because it returns an array of values returned keyed by hostname
-    drupal_version = DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config)
-    print "===> the drupal_version variable is set to %s" % drupal_version
-
     # Gitflow workflow means '/' in branch names, need to clean up.
     branch = common.Utils.generate_branch_name(branch)
     print "===> Branch is %s" % branch
 
     print "===> URL is http://%s" % url
+
+    # Now we have the codebase and a clean branch name we can figure out the Drupal version
+    # Don't use execute() because it returns an array of values returned keyed by hostname
+    drupal_version = DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config)
+    print "===> the drupal_version variable is set to %s" % drupal_version
 
     # Let's allow developers to perform some early actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
