@@ -156,7 +156,8 @@ def statuscake_state(statuscakeuser, statuscakekey, statuscakeid, state=""):
         if statuscakeid is not None:
           # Default action, resume the checks
           print "===> Resuming StatusCake job with ID %s" % statuscakeid
-          run('curl -H "API: %s" -H "Username: %s" -d "TestID=%s&Paused=0" -X PUT https://app.statuscake.com/API/Tests/Update' % (statuscakekey, statuscakeuser, statuscakeid))
+          if run('curl -H "API: %s" -H "Username: %s" -d "TestID=%s&Paused=0" -X PUT https://app.statuscake.com/API/Tests/Update' % (statuscakekey, statuscakeuser, statuscakeid)).failed:
+            print "Failed to resume the StatusCake job with ID %s. You will need to resume it manually." % statuscakeid
   # Catch all return value so we cannot set statuscake_paused to an ambiguous value
   return False
 
