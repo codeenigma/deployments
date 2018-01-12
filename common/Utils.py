@@ -138,24 +138,26 @@ def adjust_live_symlink(repo, branch, build, buildtype=None):
 
 @task
 def statuscake_state(statuscakeuser, statuscakekey, statuscakeid, state=""):
-  if state == "pause":
-    # If we have StatusCake information, pause the checks
-    if statuscakekey is not None:
-      if statuscakeid is not None:
-        print "===> Pausing StatusCake job with ID %s" % statuscakeid
-        run('curl -H "API: %s" -H "Username: %s" -d "TestID=%s&Paused=1" -X PUT https://app.statuscake.com/API/Tests/Update' % (statuscakekey, statuscakeuser, statuscakeid))
-        # Return a boolean to raise the statuscake_paused flag
-        return True
+  with settings(warn_only=True):
+    if state == "pause":
+      # If we have StatusCake information, pause the checks
+      if statuscakekey is not None:
+        if statuscakeid is not None:
+          print "===> Pausing StatusCake job with ID %s" % statuscakeid
+          run('curl -H "API: %s" -H "Username: %s" -d "TestID=%s&Paused=1" -X PUT https://app.statuscake.com/API/Tests/Update' % (statuscakekey, statuscakeuser, statuscakeid))
+          # Return a boolean to raise the statuscake_paused flag
+          return True
+        else:
+          print "===> StatusCake ID not available, cannot pause checks."
       else:
-        print "===> StatusCake ID not available, cannot pause checks."
+        print "===> No StatusCake information provided, skipping check pausing step."
     else:
-      print "===> No StatusCake information provided, skipping check pausing step."
-  else:
-    if statuscakekey is not None:
-      if statuscakeid is not None:
-        # Default action, resume the checks
-        print "===> Resuming StatusCake job with ID %s" % statuscakeid
-        run('curl -H "API: %s" -H "Username: %s" -d "TestID=%s&Paused=0" -X PUT https://app.statuscake.com/API/Tests/Update' % (statuscakekey, statuscakeuser, statuscakeid))
+      if statuscakekey is not None:
+        if statuscakeid is not None:
+          # Default action, resume the checks
+          print "===> Resuming StatusCake job with ID %s" % statuscakeid
+          if run('curl -H "API: %s" -H "Username: %s" -d "TestID=%s&Paused=0" -X PUT https://app.statuscake.com/API/Tests/Update' % (statuscakekey, statuscakeuser, statuscakeid)).failed:
+            print "Failed to resume the StatusCake job with ID %s. You will need to resume it manually." % statuscakeid
   # Catch all return value so we cannot set statuscake_paused to an ambiguous value
   return False
 
