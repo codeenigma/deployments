@@ -49,6 +49,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
   statuscake_paused = False
   behat_config = None
   tests_failed = False
+  composer_lock = True
 
   # Set SSH key if needed
   ssh_key = None
@@ -133,7 +134,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
       importconfig = "no"
 
     if drupal_version == '8' and composer is True:
-      execute(Drupal.run_composer_install, repo, branch, build)
+      execute(Drupal.run_composer_install, repo, branch, build, composer_lock)
 
     new_sites = Multisite.check_for_new_installs(repo, branch, build, mapping)
     if new_sites is not None:

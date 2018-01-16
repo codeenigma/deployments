@@ -9,17 +9,21 @@ import Revert
 
 
 @task
-def drush_fra_branches(config):
+def drush_fra_branches(config, branch):
   # If a 'branches' option exists in the [Features] section in config.ini, proceed
   if config.has_option("Features", "branches"):
     # Get the 'branches' option from under the [Features] section
     revert_features = config.get("Features", "branches")
-    # Split the 'branches' option using a comma as a delimeter
-    revert_features = revert_features.split(',')
-    # For each value, strip it and add it to the branches list, which will be searched later
-    for each_branch in revert_features:
-      each_branch = each_branch.strip()
-      branches.append(each_branch)
+    if revert_features == "*":
+      #just append the current branch
+      branches.append(branch)
+    else:
+      # Split the 'branches' option using a comma as a delimeter
+      revert_features = revert_features.split(',')
+      # For each value, strip it and add it to the branches list, which will be searched later
+      for each_branch in revert_features:
+        each_branch = each_branch.strip()
+        branches.append(each_branch)
   # If a 'branches' option does not exist in the [Features] section, add master and stage
   # to the branches list. This is prevent any current jobs using the previous version of
   # this function to break
@@ -221,7 +225,7 @@ def prepare_database(repo, branch, build, syncbranch, orig_host, sanitise, drupa
 # Function to install composer
 @task
 @roles('app_all')
-def run_composer_install(repo, branch, build):
+def run_composer_install(repo, branch, build, composer_lock):
   print "===> Running composer install on newly cloned codebase"
 
   # Apparently sometimes people keep Drupal 8's composer.json file in repo root.
@@ -232,6 +236,13 @@ def run_composer_install(repo, branch, build):
       path = "/var/www/%s_%s_%s/www" % (repo, branch, build)
 
     print "path is %s" % path
+
+  # Sometimes we will want to remove composer.lock prior to installing
+  with settings(warn_only=True):
+    print "===> Removing composer.lock prior to attempting an install"
+    if composer_lock == False:
+      run ("rm %s/composer.lock" % path)
+      run ("rm -R %s/vendor" % path)
 
   run("cd %s && composer install" % (path))
 
@@ -290,15 +301,19 @@ def drush_updatedb(repo, branch, build, drupal_version):
 @task
 @roles('app_primary')
 def drush_fra(repo, branch, build, drupal_version):
-  print "===> Reverting all features..."
-  with settings(warn_only=True):
-    if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y fra --force'" % (repo, branch, build)).failed:
-      print "Could not revert features! Reverting database and settings..."
-      Revert._revert_db(repo, branch, build)
-      Revert._revert_settings(repo, branch, build)
-      raise SystemExit("Could not revert features! Site remains on previous build")
+  with cd("/var/www/%s_%s_%s/www/sites/default" % (repo, branch, build)):
+    if run("drush pm-list --pipe --type=module --status=enabled --no-core | grep -q ^features$"):
+      print "===> Features module not installed, skipping feature revert"
     else:
-      drush_clear_cache(repo, branch, build, drupal_version)
+      print "===> Reverting all features..."
+      with settings(warn_only=True):
+        if sudo("su -s /bin/bash www-data -c 'drush -y fra'" % (repo, branch, build)).failed:
+          print "Could not revert features! Reverting database and settings..."
+          Revert._revert_db(repo, branch, build)
+          Revert._revert_settings(repo, branch, build)
+          raise SystemExit("Could not revert features! Site remains on previous build")
+        else:
+          drush_clear_cache(repo, branch, build, drupal_version)
 
 
 # Function to run Drupal cron (mainly used by RBKC's microsites that use the Domain module)
@@ -518,3 +533,17 @@ def secure_admin_password(repo, branch, build, drupal_version):
       else:
         run('drush sqlq "UPDATE users SET name = \'%s\' WHERE uid = 1"' % u1name)
       run("drush upwd %s --password='%s'" % (u1name, u1pass))
+
+
+# Check if node access table will get rebuilt and warn if necessary
+@task
+def check_node_access(repo, branch):
+  with settings(warn_only=True):
+    node_access_needs_rebuild = run("drush @%s_%s php-eval 'echo node_access_needs_rebuild();'" % (repo, branch))
+    if node_access_needs_rebuild == 1:
+      print "####### WARNING: this release needs the content access table to be rebuilt. This is an intrusive operation that imply the site needs to stay in maintenance mode untill the whole process is finished."
+      print "####### Depending on the number of nodes and the complexity of access rules, this can take several hours. Be sure to either plan the release appropriately, or when possible use alternative method that are not intrusive."
+      print "####### We recommend you consider this module: https://www.drupal.org/project/node_access_rebuild_progressive"
+      # @TODO - we could send an email here as well
+    else:
+      print "===> Node access rebuild check completed, as far as we can tell this build is safe"
