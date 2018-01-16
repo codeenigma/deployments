@@ -11,6 +11,12 @@ def determine_drupal_version(drupal_version, repo, branch, build, config, method
   else:
     drupal_path = "/var/www/%s_%s_%s" % (repo, branch, build)
 
+  # @TODO This is deprecated and should be removed once we're sure all customers have [Drupal] in place
+  if config.has_section("Version"):
+    if config.has_option("Version", "drupal_version"):
+      print "############### ===> Fetching version from [Version] in config.ini - DEPRECATED! Please use [Drupal] instead"
+      drupal_version = config.get("Version", "drupal_version")
+
   # Check to see if Drupal version is specified in config file
   if config.has_section("Drupal"):
     print "===> Fetching version from config.ini"
