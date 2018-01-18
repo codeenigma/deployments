@@ -106,15 +106,15 @@ def remove_old_builds(repo, branch, keepbuilds, buildtype=None):
   print "===> Removing all but the last %s builds to conserve disk space" % keepbuilds
   # Copy remove builds script to server(s)
   script_dir = os.path.dirname(os.path.realpath(__file__))
-  if put(script_dir + '/../util/remove_old_builds.sh', '/home/jenkins', mode=0755).failed:
+  if put(script_dir + '/../util/remove_old_builds.sh', '/var/www/live.%s.%s' % (repo, branch), mode=0755).failed:
     raise SystemExit("Could not copy the remove builds script to the application server, aborting so it's clear there was a problem, even though this is the last step")
   else:
     print "===> Remove builds script copied to %s:/home/jenkins/remove_old_builds.sh" % env.host
 
   if buildtype == None:
-    sudo("/home/jenkins/remove_old_builds.sh -d /var/www -r %s -b %s -k %s" % (repo, branch, keepbuilds))
+    sudo("/var/www/live.%s.%s/remove_old_builds.sh -d /var/www -r %s -b %s -k %s" % (repo, branch, repo, branch, keepbuilds))
   else:
-    sudo("/home/jenkins/remove_old_builds.sh -d /var/www -r %s -b %s -k %s" % (repo, buildtype, keepbuilds))
+    sudo("/var/www/live.%s.%s/remove_old_builds.sh -d /var/www -r %s -b %s -k %s" % (repo, branch, repo, buildtype, keepbuilds))
 
 
 # Adjust symlink in /var/www/project to point to the new build
