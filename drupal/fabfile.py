@@ -45,6 +45,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Can be set in the config.ini [Composer] section
   composer = True
   composer_lock = True
+  no_dev=True
 
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
@@ -101,6 +102,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     if config.has_option("Composer", "composer_lock"):
       composer_lock = config.getboolean("Composer", "composer_lock")
       print "===> use composer.lock file is set to %s", composer_lock
+    # Choose to install dev components
+    if config.has_option("Composer", "no_dev"):
+      no_dev = config.getboolean("Composer", "no_dev")
+      print "===> install dev components is set to %s", composer_lock
 
   # Set SSH key if needed
   # @TODO: this needs to be moved to config.ini for Code Enigma GitHub projects
@@ -186,7 +191,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     if drupal_version != '8':
       import_config = False
     if drupal_version == '8' and composer is True:
-      execute(Drupal.run_composer_install, repo, branch, build, composer_lock)
+      execute(Drupal.run_composer_install, repo, branch, build, composer_lock, no_dev)
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
       Drupal.prepare_database(repo, branch, build, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
@@ -281,7 +286,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build)
     # Run composer if we need to
     if drupal_version == '8' and composer is True:
-      execute(Drupal.run_composer_install, repo, branch, build, composer_lock)
+      execute(Drupal.run_composer_install, repo, branch, build, composer_lock, no_dev)
 
     # Let's allow developers to perform some actions right after Drupal is built
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
