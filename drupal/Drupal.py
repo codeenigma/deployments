@@ -247,7 +247,7 @@ def run_composer_install(repo, branch, build, composer_lock, no_dev):
   if no_dev:
     run("cd %s && composer install --no-dev" % (path))
   else:
-    run("cd %s && composer install --no-dev" % (path))
+    run("cd %s && composer install --dev" % (path))
 
 
 # Run a drush status against that build
