@@ -113,7 +113,7 @@ def remove_old_builds(repo, branch, keepbuilds, buildtype=None):
   if put(script_dir + '/../util/remove_old_builds.sh', '/var/www/live.%s.%s' % (repo, put_location), mode=0755).failed:
     raise SystemExit("Could not copy the remove builds script to the application server, aborting so it's clear there was a problem, even though this is the last step")
   else:
-    print "===> Remove builds script copied to %s:/var/www/live.%s.%s/remove_old_builds.sh" % (env.host, repo, branch)
+    print "===> Remove builds script copied to %s:/var/www/live.%s.%s/remove_old_builds.sh" % (env.host, repo, put_location)
 
   sudo("/var/www/live.%s.%s/remove_old_builds.sh -d /var/www -r %s -b %s -k %s" % (repo, put_location, repo, put_location, keepbuilds))
 
