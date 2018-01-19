@@ -45,7 +45,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Can be set in the config.ini [Composer] section
   composer = True
   composer_lock = True
-  no_dev=True
+  no_dev = True
 
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
