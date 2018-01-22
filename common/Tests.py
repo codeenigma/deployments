@@ -8,6 +8,7 @@ import time
 
 # Run phpunit tests
 @task
+@roles('app_primary')
 def run_phpunit_tests(repo, branch, build, group='unit', path='www', phpunit_path='vendor/phpunit/phpunit/phpunit'):
   phpunit_tests_failed=True
   with cd("/var/www/%s_%s_%s" % (repo, branch, build)):
