@@ -9,7 +9,7 @@ import time
 # Run phpunit tests
 @task
 def run_phpunit_tests(repo, branch, build, group='unit', path='www', phpunit_path='vendor/phpunit/phpunit/phpunit'):
-  tests_failed=False
+  tests_failed=True
   with cd("/var/www/%s_%s_%s" % (repo, branch, build)):
     # Make sure phpunit is available to use
     # We don't want to fail if it's already there
@@ -41,13 +41,13 @@ def run_phpunit_tests(repo, branch, build, group='unit', path='www', phpunit_pat
               print "===> PHPUNIT FAILED!"
             else:
               print "===> Unit tests succeeded"
-              tests_failed=True
+              tests_failed=False
           else:
             if run('%s --configuration=%s --group= %s %s' % (phpunit_path, phpunit_xml, group, path)).failed:
               print "===> PHPUNIT FAILED!"
             else:
               print "===> Unit tests succeeded"
-              tests_failed=True
+              tests_failed=False
     else:
       print "===> PHPUNIT FAILED! No phpunit.xml was found so we could not run tests"
       
