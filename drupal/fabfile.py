@@ -9,6 +9,7 @@ import ConfigParser
 import common.ConfigFile
 import common.Services
 import common.Utils
+import common.Tests
 import AdjustConfiguration
 import Drupal
 import DrupalTests
@@ -46,6 +47,12 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   composer = True
   composer_lock = True
   no_dev = True
+  # Can be set in the config.ini [Testing] section
+  phpunit_run = False
+  phpunit_fail_build = False
+  phpunit_group = 'unit'
+  phpunit_test_directory = 'www/modules/custom'
+  phpunit_path='vendor/phpunit/phpunit/phpunit'
 
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
@@ -107,6 +114,29 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       no_dev = config.getboolean("Composer", "no_dev")
       print "===> install dev components is set to %s", no_dev
 
+  if config.has_section("Testing"):
+    print "===> We have some automated testing options in config.ini"
+    # Choose whether to run phpunit unit tests or not
+    if config.has_option("Testing", "phpunit_run"):
+      phpunit_run = config.getboolean("Testing", "phpunit_run")
+      print "===> run phpunit tests is set to %s", phpunit_run
+    # Choose whether phpunit test fails should fail the build
+    if config.has_option("Testing", "phpunit_fail_build"):
+      phpunit_fail_build = config.getboolean("Testing", "phpunit_fail_build")
+      print "===> fail builds if phpunit tests fail is set to %s", phpunit_fail_build
+    # Set a group of phpunit tests to run
+    if config.has_option("Testing", "phpunit_group"):
+      phpunit_group = config.get("Testing", "phpunit_group")
+      print "===> phpunit test group is set to %s", phpunit_group
+    # Set the directory phpunit tests will run in
+    if config.has_option("Testing", "phpunit_test_directory"):
+      phpunit_test_directory = config.get("Testing", "phpunit_test_directory")
+      print "===> phpunit test directory is set to %s", phpunit_test_directory
+    # Set the path to phpunit itself
+    if config.has_option("Testing", "phpunit_path"):
+      phpunit_path = config.get("Testing", "phpunit_path")
+      print "===> phpunit should be found at %s", phpunit_path
+
   # Set SSH key if needed
   # @TODO: this needs to be moved to config.ini for Code Enigma GitHub projects
   if "git@github.com" in repourl:
@@ -121,7 +151,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   previous_db = ""
   statuscake_paused = False
   behat_config = None
-  tests_failed = False
+  behat_tests_failed = False
 
   # Compile variables for feature branch builds (if applicable)
   FeatureBranches.configure_feature_branch(buildtype, config, branch)
@@ -243,7 +273,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     if behat_config:
       if buildtype in behat_config['behat_buildtypes']:
-        tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+        behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
     else:
       print "===> No behat tests."
 
@@ -251,7 +281,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     # If any of our tests failed, abort the job
     # r23697
-    if tests_failed:
+    if behat_tests_failed:
       print  "Some tests failed. Aborting the job."
       sys.exit(3)
   else:
@@ -364,11 +394,27 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     if statuscake_paused:
       common.Utils.statuscake_state(statuscakeuser, statuscakekey, statuscakeid)
 
+    # Run behat tests
     if behat_config:
       if buildtype in behat_config['behat_buildtypes']:
-        tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+        behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
     else:
       print "===> No behat tests."
+
+    # Run phpunit tests
+    if phpunit_run:
+      # @TODO: We really need to figure out how to use execute() and fish returned variables from the response
+      phpunit_tests_failed = common.Tests.run_phpunit_tests(repo, branch, build, phpunit_group, phpunit_test_directory, phpunit_path)
+      if phpunit_fail_build and phpunit_tests_failed:
+        Revert._revert_db(repo, branch, build)
+        Revert._revert_settings(repo, branch, build)
+        raise SystemExit("####### phpunit tests failed and you have specified you want to fail and roll back when this happens. Reverting database")
+      elif phpunit_tests_failed:
+        print "####### phpunit tests failed but the build is set to disregard... continuing, but you should review your test output"
+      else:
+        print "===> phpunit tests ran successfully."
+    else:
+      print "===> No phpunit tests."
 
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', hosts=env.roledefs['app_all'])
 
@@ -386,6 +432,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       print "####### BUILD COMPLETE. If you need to revert this build, run the following command: sudo /home/jenkins/revert -b %s -d %s -s /var/www/live.%s.%s -a %s_%s" % (previous_build, previous_db, repo, branch, repo, branch)
     # If any of our tests failed, abort the job
     # r23697
-    if tests_failed:
+    if behat_tests_failed:
       print  "Some tests failed. Aborting the job."
       sys.exit(3)
