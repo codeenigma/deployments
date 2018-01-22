@@ -272,7 +272,7 @@ def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_ce
       # Copy Nginx vhost to server(s)
       print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
       script_dir = os.path.dirname(os.path.realpath(__file__))
-      if put(script_dir + '/../util/vhosts/%s/*' % webserver, '/etc/%s/sites-available' % webserver, mode=0755, use_sudo=True).failed:
+      if put(script_dir + '/../util/vhosts/%s/*' % webserver, '/etc/%s/sites-available' % webserver, mode=0644, use_sudo=True).failed:
         raise SystemExit("===> Couldn't copy over our dummy vhosts! Aborting.")
       else:
         print "===> Dummy vhosts copied to app server(s)."
@@ -310,7 +310,7 @@ def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_ce
         dummydir = 'apache2'
       print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
       script_dir = os.path.dirname(os.path.realpath(__file__))
-      if put(script_dir + '/../util/vhosts/%s/*' % dummydir, '/etc/%s/sites-available' % webserver, mode=0755, use_sudo=True).failed:
+      if put(script_dir + '/../util/vhosts/%s/*' % dummydir, '/etc/%s/sites-available' % webserver, mode=0644, use_sudo=True).failed:
         raise SystemExit("===> Couldn't copy over our dummy vhosts! Aborting.")
       else:
         print "===> Dummy vhosts copied to app server(s)."
