@@ -225,7 +225,7 @@ def prepare_database(repo, branch, build, syncbranch, orig_host, sanitise, drupa
 # Function to install composer
 @task
 @roles('app_all')
-def run_composer_install(repo, branch, build, composer_lock):
+def run_composer_install(repo, branch, build, composer_lock, no_dev):
   print "===> Running composer install on newly cloned codebase"
 
   # Apparently sometimes people keep Drupal 8's composer.json file in repo root.
@@ -244,7 +244,10 @@ def run_composer_install(repo, branch, build, composer_lock):
       run ("rm %s/composer.lock" % path)
       run ("rm -R %s/vendor" % path)
 
-  run("cd %s && composer install" % (path))
+  if no_dev:
+    run("cd %s && composer install --no-dev" % (path))
+  else:
+    run("cd %s && composer install --dev" % (path))
 
 
 # Run a drush status against that build

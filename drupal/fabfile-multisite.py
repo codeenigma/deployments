@@ -31,7 +31,7 @@ config = common.ConfigFile.read_config_file()
 # New 'main()' task which should replace the deployment.sh wrapper, and support repo -> host mapping
 #####
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, webserverport='8080', rds=False, composer=True):
+def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", keepbuilds=10, runcron="False", doupdates="Yes", freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, importconfig="yes", restartvarnish="yes", cluster=False, webserverport='8080', rds=False, composer=True, no_dev=True):
   dontbuild = False
 
   # Define variables
@@ -134,7 +134,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
       importconfig = "no"
 
     if drupal_version == '8' and composer is True:
-      execute(Drupal.run_composer_install, repo, branch, build, composer_lock)
+      execute(Drupal.run_composer_install, repo, branch, build, composer_lock, no_dev)
 
     new_sites = Multisite.check_for_new_installs(repo, branch, build, mapping)
     if new_sites is not None:
