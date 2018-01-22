@@ -37,7 +37,7 @@ def run_phpunit_tests(repo, branch, build, group='unit', path='www', phpunit_pat
     if phpunit_xml:
       with cd("/var/www/%s_%s_%s" % (repo, branch, build)):
         with settings(warn_only=True):
-          if unit == '' and path == '':
+          if group == '' and path == '':
             if run('%s --configuration=%s' % (phpunit_path, phpunit_xml)).failed:
               print "===> PHPUNIT FAILED!"
             else:
