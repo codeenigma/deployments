@@ -105,7 +105,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Choose to install dev components
     if config.has_option("Composer", "no_dev"):
       no_dev = config.getboolean("Composer", "no_dev")
-      print "===> install dev components is set to %s", composer_lock
+      print "===> install dev components is set to %s", no_dev
 
   # Set SSH key if needed
   # @TODO: this needs to be moved to config.ini for Code Enigma GitHub projects
