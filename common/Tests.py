@@ -44,7 +44,7 @@ def run_phpunit_tests(repo, branch, build, group='unit', path='www', phpunit_pat
               print "===> Unit tests succeeded"
               phpunit_tests_failed=False
           else:
-            if run('%s --configuration=%s --group= %s %s' % (phpunit_path, phpunit_xml, group, path)).failed:
+            if run('%s --configuration=%s --group %s %s' % (phpunit_path, phpunit_xml, group, path)).failed:
               print "===> PHPUNIT FAILED!"
             else:
               print "===> Unit tests succeeded"
