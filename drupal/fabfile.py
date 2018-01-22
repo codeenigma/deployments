@@ -151,7 +151,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   previous_db = ""
   statuscake_paused = False
   behat_config = None
-  tests_failed = False
+  behat_tests_failed = False
 
   # Compile variables for feature branch builds (if applicable)
   FeatureBranches.configure_feature_branch(buildtype, config, branch)
@@ -273,7 +273,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     if behat_config:
       if buildtype in behat_config['behat_buildtypes']:
-        tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+        behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
     else:
       print "===> No behat tests."
 
@@ -281,7 +281,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     # If any of our tests failed, abort the job
     # r23697
-    if tests_failed:
+    if behat_tests_failed:
       print  "Some tests failed. Aborting the job."
       sys.exit(3)
   else:
@@ -397,18 +397,18 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Run behat tests
     if behat_config:
       if buildtype in behat_config['behat_buildtypes']:
-        tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+        behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
     else:
       print "===> No behat tests."
 
     # Run phpunit tests
     if phpunit_run:
-      tests_failed = run_phpunit_tests(repo, branch, build, phpunit_group, phpunit_test_directory, phpunit_path)
-      if phpunit_fail_build and tests_failed:
+      phpunit_tests_failed = run_phpunit_tests(repo, branch, build, phpunit_group, phpunit_test_directory, phpunit_path)
+      if phpunit_fail_build and phpunit_tests_failed:
         Revert._revert_db(repo, branch, build)
         Revert._revert_settings(repo, branch, build)
         raise SystemExit("####### phpunit tests failed and you have specified you want to fail and roll back when this happens. Reverting database")
-      elif tests_failed:
+      elif phpunit_tests_failed:
         print "####### phpunit tests failed but the build is set to disregard... continuing, but you should review your test output"
       else:
         print "===> phpunit tests ran successfully."
@@ -431,6 +431,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       print "####### BUILD COMPLETE. If you need to revert this build, run the following command: sudo /home/jenkins/revert -b %s -d %s -s /var/www/live.%s.%s -a %s_%s" % (previous_build, previous_db, repo, branch, repo, branch)
     # If any of our tests failed, abort the job
     # r23697
-    if tests_failed:
+    if behat_tests_failed:
       print  "Some tests failed. Aborting the job."
       sys.exit(3)
