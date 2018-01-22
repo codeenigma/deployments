@@ -403,7 +403,8 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     # Run phpunit tests
     if phpunit_run:
-      phpunit_tests_failed = run_phpunit_tests(repo, branch, build, phpunit_group, phpunit_test_directory, phpunit_path)
+      # @TODO: We really need to figure out how to use execute() and fish returned variables from the response
+      phpunit_tests_failed = common.Tests.run_phpunit_tests(repo, branch, build, phpunit_group, phpunit_test_directory, phpunit_path)
       if phpunit_fail_build and phpunit_tests_failed:
         Revert._revert_db(repo, branch, build)
         Revert._revert_settings(repo, branch, build)
