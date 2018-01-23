@@ -70,7 +70,7 @@ def sync_assets(orig_host, shortname, staging_branch, prod_branch, config):
 
 # Sync databases from production to staging
 @task
-def sync_db(orig_host, shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config):
+def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config):
   now = time.strftime("%Y%m%d%H%M%S", time.gmtime())
   # Switch to operating to the production server as a target
   env.host = config.get(shortname, 'host')
@@ -179,19 +179,19 @@ def sync_db(orig_host, shortname, staging_branch, prod_branch, fresh_database, s
 
   print "===> Importing the drupal database"
   # Need to drop all tables first in case there are existing tables that have to be ADDED from an upgrade
-  run("drush @%s_%s -y sql-drop" % (shortname, staging_branch))
+  run("drush @%s_%s -y sql-drop" % (staging_shortname, staging_branch))
   # Reimport from backup
   # Ignore errors because we will want to remove the database dump regardless of whether this succeeded,
   # *in case* it contains sensitive data
   with settings(warn_only=True):
-    run("bzcat ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | drush @%s_%s sql-cli " % (shortname, now, shortname, staging_branch))
+    run("bzcat ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | drush @%s_%s sql-cli " % (shortname, now, staging_shortname, staging_branch))
     # Set all users to the supplied e-mail address/password for stage testing
     if sanitise == 'yes':
       if sanitised_password is None:
         sanitised_password = common.Utils._gen_passwd()
       if sanitised_email is None:
         sanitised_email = 'example.com'
-      run("drush @%s_%s -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (shortname, staging_branch, shortname, sanitised_email, sanitised_password))
+      run("drush @%s_%s -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (staging_shortname, staging_branch, shortname, sanitised_email, sanitised_password))
       print "===> Data sanitised, email domain set to %s, passwords set to %s" % (sanitised_email, sanitised_password)
   run("rm ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2" % (shortname, now))
 
