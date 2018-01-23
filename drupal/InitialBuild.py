@@ -337,6 +337,10 @@ def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_ce
   sudo("sed -i s/dummyport/%s/g /etc/%s/sites-available/%s.conf" % (webserverport, webserver, url))
   sudo("sed -i s/dummy/%s.%s/g /etc/%s/sites-available/%s.conf" % (repo, branch, webserver, url))
   sudo("ln -s /etc/%s/sites-available/%s.conf /etc/%s/sites-enabled/%s.conf" % (webserver, url, webserver, url))
+  print "Tidy up and remove the dummy vhosts. Don't fail the build if they can't be removed."
+  with settings(warn_only=True):
+    sudo("rm /etc/%s/sites-available/dummy*.conf" % webserver)
+
   url_output = url.lower()
   print "***** Your URL is http://%s *****" % url_output
   # @TODO push this vhost back into puppet. See RS 14081
