@@ -21,7 +21,7 @@ global config
 config = common.ConfigFile.read_config_file('sync.ini', False)
 
 @task
-def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database='no', sanitise='yes', sanitised_password=None, sanitised_email=None, staging_shortname=None, remote_files_dir=None, stage_files_dir=None, sync_dir=None):
+def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database='no', sanitise='yes', sanitised_password=None, sanitised_email=None, staging_shortname=None, remote_files_dir=None, staging_files_dir=None, sync_dir=None):
   # Set the variables we need.
   drupal_version = None
   # If we didn't get a staging shortname, we should set it to shortname
@@ -60,7 +60,7 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
 
         # Files syncing (uploads)
         if synctype == 'files' or synctype == 'both':
-          Sync.sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, remote_files_dir, stage_files_dir, sync_dir)
+          Sync.sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, remote_files_dir, staging_files_dir, sync_dir)
 
         # Cleanup
         Sync.clear_caches(orig_host, staging_shortname, staging_branch, drupal_version)

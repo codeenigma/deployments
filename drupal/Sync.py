@@ -22,7 +22,7 @@ def backup_db(shortname, staging_branch):
 
 # Sync uploaded assets from production to staging
 @task
-def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, remote_files_dir=None, stage_files_dir=None, sync_dir=None):
+def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, remote_files_dir=None, staging_files_dir=None, sync_dir=None):
   # Switch the credentials with which to connect to production
   env.host = config.get(shortname, 'host')
   env.user = config.get(shortname, 'user')
@@ -46,7 +46,7 @@ def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_br
   print "===> Running an rsync of the production Drupal's 'files' directory to our staging site..."
   # Temporarily force the perms to be owned by jenkins on staging, so that we can overwrite files
   # First check - is the files dir a symlink?
-  if stage_files_dir is None:
+  if staging_files_dir is None:
     staging_files_dir = "/var/www/shared/%s_%s_files" % (staging_shortname, staging_branch)
     with settings(warn_only=True):
       if sudo("readlink /var/www/shared/%s_%s_files" % (staging_shortname, staging_branch)).return_code == 0:
