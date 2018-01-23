@@ -1,0 +1,23 @@
+<VirtualHost *:dummyport>
+        ServerName dummyfqdn
+        DocumentRoot /var/www/live.dummy/www/
+        <Directory />
+                Options FollowSymLinks
+                AllowOverride None
+        </Directory>
+        <Directory /var/www/live.dummy/www/>
+                Options FollowSymLinks
+                AllowOverride All
+                Order allow,deny
+                allow from all
+        </Directory>
+
+        ErrorLog /var/log/apache2/error-dummy.log
+
+        # Possible values include: debug, info, notice, warn, error, crit,
+        # alert, emerg.
+        LogLevel warn
+
+        CustomLog /var/log/apache2/access-dummy.log combined
+
+</VirtualHost>

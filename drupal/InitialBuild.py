@@ -260,6 +260,13 @@ def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_ce
     if run("stat /etc/%s/sites-available/%s.conf" % (webserver, url)).return_code == 0:
       raise SystemError("The VirtualHost config file /etc/%s/sites-available/%s.conf already existed! Aborting." % (webserver, url))
 
+  # Copy webserver dummy vhosts to server
+  print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
+  script_dir = os.path.dirname(os.path.realpath(__file__))
+  if put(script_dir + '/../util/vhosts/%s/*' % webserver, '/etc/%s/sites-available' % webserver, mode=0644, use_sudo=True).failed:
+    raise SystemExit("===> Couldn't copy over our dummy vhosts! Aborting.")
+  else:
+    print "===> Dummy vhosts copied to app server(s)."
 
   # If this site is being deployed from a custom branch job, we need to establish which dummy
   # vhost to use. If the ssl_enabled option is set in the config.ini file, use the
@@ -269,13 +276,6 @@ def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_ce
     # Currently, this only works when the webserver in question is nginx.
     # TODO: make this work with nginx *and* apache
     if webserver == "nginx":
-      # Copy Nginx vhost to server(s)
-      print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
-      script_dir = os.path.dirname(os.path.realpath(__file__))
-      if put(script_dir + '/../util/vhosts/%s/*' % webserver, '/etc/%s/sites-available' % webserver, mode=0644, use_sudo=True).failed:
-        raise SystemExit("===> Couldn't copy over our dummy vhosts! Aborting.")
-      else:
-        print "===> Dummy vhosts copied to app server(s)."
       if ssl_enabled:
         if ssl_cert is None:
           # If ssl_enabled is True in config.ini, ssl_cert MUST contain the name of the ssl cert
@@ -304,17 +304,6 @@ def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_ce
         # If ssl_enabled is False, just use a the default feature branch vhost.
         dummy_file = 'dummy_feature_branch.conf'
     else:
-      # Copy Apache vhost to server(s)
-      dummydir = webserver
-      if webserver == 'httpd':
-        dummydir = 'apache2'
-      print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
-      script_dir = os.path.dirname(os.path.realpath(__file__))
-      if put(script_dir + '/../util/vhosts/%s/*' % dummydir, '/etc/%s/sites-available' % webserver, mode=0644, use_sudo=True).failed:
-        raise SystemExit("===> Couldn't copy over our dummy vhosts! Aborting.")
-      else:
-        print "===> Dummy vhosts copied to app server(s)."
-      #dummy_file = 'dummy_http.conf' if webserver == 'nginx' else 'dummy.conf'
       dummy_file = 'dummy.conf'
 
     sudo("cp /etc/%s/sites-available/%s /etc/%s/sites-available/%s.conf" % (webserver, dummy_file, webserver, url))
