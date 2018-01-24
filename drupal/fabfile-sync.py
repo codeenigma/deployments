@@ -42,37 +42,37 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
 
       drupal_config = common.ConfigFile.read_config_file(path_to_config_file, False, True, True)
 
-    if config.has_section(shortname):
-      try:
-        orig_host = "%s@%s" % (env.user, env.host)
+  if config.has_section(shortname):
+    try:
+      orig_host = "%s@%s" % (env.user, env.host)
 
-        # Get Drupal version
-        drupal_version = DrupalUtils.determine_drupal_version(drupal_version, shortname, staging_branch, 0, drupal_config, 'sync')
+      # Get Drupal version
+      drupal_version = DrupalUtils.determine_drupal_version(drupal_version, shortname, staging_branch, 0, drupal_config, 'sync')
 
-        # Allow developer to run a script prior to a sync
-        common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'pre')
+      # Allow developer to run a script prior to a sync
+      common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'pre')
 
-        # Database syncing
-        if synctype == 'db' or synctype == 'both':
-          Sync.backup_db(staging_shortname, staging_branch)
-          Sync.sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config)
-          Sync.drush_updatedb(orig_host, staging_shortname, staging_branch)
+      # Database syncing
+      if synctype == 'db' or synctype == 'both':
+        Sync.backup_db(staging_shortname, staging_branch)
+        Sync.sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config)
+        Sync.drush_updatedb(orig_host, staging_shortname, staging_branch)
 
-        # Files syncing (uploads)
-        if synctype == 'files' or synctype == 'both':
-          Sync.sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, remote_files_dir, staging_files_dir, sync_dir)
+      # Files syncing (uploads)
+      if synctype == 'files' or synctype == 'both':
+        Sync.sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, remote_files_dir, staging_files_dir, sync_dir)
 
-        # Cleanup
-        Sync.clear_caches(orig_host, staging_shortname, staging_branch, drupal_version)
-        env.host_string = orig_host
-        common.Services.clear_php_cache()
-        common.Services.clear_varnish_cache()
-        common.Services.reload_webserver()
-        # Allow developer to run a script after a sync
-        common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'post')
+      # Cleanup
+      Sync.clear_caches(orig_host, staging_shortname, staging_branch, drupal_version)
+      env.host_string = orig_host
+      common.Services.clear_php_cache()
+      common.Services.clear_varnish_cache()
+      common.Services.reload_webserver()
+      # Allow developer to run a script after a sync
+      common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'post')
 
-      except:
-        e = sys.exc_info()[1]
-        raise SystemError(e)
-    else:
-      raise SystemError("Could not find this shortname %s in the sync.ini so we cannot proceed." % staging_shortname)
+    except:
+      e = sys.exc_info()[1]
+      raise SystemError(e)
+  else:
+    raise SystemError("Could not find this shortname %s in the sync.ini so we cannot proceed." % staging_shortname)
