@@ -236,7 +236,7 @@ def new_site_create_database(repo, branch, build, buildtype, profile, mapping, s
           else:
             sudo("/home/jenkins/%s.sh %s %s /var/www/%s_%s_%s/www %s %s" % (dbscript, alias, newpass, repo, branch, build, branch, buildsite))
 
-      sudo("mv /var/www/%s_%s_%s/www/sites/%s/settings.php /var/www/shared/%s_%s.settings.inc" % (repo, branch, build, buildsite, alias, branch))
+      sudo("mv /var/www/%s_%s_%s/www/sites/%s/settings.php /var/www/config/%s_%s.settings.inc" % (repo, branch, build, buildsite, alias, branch))
 
 
 @task
@@ -247,12 +247,9 @@ def new_site_copy_settings(repo, branch, build, mapping, sites):
       # Fix perms on subdir
       sudo("chmod 755 /var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, buildsite))
 
-      # Move settings.php file to /var/www/shared, where it can be copied to multiple app
-      # servers, then tidied up
-      sudo("cp /var/www/shared/%s_%s.settings.inc /var/www/config/%s_%s.settings.inc" % (alias, branch, alias, branch))
       # Improve perms on settings.php
-      sudo("chown jenkins:www-data /var/www/shared/%s_%s.settings.inc" % (alias, branch))
-      sudo("chmod 644 /var/www/shared/%s_%s.settings.inc" % (alias, branch))
+      sudo("chown jenkins:www-data /var/www/config/%s_%s.settings.inc" % (alias, branch))
+      sudo("chmod 644 /var/www/config/%s_%s.settings.inc" % (alias, branch))
       sudo("ln -s /var/www/config/%s_%s.settings.inc /var/www/%s_%s_%s/www/sites/%s/settings.php" % (alias, branch, repo, branch, build, buildsite))
 
 
