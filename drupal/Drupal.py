@@ -12,6 +12,7 @@ import Revert
 def drush_fra_branches(config, branch):
   # If a 'branches' option exists in the [Features] section in config.ini, proceed
   if config.has_option("Features", "branches"):
+    branches = []
     # Get the 'branches' option from under the [Features] section
     revert_features = config.get("Features", "branches")
     if revert_features == "*":
