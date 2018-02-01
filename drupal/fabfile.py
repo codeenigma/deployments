@@ -37,7 +37,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   user = "jenkins"
   # Can be set in the config.ini [Build] section
   ssh_key = None
-  notifications_email=None
+  notifications_email = None
   # Can be set in the config.ini [Drupal] section
   drupal_version = None
   profile = "minimal"
@@ -80,6 +80,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     if config.has_option("Build", "url"):
       url = config.get("Build", "url")
       print "===> site url will be %s", url
+    # Set notifications email, if provided
+    if config.has_option("Build", "notifications_email"):
+      notifications_email = config.get("Build", "notifications_email")
+      print "===> notifications email is %s", notifications_email
 
   if config.has_section("Drupal"):
     print "===> We have some Drupal options in config.ini"
