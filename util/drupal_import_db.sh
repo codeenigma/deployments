@@ -5,7 +5,6 @@
 
 # Args that must be passed
 NEWDB=$1
-# Easier to match user to db for now
 PASS=$2
 SITE_ROOT=$3
 BRANCH=$4
@@ -57,8 +56,15 @@ fi
 #
 #########################################################################
 
+if [[ -z $DBUSER ]]; then
+  DBUSER=$NEWDB
+else
+  # make sure provided db username is not too long
+  DBUSER=${DBUSER:0:32}
+fi
+
 cd $SITE_ROOT/sites/default
-DBURL="mysql://$NEWDB:$PASS@$DBHOST/$NEWDB"
+DBURL="mysql://$DBUSER:$PASS@$DBHOST/$NEWDB"
 echo $DBURL
 drush si $PROFILE -y --db-url=$DBURL
 
