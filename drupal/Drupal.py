@@ -540,13 +540,16 @@ def secure_admin_password(repo, branch, build, drupal_version):
 
 # Check if node access table will get rebuilt and warn if necessary
 @task
-def check_node_access(repo, branch):
+def check_node_access(repo, branch, notifications_email):
   with settings(warn_only=True):
     node_access_needs_rebuild = run("drush @%s_%s php-eval 'echo node_access_needs_rebuild();'" % (repo, branch))
     if node_access_needs_rebuild == 1:
       print "####### WARNING: this release needs the content access table to be rebuilt. This is an intrusive operation that imply the site needs to stay in maintenance mode untill the whole process is finished."
       print "####### Depending on the number of nodes and the complexity of access rules, this can take several hours. Be sure to either plan the release appropriately, or when possible use alternative method that are not intrusive."
       print "####### We recommend you consider this module: https://www.drupal.org/project/node_access_rebuild_progressive"
-      # @TODO - we could send an email here as well
+      # Send an email if an address is provided in config.ini
+      if notifications_email:
+        local("echo 'Your build for %s of branch %s has triggered a warning of a possible content access table rebuild - this may cause an extended outage of your website. Please review!' | mail -s 'Content access table warning' %s" % (repo, branch, notifications_email))
+        print "===> Sent warning email to %s" % notifications_email
     else:
       print "===> Node access rebuild check completed, as far as we can tell this build is safe"
