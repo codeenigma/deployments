@@ -22,30 +22,23 @@ def backup_db(shortname, staging_branch):
 
 # Sync uploaded assets from production to staging
 @task
-def sync_assets(orig_host, shortname, staging_branch, prod_branch, config):
+def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, remote_files_dir=None, staging_files_dir=None, sync_dir=None):
   # Switch the credentials with which to connect to production
   env.host = config.get(shortname, 'host')
   env.user = config.get(shortname, 'user')
   env.host_string = '%s@%s' % (env.user, env.host)
 
-  # We ran into a disk space issue with rbkc-jenkins when the Sync WCC job was run. Because
-  # the WCC files directory is 8.4G, and there's only 7G free, the build failed. However, there
-  # is 63G free in /var because it is a separate mount. So this script now checks if the
-  # shortname is 'wcc' and if it is, it'll use a different directory to sync the files to from
-  # rbkc-app1.int.codeenigma.net
-  if shortname == "wcc":
-    sync_dir = '/var/www/shared/synced_assets'
-  else:
+  if sync_dir is None:
     sync_dir = '/tmp'
  
   # Sync down the assets to the Jenkins machine, before sending them upstream to the staging server.
   print "===> Finding the remote files directories to rsync from..."
-
   if run('drush @%s_%s dd files' % (shortname, prod_branch)).failed:
     raise SystemError("Couldn't find this site with Drush alias %s_%s in production in order to sync its assets to staging! Aborting." % (shortname, prod_branch))
   else:
-    remote_files = run("drush @%s_%s dd files" % (shortname, prod_branch))
-    local("rsync -e 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' -aHPv %s@%s:%s/ %s/%s_drupal_files/" % (env.user, env.host, remote_files, sync_dir, shortname))
+    if remote_files_dir is None:
+      remote_files_dir = run("drush @%s_%s dd files" % (shortname, prod_branch))
+    local("rsync -e 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' -aHPv %s@%s:%s/ %s/%s_drupal_files/" % (env.user, env.host, remote_files_dir, sync_dir, shortname))
   
   # Switch the host to the staging server, it's time to send the assets upstream
   env.host_string = orig_host
@@ -53,10 +46,11 @@ def sync_assets(orig_host, shortname, staging_branch, prod_branch, config):
   print "===> Running an rsync of the production Drupal's 'files' directory to our staging site..."
   # Temporarily force the perms to be owned by jenkins on staging, so that we can overwrite files
   # First check - is the files dir a symlink?
-  staging_files_dir = "/var/www/shared/%s_%s_files" % (shortname, staging_branch)
-  with settings(warn_only=True):
-    if sudo("readlink /var/www/shared/%s_%s_files" % (shortname, staging_branch)).return_code == 0:
-      staging_files_dir = sudo("readlink /var/www/shared/%s_%s_files" % (shortname, staging_branch))
+  if staging_files_dir is None:
+    staging_files_dir = "/var/www/shared/%s_%s_files" % (staging_shortname, staging_branch)
+    with settings(warn_only=True):
+      if sudo("readlink /var/www/shared/%s_%s_files" % (staging_shortname, staging_branch)).return_code == 0:
+        staging_files_dir = sudo("readlink /var/www/shared/%s_%s_files" % (staging_shortname, staging_branch))
   
   sudo("chown -R jenkins %s" % staging_files_dir)
   # Rsync up the files
@@ -70,7 +64,7 @@ def sync_assets(orig_host, shortname, staging_branch, prod_branch, config):
 
 # Sync databases from production to staging
 @task
-def sync_db(orig_host, shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config):
+def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config):
   now = time.strftime("%Y%m%d%H%M%S", time.gmtime())
   # Switch to operating to the production server as a target
   env.host = config.get(shortname, 'host')
@@ -179,19 +173,19 @@ def sync_db(orig_host, shortname, staging_branch, prod_branch, fresh_database, s
 
   print "===> Importing the drupal database"
   # Need to drop all tables first in case there are existing tables that have to be ADDED from an upgrade
-  run("drush @%s_%s -y sql-drop" % (shortname, staging_branch))
+  run("drush @%s_%s -y sql-drop" % (staging_shortname, staging_branch))
   # Reimport from backup
   # Ignore errors because we will want to remove the database dump regardless of whether this succeeded,
   # *in case* it contains sensitive data
   with settings(warn_only=True):
-    run("bzcat ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | drush @%s_%s sql-cli " % (shortname, now, shortname, staging_branch))
+    run("bzcat ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | drush @%s_%s sql-cli " % (shortname, now, staging_shortname, staging_branch))
     # Set all users to the supplied e-mail address/password for stage testing
     if sanitise == 'yes':
       if sanitised_password is None:
         sanitised_password = common.Utils._gen_passwd()
       if sanitised_email is None:
         sanitised_email = 'example.com'
-      run("drush @%s_%s -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (shortname, staging_branch, shortname, sanitised_email, sanitised_password))
+      run("drush @%s_%s -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (staging_shortname, staging_branch, shortname, sanitised_email, sanitised_password))
       print "===> Data sanitised, email domain set to %s, passwords set to %s" % (sanitised_email, sanitised_password)
   run("rm ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2" % (shortname, now))
 

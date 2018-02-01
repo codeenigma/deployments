@@ -11,6 +11,10 @@ These deployment scripts currently support:
 
 # Features
 
+Example configuration files for developers are a work in progress, but the Drupal 8 version is reasonably complete and can be found here:
+
+https://github.com/codeenigma/example-drupal/blob/8.x/config.ini
+
 Here is an overview of the kinds of things these build scripts allow you to do:
 
 ## General
