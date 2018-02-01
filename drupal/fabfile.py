@@ -38,6 +38,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Can be set in the config.ini [Build] section
   ssh_key = None
   notifications_email = None
+  # Can be set in the config.ini [Database] section
+  db_name = None
+  db_username = None
+  db_password = None
   # Can be set in the config.ini [Drupal] section
   drupal_version = None
   profile = "minimal"
@@ -84,6 +88,21 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     if config.has_option("Build", "notifications_email"):
       notifications_email = config.get("Build", "notifications_email")
       print "===> notifications email is %s" % notifications_email
+
+  if config.has_section("Database"):
+    print "===> We have some database options in config.ini"
+    # Specify the database name for this build
+    if config.has_option("Database", "db_name"):
+      db_name = config.get("Database", "db_name")
+      print "===> database name is %s" % db_name
+    # Specify the database username for this build
+    if config.has_option("Database", "db_username"):
+      db_username = config.get("Database", "db_username")
+      print "===> database username is %s" % db_username
+    # Specify the database password for this build
+    if config.has_option("Database", "db_password"):
+      db_password = config.get("Database", "db_password")
+      print "===> database password is %s" % db_password
 
   if config.has_section("Drupal"):
     print "===> We have some Drupal options in config.ini"
