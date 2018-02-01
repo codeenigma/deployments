@@ -75,72 +75,72 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Provide the path to an alternative deploy key for this project
     if config.has_option("Build", "ssh_key"):
       ssh_key = config.get("Build", "ssh_key")
-      print "===> path to SSH key is %s", ssh_key
+      print "===> path to SSH key is %s" % ssh_key
     # Set site URL on initial build
     if config.has_option("Build", "url"):
       url = config.get("Build", "url")
-      print "===> site url will be %s", url
+      print "===> site url will be %s" % url
     # Set notifications email, if provided
     if config.has_option("Build", "notifications_email"):
       notifications_email = config.get("Build", "notifications_email")
-      print "===> notifications email is %s", notifications_email
+      print "===> notifications email is %s" % notifications_email
 
   if config.has_section("Drupal"):
     print "===> We have some Drupal options in config.ini"
     # Choose an install profile for initial build
     if config.has_option("Drupal", "profile"):
       profile = config.get("Drupal", "profile")
-      print "===> Drupal install profile is %s", profile
+      print "===> Drupal install profile is %s" % profile
     # Choose to suppress Drupal database updates
     if config.has_option("Drupal", "do_updates"):
       do_updates = config.getboolean("Drupal", "do_updates")
-      print "===> the Drupal update flag is set to %s", do_updates
+      print "===> the Drupal update flag is set to %s" % do_updates
     # Choose to run cron after Drupal updates
     if config.has_option("Drupal", "run_cron"):
       run_cron = config.getboolean("Drupal", "run_cron")
-      print "===> the Drupal cron flag is set to %s", run_cron
+      print "===> the Drupal cron flag is set to %s" % run_cron
     # Choose whether or not to import config in Drupal 8 +
     if config.has_option("Drupal", "import_config"):
       import_config = config.getboolean("Drupal", "import_config")
-      print "===> the Drupal 8 config import flag is set to %s", import_config
+      print "===> the Drupal 8 config import flag is set to %s" % import_config
 
   if config.has_section("Composer"):
     print "===> We have some composer options in config.ini"
     # Choose whether or not to composer install
     if config.has_option("Composer", "composer"):
       composer = config.getboolean("Composer", "composer")
-      print "===> composer install execution is set to %s", composer
+      print "===> composer install execution is set to %s" % composer
     # Choose to ignore composer.lock - sometimes necessary if there are platform problems
     if config.has_option("Composer", "composer_lock"):
       composer_lock = config.getboolean("Composer", "composer_lock")
-      print "===> use composer.lock file is set to %s", composer_lock
+      print "===> use composer.lock file is set to %s" % composer_lock
     # Choose to install dev components
     if config.has_option("Composer", "no_dev"):
       no_dev = config.getboolean("Composer", "no_dev")
-      print "===> install dev components is set to %s", no_dev
+      print "===> install dev components is set to %s" % no_dev
 
   if config.has_section("Testing"):
     print "===> We have some automated testing options in config.ini"
     # Choose whether to run phpunit unit tests or not
     if config.has_option("Testing", "phpunit_run"):
       phpunit_run = config.getboolean("Testing", "phpunit_run")
-      print "===> run phpunit tests is set to %s", phpunit_run
+      print "===> run phpunit tests is set to %s" % phpunit_run
     # Choose whether phpunit test fails should fail the build
     if config.has_option("Testing", "phpunit_fail_build"):
       phpunit_fail_build = config.getboolean("Testing", "phpunit_fail_build")
-      print "===> fail builds if phpunit tests fail is set to %s", phpunit_fail_build
+      print "===> fail builds if phpunit tests fail is set to %s" % phpunit_fail_build
     # Set a group of phpunit tests to run
     if config.has_option("Testing", "phpunit_group"):
       phpunit_group = config.get("Testing", "phpunit_group")
-      print "===> phpunit test group is set to %s", phpunit_group
+      print "===> phpunit test group is set to %s" % phpunit_group
     # Set the directory phpunit tests will run in
     if config.has_option("Testing", "phpunit_test_directory"):
       phpunit_test_directory = config.get("Testing", "phpunit_test_directory")
-      print "===> phpunit test directory is set to %s", phpunit_test_directory
+      print "===> phpunit test directory is set to %s" % phpunit_test_directory
     # Set the path to phpunit itself
     if config.has_option("Testing", "phpunit_path"):
       phpunit_path = config.get("Testing", "phpunit_path")
-      print "===> phpunit should be found at %s", phpunit_path
+      print "===> phpunit should be found at %s" % phpunit_path
 
   # Set SSH key if needed
   # @TODO: this needs to be moved to config.ini for Code Enigma GitHub projects
