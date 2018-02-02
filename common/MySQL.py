@@ -10,15 +10,17 @@ import common.Utils
 # Create a new database
 @task
 @roles('app_primary')
-def mysql_new_database(repo, buildtype, site_root, db_name=None, db_host=None, db_username=None, mysql_version=5.6, db_password=None, mysql_config='/etc/mysql/debian.cnf', app_hosts=None, dump_file=None):
+def mysql_new_database(repo, buildtype, site_root, rds=False, db_name=None, db_host=None, db_username=None, mysql_version=5.6, db_password=None, mysql_config='/etc/mysql/debian.cnf', app_hosts=None, dump_file=None):
   # Set default hosts
   if db_host is None:
-    db_host = env.host
+    db_host = "localhost"
   if app_hosts is None:
     app_hosts = [ 'localhost' ]
   # Make our DB server the active host for Fabric
-  original_host = env.host
-  env.host = db_host
+  # Note, for localhost or for 'rds' this is not desired
+  if not db_host == "localhost" or rds:
+    original_host = env.host
+    env.host = db_host
 
   # Set database password
   if db_password is None:
@@ -75,7 +77,8 @@ def mysql_new_database(repo, buildtype, site_root, db_name=None, db_host=None, d
         database_created = True
 
   # Put the correct host back for Fabric to continue
-  env.host = original_host
+  if not db_host == "localhost" or rds:
+    env.host = original_host
 
   # We might need the database details back for later
   return [ db_name, db_username, db_password, db_host ]
@@ -84,7 +87,16 @@ def mysql_new_database(repo, buildtype, site_root, db_name=None, db_host=None, d
 # Import a seed database
 @task
 @roles('app_primary')
-def mysql_import_dump(site_root, db_name, dump_file, mysql_config='/etc/mysql/debian.cnf'):
+def mysql_import_dump(site_root, db_name, dump_file, db_host=None, rds=False, mysql_config='/etc/mysql/debian.cnf'):
+  # Set default db host
+  if db_host is None:
+    db_host = "localhost"
+  # Make our DB server the active host for Fabric
+  # Note, for localhost or for 'rds' this is not desired
+  if not db_host == "localhost" or rds:
+    original_host = env.host
+    env.host = db_host
+
   dump_file = site_root + '/db/' + dump_file
   print "===> Importing a database dump from %s into %s." % (dump_file, db_name)
   if file.exists(dump_file):
@@ -97,3 +109,7 @@ def mysql_import_dump(site_root, db_name, dump_file, mysql_config='/etc/mysql/de
       sudo("mysql --defaults-file=%s %s < bzcat %s" % (mysql_config, db_name, dump_file))
     else:
       SystemExit("###### Don't recognise the format of this database dump, assuming it's critical and aborting!")
+
+  # Put the correct host back for Fabric to continue
+  if not db_host == "localhost" or rds:
+    env.host = original_host

@@ -119,7 +119,7 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
   site_root = "/var/www/%s_%s_%s/www" % (repo, branch, build)
 
   # We'll get back db_name, db_username, db_password and db_host from this call as a list in new_database
-  new_database = common.MySQL.mysql_new_database(repo, buildtype, site_root, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
+  new_database = common.MySQL.mysql_new_database(repo, buildtype, site_root, rds, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
 
   # Now install Drupal
 
@@ -142,7 +142,7 @@ if (file_exists($file)) {
   if db_dir and dump_file:
     with cd("%s/sites/default" % site_root):
       sudo("drush -y sql-drop")
-      common.MySQL.mysql_import_dump(site_root, new_database[0], dump_file, mysql_config)
+      common.MySQL.mysql_import_dump(site_root, new_database[0], dump_file, new_database[3], rds, mysql_config)
 
   # This sanitisation bit normally only occurs during the initial deployment of a custom branch
   # which allows the user to select which database to use. They can choose whether it is santised
