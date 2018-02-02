@@ -5,6 +5,7 @@ import random
 import string
 # Custom Code Enigma modules
 import common.Utils
+import common.MySQL
 
 
 # Generate a drush alias for this site
