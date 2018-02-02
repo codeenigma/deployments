@@ -7,7 +7,7 @@ import string
 import common.Utils
 
 
-# Create a new database and optionally seed it
+# Create a new database
 @task
 @roles('app_primary')
 def mysql_new_database(repo, buildtype, site_root, db_name=None, db_host=None, db_username=None, mysql_version=5.6, db_password=None, mysql_config='/etc/mysql/debian.cnf', app_hosts=None, dump_file=None):
@@ -73,22 +73,26 @@ def mysql_new_database(repo, buildtype, site_root, db_name=None, db_host=None, d
       # We're done here, break out of the loop
       database_created = True
 
-  # Optionally import a database
-  if dump_file is not None:
-    print "===> Importing a database dump from %s into %s." % (dump_file, db_name)
-    if file.exists(dump_file):
-      extension = dump_file[-3:]
-      if extension == 'sql':
-        sudo("mysql --defaults-file=%s %s < %s" % (mysql_config, db_name, dump_file))
-      elif extension == '.gz' or extension == 'zip':
-        sudo("mysql --defaults-file=%s %s < zcat %s" % (mysql_config, db_name, dump_file))
-      elif extension == 'bz2':
-        sudo("mysql --defaults-file=%s %s < bzcat %s" % (mysql_config, db_name, dump_file))
-      else:
-        SystemExit("###### Don't recognise the format of this database dump, assuming it's critical and aborting!")
-
   # Put the correct host back for Fabric to continue
   env.host = original_host
 
   # We might need the database details back for later
-  return [ db_name, db_username, db_password ]
+  return [ db_name, db_username, db_password, db_host ]
+
+
+# Import a seed database
+@task
+@roles('app_primary')
+def mysql_import_dump(site_root, db_name, dump_file, mysql_config='/etc/mysql/debian.cnf'):
+  dump_file = site_root + '/db/' + dump_file
+  print "===> Importing a database dump from %s into %s." % (dump_file, db_name)
+  if file.exists(dump_file):
+    extension = dump_file[-3:]
+    if extension == 'sql':
+      sudo("mysql --defaults-file=%s %s < %s" % (mysql_config, db_name, dump_file))
+    elif extension == '.gz' or extension == 'zip':
+      sudo("mysql --defaults-file=%s %s < zcat %s" % (mysql_config, db_name, dump_file))
+    elif extension == 'bz2':
+      sudo("mysql --defaults-file=%s %s < bzcat %s" % (mysql_config, db_name, dump_file))
+    else:
+      SystemExit("###### Don't recognise the format of this database dump, assuming it's critical and aborting!")

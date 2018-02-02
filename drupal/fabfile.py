@@ -31,7 +31,7 @@ global config
 
 
 @task
-def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', rds=False, autoscale=None, config_filename='config.ini'):
+def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.6, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini'):
 
   # Set some default config options
   user = "jenkins"
@@ -42,6 +42,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   db_name = None
   db_username = None
   db_password = None
+  dump_file = None
   # Can be set in the config.ini [Drupal] section
   drupal_version = None
   profile = "minimal"
@@ -103,6 +104,18 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     if config.has_option("Database", "db_password"):
       db_password = config.get("Database", "db_password")
       print "===> database password is %s" % db_password
+    # Specify the target MySQL version
+    if config.has_option("Database", "mysql_version"):
+      mysql_version = config.get("Database", "mysql_version")
+      print "===> MySQL version is %s" % mysql_version
+    # Specify the path to the MySQL defaults file
+    if config.has_option("Database", "mysql_config"):
+      mysql_config = config.get("Database", "mysql_config")
+      print "===> MySQL config file is located at %s" % mysql_config
+    # Specify the filename of the dump file to see new databases with
+    if config.has_option("Database", "dump_file"):
+      dump_file = config.get("Database", "dump_file")
+      print "===> database dump file for seeding new databases is in db/%s" % dump_file
 
   if config.has_section("Drupal"):
     print "===> We have some Drupal options in config.ini"
@@ -255,7 +268,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     execute(common.Utils.create_shared_directory, hosts=env.roledefs['app_all'])
     # Build out Drupal
     execute(InitialBuild.initial_build_create_live_symlink, repo, branch, build)
-    execute(InitialBuild.initial_build, repo, url, branch, build, profile, buildtype, sanitise, config, drupal_version, sanitised_password, sanitised_email, cluster, rds)
+    execute(InitialBuild.initial_build, repo, url, branch, build, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds)
     execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build)
     execute(InitialBuild.initial_build_move_settings, repo, branch)
     # Configure the server
