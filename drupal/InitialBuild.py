@@ -121,7 +121,7 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
   # Prepare the database
   site_root = "/var/www/%s_%s_%s/www" % (repo, branch, build)
 
-  # We'll get back db_name, db_username and db_password from this call as a list in new_database
+  # We'll get back db_name, db_username, db_password and db_host from this call as a list in new_database
   new_database = common.MySQL.mysql_new_database(repo, buildtype, site_root, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
 
   # Now install Drupal
@@ -139,7 +139,7 @@ $file = '/var/www/%s_%s_%s/www/sites/default/%s.settings.php';
 if (file_exists($file)) {
   include_once($file);
 }""" % (repo, branch, build, buildtype)
-    append(settings_file, append_string, use_sudo=True)
+    append("settings.php", append_string)
 
   # Now if we have a database to import we can do that
   if db_dir and dump_file:
