@@ -60,12 +60,13 @@ def mysql_new_database(repo, buildtype, site_root, rds=False, db_name=None, db_h
   # Now let's set up the database
   database_created = False
   counter = 0
+  original_db_name = db_name
   while not database_created:
     with settings(warn_only=True):
       if db_name == sudo("mysql --defaults-file=%s -Bse 'show databases' | egrep \"^%s$\"" % (mysql_config, db_name)):
         print "===> The database %s already exists." % db_name
         counter += 1
-        db_name = db_name + '_' + str(counter)
+        db_name = original_db_name + '_' + str(counter)
       else:
         print "===> Creating database %s." % db_name
         sudo("mysql --defaults-file=%s -e 'CREATE DATABASE `%s`'" % (mysql_config, db_name))
