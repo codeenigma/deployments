@@ -105,7 +105,7 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
   app_ip_override = False
   if cluster:
     # This is the Database host that we need to insert into Drupal settings.php. It is different from the main db host because it might be a floating IP
-    dbhost = config.get('DrupalDBHost', 'dbhost')
+    db_host = config.get('DrupalDBHost', 'dbhost')
     # Convert a list of apps back into a string, to pass to the mysqlprepare script for setting appropriate GRANTs to the database
     apps_list = ",".join(env.roledefs['app_all'])
 
