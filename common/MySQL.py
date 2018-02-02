@@ -13,7 +13,7 @@ import common.Utils
 def mysql_new_database(repo, buildtype, site_root, db_name=None, db_host=None, db_username=None, mysql_version=5.6, db_password=None, mysql_config='/etc/mysql/debian.cnf', app_hosts=None, dump_file=None):
   # Set default hosts
   if db_host is None:
-    db_host = 'localhost'
+    db_host = env.host
   if app_hosts is None:
     app_hosts = [ 'localhost' ]
   # Make our DB server the active host for Fabric
@@ -58,7 +58,7 @@ def mysql_new_database(repo, buildtype, site_root, db_name=None, db_host=None, d
   # Now let's set up the database
   database_created = False
   counter = 0
-  while database_created == False:
+  while not database_created:
     if db_name == sudo("mysql --defaults-file=%s -Bse 'show databases' | egrep \"^%s$\"" % (mysql_config, db_name)).return_code:
       print "===> The database %s already exists." % db_name
       counter += 1
