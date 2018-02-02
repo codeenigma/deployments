@@ -101,25 +101,19 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
     if run("find /var/www/%s_%s_%s -maxdepth 1 -type d -name db | egrep '.*'" % (repo, branch, build)).return_code == 0:
       db_dir = True
 
+  # We can default these to None, mysql_new_database() will sort itself out
+  list_of_app_servers = None
+  db_host = None
+
   # For clusters we need to do some extra things
-  app_ip_override = False
   if cluster:
     # This is the Database host that we need to insert into Drupal settings.php. It is different from the main db host because it might be a floating IP
     db_host = config.get('DrupalDBHost', 'dbhost')
     # Convert a list of apps back into a string, to pass to the mysqlprepare script for setting appropriate GRANTs to the database
-    apps_list = ",".join(env.roledefs['app_all'])
+    list_of_app_servers = env.roledefs['app_all']
 
-    if config.has_section('AppIPs'):
-      app_ip_override = True
-      apps_ip_list = ",".join(env.roledefs['app_ip_all'])
-
-  else:
-    db_host = env.host
-
-  if app_ip_override:
-    list_of_app_servers = apps_ip_list
-  else:
-    list_of_app_servers = env.host
+  if config.has_section('AppIPs'):
+    list_of_app_servers = env.roledefs['app_ip_all']
 
   # Prepare the database
   site_root = "/var/www/%s_%s_%s/www" % (repo, branch, build)
@@ -133,7 +127,7 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
   # the database in the db/ directory.
   with cd("%s/sites/default" % site_root):
     run("cp default.settings.php settings.php")
-    db_url = "mysql://%s:%s@%s/%s" % (new_database[1], new_database[2], db_host, new_database[0], new_database[3])
+    db_url = "mysql://%s:%s@%s/%s" % (new_database[1], new_database[2], new_database[3], new_database[0])
     print "===> Installing Drupal with MySQL string of %s" % db_url
     run ("drush si %s -y --db-url=%s" % (profile, db_url))
     # Append the necessary include and other settings
