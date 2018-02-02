@@ -113,6 +113,9 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
       app_ip_override = True
       apps_ip_list = ",".join(env.roledefs['app_ip_all'])
 
+  else:
+    db_host = env.host
+
   if app_ip_override:
     list_of_app_servers = apps_ip_list
   else:
