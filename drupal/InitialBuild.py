@@ -136,13 +136,15 @@ $file = '/var/www/%s_%s_%s/www/sites/default/%s.settings.php';
 if (file_exists($file)) {
   include_once($file);
 }""" % (repo, branch, build, buildtype)
-    append("settings.php", append_string)
+    append("settings.php", append_string, use_sudo=True)
 
   # Now if we have a database to import we can do that
   if db_dir and dump_file:
     with cd("%s/sites/default" % site_root):
       sudo("drush -y sql-drop")
       common.MySQL.mysql_import_dump(site_root, new_database[0], dump_file, new_database[3], rds, mysql_config)
+  else:
+    print "===> No database found to seed from, moving on."
 
   # This sanitisation bit normally only occurs during the initial deployment of a custom branch
   # which allows the user to select which database to use. They can choose whether it is santised
