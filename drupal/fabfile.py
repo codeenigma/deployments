@@ -76,7 +76,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
   # Now let's fetch alterations to those defaults from config.ini, if present
   if config.has_section("Build"):
-    print "===> We have some build options in config.ini"
+    print "=> We have some build options in config.ini"
     # Provide the path to an alternative deploy key for this project
     if config.has_option("Build", "ssh_key"):
       ssh_key = config.get("Build", "ssh_key")
@@ -91,7 +91,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       print "===> notifications email is %s" % notifications_email
 
   if config.has_section("Database"):
-    print "===> We have some database options in config.ini"
+    print "=> We have some database options in config.ini"
     # Specify the database name for this build
     if config.has_option("Database", "db_name"):
       db_name = config.get("Database", "db_name")
@@ -118,7 +118,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       print "===> database dump file for seeding new databases is in db/%s" % dump_file
 
   if config.has_section("Drupal"):
-    print "===> We have some Drupal options in config.ini"
+    print "=> We have some Drupal options in config.ini"
     # Choose an install profile for initial build
     if config.has_option("Drupal", "profile"):
       profile = config.get("Drupal", "profile")
@@ -137,7 +137,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       print "===> the Drupal 8 config import flag is set to %s" % import_config
 
   if config.has_section("Composer"):
-    print "===> We have some composer options in config.ini"
+    print "=> We have some composer options in config.ini"
     # Choose whether or not to composer install
     if config.has_option("Composer", "composer"):
       composer = config.getboolean("Composer", "composer")
@@ -152,7 +152,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       print "===> install dev components is set to %s" % no_dev
 
   if config.has_section("Testing"):
-    print "===> We have some automated testing options in config.ini"
+    print "=> We have some automated testing options in config.ini"
     # Choose whether to run phpunit unit tests or not
     if config.has_option("Testing", "phpunit_run"):
       phpunit_run = config.getboolean("Testing", "phpunit_run")
