@@ -50,13 +50,6 @@ def mysql_new_database(repo, buildtype, site_root, rds=False, db_name=None, db_h
   db_name = (db_name[:db_name_length]) if len(db_name) > db_name_length else db_name
   print "===> Database name will be %s." % db_name
 
-  # Use the database name as username if none provided
-  if db_username is None:
-    db_username = db_name
-  # Truncate the database username if necessary
-  db_username = (db_username[:db_username_length]) if len(db_username) > db_username_length else db_username
-  print "===> Database username will be %s." % db_username
-
   # Now let's set up the database
   database_created = False
   counter = 0
@@ -68,6 +61,13 @@ def mysql_new_database(repo, buildtype, site_root, rds=False, db_name=None, db_h
         counter += 1
         db_name = original_db_name + '_' + str(counter)
       else:
+        # Use the database name as username if none provided
+        if db_username is None:
+          db_username = db_name
+        # Truncate the database username if necessary
+        db_username = (db_username[:db_username_length]) if len(db_username) > db_username_length else db_username
+
+        print "===> Database username will be %s." % db_username
         print "===> Creating database %s." % db_name
         sudo("mysql --defaults-file=%s -e 'CREATE DATABASE `%s`'" % (mysql_config, db_name))
         # Set MySQL grants for each app server
