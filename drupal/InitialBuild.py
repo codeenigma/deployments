@@ -155,7 +155,7 @@ if (file_exists($file)) {
       sanitised_password = common.Utils._gen_passwd()
     if sanitised_email is None:
       sanitised_email = 'example.com'
-    with cd("%s/sites/default" % sitedir):
+    with cd("%s/sites/default" % site_root):
       with settings(warn_only=True):
         if run("drush -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (repo, sanitised_email, sanitised_password)).failed:
           print "Could not sanitise database. Aborting this build."
