@@ -109,7 +109,7 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
   if cluster:
     # This is the Database host that we need to insert into Drupal settings.php. It is different from the main db host because it might be a floating IP
     db_host = config.get('DrupalDBHost', 'dbhost')
-    # Convert a list of apps back into a string, to pass to the mysqlprepare script for setting appropriate GRANTs to the database
+    # Convert a list of apps back into a string, to pass to the MySQL new database function for setting appropriate GRANTs to the database
     list_of_app_servers = env.roledefs['app_all']
 
   if config.has_section('AppIPs'):
