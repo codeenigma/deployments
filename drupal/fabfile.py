@@ -31,13 +31,18 @@ global config
 
 
 @task
-def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', rds=False, autoscale=None, config_filename='config.ini'):
+def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini'):
 
   # Set some default config options
   user = "jenkins"
   # Can be set in the config.ini [Build] section
   ssh_key = None
   notifications_email = None
+  # Can be set in the config.ini [Database] section
+  db_name = None
+  db_username = None
+  db_password = None
+  dump_file = None
   # Can be set in the config.ini [Drupal] section
   drupal_version = None
   profile = "minimal"
@@ -71,76 +76,103 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
   # Now let's fetch alterations to those defaults from config.ini, if present
   if config.has_section("Build"):
-    print "===> We have some build options in config.ini"
+    print "=> We have some build options in config.ini"
     # Provide the path to an alternative deploy key for this project
     if config.has_option("Build", "ssh_key"):
       ssh_key = config.get("Build", "ssh_key")
-      print "===> path to SSH key is %s", ssh_key
+      print "===> path to SSH key is %s" % ssh_key
     # Set site URL on initial build
     if config.has_option("Build", "url"):
       url = config.get("Build", "url")
-      print "===> site url will be %s", url
+      print "===> site url will be %s" % url
     # Set notifications email, if provided
     if config.has_option("Build", "notifications_email"):
       notifications_email = config.get("Build", "notifications_email")
-      print "===> notifications email is %s", notifications_email
+      print "===> notifications email is %s" % notifications_email
+
+  if config.has_section("Database"):
+    print "=> We have some database options in config.ini"
+    # Specify the database name for this build
+    if config.has_option("Database", "db_name"):
+      db_name = config.get("Database", "db_name")
+      print "===> database name is %s" % db_name
+    # Specify the database username for this build
+    if config.has_option("Database", "db_username"):
+      db_username = config.get("Database", "db_username")
+      print "===> database username is %s" % db_username
+    # Specify the database password for this build
+    if config.has_option("Database", "db_password"):
+      db_password = config.get("Database", "db_password")
+      print "===> database password is %s" % db_password
+    # Specify the target MySQL version
+    if config.has_option("Database", "mysql_version"):
+      mysql_version = config.get("Database", "mysql_version")
+      print "===> MySQL version is %s" % mysql_version
+    # Specify the path to the MySQL defaults file
+    if config.has_option("Database", "mysql_config"):
+      mysql_config = config.get("Database", "mysql_config")
+      print "===> MySQL config file is located at %s" % mysql_config
+    # Specify the filename of the dump file to see new databases with
+    if config.has_option("Database", "dump_file"):
+      dump_file = config.get("Database", "dump_file")
+      print "===> database dump file for seeding new databases is in db/%s" % dump_file
 
   if config.has_section("Drupal"):
-    print "===> We have some Drupal options in config.ini"
+    print "=> We have some Drupal options in config.ini"
     # Choose an install profile for initial build
     if config.has_option("Drupal", "profile"):
       profile = config.get("Drupal", "profile")
-      print "===> Drupal install profile is %s", profile
+      print "===> Drupal install profile is %s" % profile
     # Choose to suppress Drupal database updates
     if config.has_option("Drupal", "do_updates"):
       do_updates = config.getboolean("Drupal", "do_updates")
-      print "===> the Drupal update flag is set to %s", do_updates
+      print "===> the Drupal update flag is set to %s" % do_updates
     # Choose to run cron after Drupal updates
     if config.has_option("Drupal", "run_cron"):
       run_cron = config.getboolean("Drupal", "run_cron")
-      print "===> the Drupal cron flag is set to %s", run_cron
+      print "===> the Drupal cron flag is set to %s" % run_cron
     # Choose whether or not to import config in Drupal 8 +
     if config.has_option("Drupal", "import_config"):
       import_config = config.getboolean("Drupal", "import_config")
-      print "===> the Drupal 8 config import flag is set to %s", import_config
+      print "===> the Drupal 8 config import flag is set to %s" % import_config
 
   if config.has_section("Composer"):
-    print "===> We have some composer options in config.ini"
+    print "=> We have some composer options in config.ini"
     # Choose whether or not to composer install
     if config.has_option("Composer", "composer"):
       composer = config.getboolean("Composer", "composer")
-      print "===> composer install execution is set to %s", composer
+      print "===> composer install execution is set to %s" % composer
     # Choose to ignore composer.lock - sometimes necessary if there are platform problems
     if config.has_option("Composer", "composer_lock"):
       composer_lock = config.getboolean("Composer", "composer_lock")
-      print "===> use composer.lock file is set to %s", composer_lock
+      print "===> use composer.lock file is set to %s" % composer_lock
     # Choose to install dev components
     if config.has_option("Composer", "no_dev"):
       no_dev = config.getboolean("Composer", "no_dev")
-      print "===> install dev components is set to %s", no_dev
+      print "===> install dev components is set to %s" % no_dev
 
   if config.has_section("Testing"):
-    print "===> We have some automated testing options in config.ini"
+    print "=> We have some automated testing options in config.ini"
     # Choose whether to run phpunit unit tests or not
     if config.has_option("Testing", "phpunit_run"):
       phpunit_run = config.getboolean("Testing", "phpunit_run")
-      print "===> run phpunit tests is set to %s", phpunit_run
+      print "===> run phpunit tests is set to %s" % phpunit_run
     # Choose whether phpunit test fails should fail the build
     if config.has_option("Testing", "phpunit_fail_build"):
       phpunit_fail_build = config.getboolean("Testing", "phpunit_fail_build")
-      print "===> fail builds if phpunit tests fail is set to %s", phpunit_fail_build
+      print "===> fail builds if phpunit tests fail is set to %s" % phpunit_fail_build
     # Set a group of phpunit tests to run
     if config.has_option("Testing", "phpunit_group"):
       phpunit_group = config.get("Testing", "phpunit_group")
-      print "===> phpunit test group is set to %s", phpunit_group
+      print "===> phpunit test group is set to %s" % phpunit_group
     # Set the directory phpunit tests will run in
     if config.has_option("Testing", "phpunit_test_directory"):
       phpunit_test_directory = config.get("Testing", "phpunit_test_directory")
-      print "===> phpunit test directory is set to %s", phpunit_test_directory
+      print "===> phpunit test directory is set to %s" % phpunit_test_directory
     # Set the path to phpunit itself
     if config.has_option("Testing", "phpunit_path"):
       phpunit_path = config.get("Testing", "phpunit_path")
-      print "===> phpunit should be found at %s", phpunit_path
+      print "===> phpunit should be found at %s" % phpunit_path
 
   # Set SSH key if needed
   # @TODO: this needs to be moved to config.ini for Code Enigma GitHub projects
@@ -236,7 +268,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     execute(common.Utils.create_shared_directory, hosts=env.roledefs['app_all'])
     # Build out Drupal
     execute(InitialBuild.initial_build_create_live_symlink, repo, branch, build)
-    execute(InitialBuild.initial_build, repo, url, branch, build, profile, buildtype, sanitise, config, drupal_version, sanitised_password, sanitised_email, cluster, rds)
+    execute(InitialBuild.initial_build, repo, url, branch, build, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds)
     execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build)
     execute(InitialBuild.initial_build_move_settings, repo, branch)
     # Configure the server

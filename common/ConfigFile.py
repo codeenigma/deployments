@@ -13,7 +13,7 @@ def buildtype_config_file(buildtype, config_filename='config.ini', abort_if_miss
   buildtype_config_filename = buildtype + '.' + config_filename
   if os.path.isfile(cwd + '/' + buildtype_config_filename):
     config_filename = buildtype_config_filename
-  print "===> Proceeding with config file %s", config_filename
+  print "===> Proceeding with config file %s" % config_filename
   return read_config_file(config_filename, abort_if_missing, fullpath, remote)
 
 
