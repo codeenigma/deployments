@@ -286,12 +286,12 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
     # Do some final Drupal config tweaking
     execute(InitialBuild.generate_drush_alias, repo, url, branch)
-    execute(Drupal.secure_admin_password, repo, branch, build, drupal_version)
+    execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
     execute(Drupal.generate_drush_cron, repo, branch)
 
     # If this is autoscale at AWS, we need to remove *.settings.php from autoscale initial build folders
     if autoscale:
-      execute(Autoscale.remove_original_settings_files, repo)
+      execute(Autoscale.remove_original_settings_files, repo, site)
 
     # If this is a custom/feature branch deployment, we want to run drush updb. If it fails,
     # the build will fail, but because this is being run at the end, there shouldn't need to be
@@ -301,17 +301,17 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       FeatureBranches.initial_db_and_config(repo, branch, build, import_config, drupal_version)
     else:
       execute(InitialBuild.initial_build_updatedb, repo, branch, build, drupal_version)
-      execute(Drupal.drush_clear_cache, repo, branch, build, drupal_version)
+      execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
       if import_config:
-        execute(InitialBuild.initial_build_config_import, repo, branch, build, drupal_version)
-        execute(Drupal.drush_clear_cache, repo, branch, build, drupal_version)
+        execute(InitialBuild.initial_build_config_import, repo, branch, build, site, drupal_version)
+        execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
 
     # Let's allow developers to perform some post-build actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-initial', hosts=env.roledefs['app_all'])
 
     # Now everything should be in a good state, let's enable environment indicator, if present
-    execute(Drupal.environment_indicator, repo, branch, build, buildtype, drupal_version)
+    execute(Drupal.environment_indicator, repo, branch, build, buildtype, alias, site, drupal_version)
 
     if behat_config:
       if buildtype in behat_config['behat_buildtypes']:
@@ -365,24 +365,24 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     # If this is autoscale at AWS, we need to remove *.settings.php from autoscale initial build folders
     if autoscale:
-      execute(Autoscale.remove_original_settings_files, repo)
+      execute(Autoscale.remove_original_settings_files, repo, site)
 
     # Export the config if we need to (Drupal 8+)
     if config_export:
       execute(StandardHooks.config_export, repo, branch, build, drupal_version)
-    execute(Drupal.drush_status, repo, branch, build, revert_settings=True)
+    execute(Drupal.drush_status, repo, branch, build, site, revert_settings=True)
 
     # Time to update the database!
     if do_updates == True:
       execute(Drupal.go_offline, repo, branch, build, readonlymode, drupal_version)
-      execute(Drupal.drush_clear_cache, repo, branch, build, drupal_version)
-      execute(Drupal.drush_updatedb, repo, branch, build, drupal_version)            # This will revert the database if it fails
+      execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
+      execute(Drupal.drush_updatedb, repo, branch, build, site, drupal_version)            # This will revert the database if it fails
       if fra == True:
         if branch in branches:
-          execute(Drupal.drush_fra, repo, branch, build, drupal_version)
+          execute(Drupal.drush_fra, repo, branch, build, site, drupal_version)
       if run_cron == True:
-        execute(Drupal.drush_cron, repo, branch, build, drupal_version)
-      execute(Drupal.drush_status, repo, branch, build, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+        execute(Drupal.drush_cron, repo, branch, build, site, drupal_version)
+      execute(Drupal.drush_status, repo, branch, build, site, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       # Cannot use try: because execute() return not compatible.
       execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
@@ -396,14 +396,14 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if import_config == True:
-        execute(Drupal.config_import, repo, branch, build, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
-      execute(Drupal.secure_admin_password, repo, branch, build, drupal_version)
+        execute(Drupal.config_import, repo, branch, build, site, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
+      execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
       execute(Drupal.go_online, repo, branch, build, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
       execute(Drupal.check_node_access, repo, branch, notifications_email)
 
     else:
       print "####### WARNING: by skipping database updates we cannot check if the node access table will be rebuilt. If it will this is an intrusive action that may result in an extended outage."
-      execute(Drupal.drush_status, repo, branch, build, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+      execute(Drupal.drush_status, repo, branch, build, site, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       # Cannot use try: because execute() return not compatible.
       execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
@@ -417,8 +417,8 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if import_config == True:
-        execute(Drupal.config_import, repo, branch, build, drupal_version) # This will revert database, settings and live symlink if it fails.
-      execute(Drupal.secure_admin_password, repo, branch, build, drupal_version)
+        execute(Drupal.config_import, repo, branch, build, site, drupal_version) # This will revert database, settings and live symlink if it fails.
+      execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
 
     # Final clean up and run tests, if applicable
     execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
@@ -430,7 +430,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
 
     # Now everything should be in a good state, let's enable environment indicator, if present
-    execute(Drupal.environment_indicator, repo, branch, build, buildtype, drupal_version)
+    execute(Drupal.environment_indicator, repo, branch, build, buildtype, alias, site, drupal_version)
 
     # Resume StatusCake monitoring
     if statuscake_paused:
