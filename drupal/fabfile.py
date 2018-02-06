@@ -60,6 +60,11 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   phpunit_test_directory = 'www/modules/custom'
   phpunit_path='vendor/phpunit/phpunit/phpunit'
 
+  # Multisite settings
+  # @TODO: this is temporary to allow us to prepare other functions for multisite
+  alias = repo
+  site = "default"
+
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
 
@@ -272,9 +277,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build)
     execute(InitialBuild.initial_build_move_settings, repo, branch)
     # Configure the server
-    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype)
+    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
     execute(InitialBuild.initial_build_vhost, repo, url, branch, build, buildtype, FeatureBranches.ssl_enabled, FeatureBranches.ssl_cert, FeatureBranches.ssl_ip, FeatureBranches.httpauth_pass, FeatureBranches.drupal_common_config, webserverport)
-    execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build)
+    execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
     # Restart services
     execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
     execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
@@ -348,9 +353,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       import_config = False
     if freshdatabase == "Yes" and buildtype == "custombranch":
       Drupal.prepare_database(repo, branch, build, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email, False)
-    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype)
-    execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build)
-    execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build)
+    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
+    execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
+    execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build, alias, site)
     # Run composer if we need to
     if drupal_version == '8' and composer is True:
       execute(Drupal.run_composer_install, repo, branch, build, composer_lock, no_dev)
