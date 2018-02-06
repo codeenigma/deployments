@@ -254,9 +254,9 @@ def run_composer_install(repo, branch, build, composer_lock, no_dev):
 # Run a drush status against that build
 @task
 @roles('app_primary')
-def drush_status(repo, branch, build, revert=False, revert_settings=False):
+def drush_status(repo, branch, build, site, revert=False, revert_settings=False):
   print "===> Running a drush status test"
-  with cd("/var/www/%s_%s_%s/www/sites/default" % (repo, branch, build)):
+  with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
     with settings(warn_only=True):
       if run("drush status | egrep 'Connected|Successful'").failed:
         print "Could not bootstrap the database!"
@@ -283,19 +283,19 @@ def drush_status(repo, branch, build, revert=False, revert_settings=False):
 # Run drush updatedb to apply any database changes from hook_update's
 @task
 @roles('app_primary')
-def drush_updatedb(repo, branch, build, drupal_version):
+def drush_updatedb(repo, branch, build, site, drupal_version):
   print "===> Running any database hook updates"
   with settings(warn_only=True):
     # Apparently APC cache can interfere with drush updatedb expected results here. Clear any chance of caches
     common.Services.clear_php_cache()
     common.Services.clear_varnish_cache()
-    if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y updatedb'" % (repo, branch, build)).failed:
+    if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
       print "Could not apply database updates! Reverting this database"
       Revert._revert_db(repo, branch, build)
       Revert._revert_settings(repo, branch, build)
       raise SystemExit("Could not apply database updates! Reverted database. Site remains on previous build")
     if drupal_version == '8':
-      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y entity-updates'" % (repo, branch, build)).failed:
+      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y entity-updates'" % (repo, branch, build, site)).failed:
         print "Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
   print "===> Database updates applied"
   drush_clear_cache(repo, branch, build, drupal_version)
@@ -304,8 +304,8 @@ def drush_updatedb(repo, branch, build, drupal_version):
 # Function to revert all features using --force
 @task
 @roles('app_primary')
-def drush_fra(repo, branch, build, drupal_version):
-  with cd("/var/www/%s_%s_%s/www/sites/default" % (repo, branch, build)):
+def drush_fra(repo, branch, build, site, drupal_version):
+  with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
     if run("drush pm-list --pipe --type=module --status=enabled --no-core | grep -q ^features$"):
       print "===> Features module not installed, skipping feature revert"
     else:
@@ -323,34 +323,34 @@ def drush_fra(repo, branch, build, drupal_version):
 # Function to run Drupal cron (mainly used by RBKC's microsites that use the Domain module)
 @task
 @roles('app_primary')
-def drush_cron(repo, branch, build, drupal_version):
+def drush_cron(repo, branch, build, site, drupal_version):
   print "===> Running Drupal cron..."
   with settings(warn_only=True):
-    with cd("/var/www/%s_%s_%s/www/sites/default" % (repo, branch, build)):
+    with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
       if sudo("drush -y cron").failed:
         print "Could not run cron!"
         raise SystemExit("Could not run cron! Site remains on previous build.")
       else:
-        drush_clear_cache(repo, branch, build, drupal_version)
+        drush_clear_cache(repo, branch, build, site, drupal_version)
 
 
 # Function that can be used to clear Drupal cache
 @task
 @roles('app_primary')
-def drush_clear_cache(repo, branch, build, drupal_version):
+def drush_clear_cache(repo, branch, build, site, drupal_version):
   print "===> Clearing Drupal cache..."
   with settings(warn_only=True):
     if drupal_version == '8':
-      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cr'" % (repo, branch, build))
+      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cr'" % (repo, branch, build, site))
     else:
-      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cc all'" % (repo, branch, build))
+      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cc all'" % (repo, branch, build, site))
 
 
 # Manage or setup the 'environment_indicator' Drupal module, if it exists in the build
 # See RS11494
 @task
 @roles('app_primary')
-def environment_indicator(repo, branch, build, buildtype, drupal_version):
+def environment_indicator(repo, branch, build, buildtype, alias, site, drupal_version):
   # Check if the module exists in the build
   with settings(warn_only=True):
     if run("find /var/www/%s_%s_%s/www -type d -name environment_indicator | egrep '.*'" % (repo, branch, build)).return_code == 0:
@@ -379,44 +379,41 @@ def environment_indicator(repo, branch, build, buildtype, drupal_version):
 
       # Unfortunately this can't check inside the $buildtype.settings.php include, if there is one, so we still need to
       # check for that.
-      print "===> Drupal 7 site, checking in /var/www/%s_%s_%s/www/sites/default/%s.settings.php for $conf['environment_indicator_overwritten_name']" % (repo, branch, build, buildtype)
+      print "===> Drupal 7 site, checking in /var/www/%s_%s_%s/www/sites/%s/%s.settings.php for $conf['environment_indicator_overwritten_name']" % (repo, branch, build, site, buildtype)
       contain_string = "$conf['environment_indicator_overwritten_name']"
-      settings_file = "/var/www/%s_%s_%s/www/sites/default/%s.settings.php" % (repo, branch, build, buildtype)
+      settings_file = "/var/www/%s_%s_%s/www/sites/%s/%s.settings.php" % (repo, branch, build, site, buildtype)
       does_contain = contains(settings_file, contain_string, exact=False, use_sudo=True)
 
       if does_contain:
-        print "===> Settings already exist in %s.settings.php, we will not write anything to /var/www/config/%s_%s.settings.inc" % (buildtype, repo, branch)
+        print "===> Settings already exist in %s.settings.php, we will not write anything to /var/www/config/%s_%s.settings.inc" % (buildtype, alias, branch)
 
       else:
-        print "===> Checking for and appending environment_indicator settings to /var/www/config/%s_%s.settings.inc" % (repo, branch)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$conf['environment_indicator_overwrite'] = 'TRUE';", True)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$conf['environment_indicator_overwritten_name'] = '%s';" % buildtype, True)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$conf['environment_indicator_overwritten_color'] = '%s';" % environment_indicator_color, True)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$conf['environment_indicator_overwritten_text_color'] = '#ffffff';", True)
+        print "===> Checking for and appending environment_indicator settings to /var/www/config/%s_%s.settings.inc" % (alias, branch)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$conf['environment_indicator_overwrite'] = 'TRUE';", True)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$conf['environment_indicator_overwritten_name'] = '%s';" % buildtype, True)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$conf['environment_indicator_overwritten_color'] = '%s';" % environment_indicator_color, True)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$conf['environment_indicator_overwritten_text_color'] = '#ffffff';", True)
 
     if drupal_version == '8':
 
       # Unfortunately this can't check inside the $buildtype.settings.php include, if there is one, so we still need to
       # check for that.
-      print "===> Drupal 8 site, checking in /var/www/%s_%s_%s/www/sites/default/%s.settings.php for $config['environment_indicator.indicator']['name']" % (repo, branch, build, buildtype)
+      print "===> Drupal 8 site, checking in /var/www/%s_%s_%s/www/sites/%s/%s.settings.php for $config['environment_indicator.indicator']['name']" % (repo, branch, build, site, buildtype)
       contain_string = "$config['environment_indicator.indicator']['name']"
-      settings_file = "/var/www/%s_%s_%s/www/sites/default/%s.settings.php" % (repo, branch, build, buildtype)
+      settings_file = "/var/www/%s_%s_%s/www/sites/%s/%s.settings.php" % (repo, branch, build, site, buildtype)
       does_contain = contains(settings_file, contain_string, exact=False, use_sudo=True)
 
       if does_contain:
-        print "===> Settings already exist in %s.settings.php, we will not write anything to /var/www/config/%s_%s.settings.inc" % (buildtype, repo, branch)
+        print "===> Settings already exist in %s.settings.php, we will not write anything to /var/www/config/%s_%s.settings.inc" % (buildtype, alias, branch)
 
       else:
-        print "===> Checking for and appending environment_indicator settings to /var/www/config/%s_%s.settings.inc" % (repo, branch)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$config['environment_indicator.indicator']['name'] = '%s';" % buildtype, True)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$config['environment_indicator.indicator']['bg_color'] = '%s';" % environment_indicator_color, True)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$config['environment_indicator.indicator']['fg_color'] = '#ffffff';", True)
+        print "===> Checking for and appending environment_indicator settings to /var/www/config/%s_%s.settings.inc" % (alias, branch)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$config['environment_indicator.indicator']['name'] = '%s';" % buildtype, True)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$config['environment_indicator.indicator']['bg_color'] = '%s';" % environment_indicator_color, True)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$config['environment_indicator.indicator']['fg_color'] = '#ffffff';", True)
 
     if drupal_version == '7' or drupal_version == '8':
-      # Enable the module (if not already enabled)
-      #with cd("/var/www/%s_%s_%s/www/sites/default" % (repo, branch, build)):
-      #  run("drush -y en environment_indicator")
-      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y en environment_indicator'" % (repo, branch, build))
+      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y en environment_indicator'" % (repo, branch, build, site))
     if drupal_version == '6':
       print "Drupal 6 site. Not setting up environment_indicator at this time.."
   else:
@@ -426,12 +423,12 @@ def environment_indicator(repo, branch, build, buildtype, drupal_version):
 # Function used by Drupal 8 builds to import site config
 @task
 @roles('app_primary')
-def config_import(repo, branch, build, drupal_version, previous_build):
+def config_import(repo, branch, build, site, drupal_version, previous_build):
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version == '8':
       print "===> Importing configuration for Drupal 8 site..."
-      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cim'" % (repo, branch, build)).failed:
+      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cim'" % (repo, branch, build, site)).failed:
         print "Could not import configuration! Reverting this database and settings"
         sudo("unlink /var/www/live.%s.%s" % (repo, branch))
         sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
@@ -526,11 +523,11 @@ def go_online(repo, branch, build, previous_build, readonlymode, drupal_version)
 # Set the username and password of user 1 to something random if the buildtype is 'prod'
 @task
 @roles('app_primary')
-def secure_admin_password(repo, branch, build, drupal_version):
+def secure_admin_password(repo, branch, build, site, drupal_version):
   print "===> Setting secure username and password for uid 1"
   u1pass = common.Utils._gen_passwd(20)
   u1name = common.Utils._gen_passwd(20)
-  with cd('/var/www/%s_%s_%s/www/sites/default' % (repo, branch, build)):
+  with cd('/var/www/%s_%s_%s/www/sites/%s' % (repo, branch, build, site)):
     with settings(warn_only=True):
       if drupal_version == '8':
         run('drush sqlq "UPDATE users_field_data SET name = \'%s\' WHERE uid = 1"' % u1name)
