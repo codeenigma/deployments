@@ -63,7 +63,7 @@ def main(repo, branch, buildtype, alias=None, url=None, restartvarnish="yes", re
   # If this is the first build, attempt to install the site for the first time.
   try:
     FeatureBranches.remove_site(repo, branch, alias)
-    common.BuildTeardown.remove_vhost(repo, branch, webserver)
+    common.BuildTeardown.remove_vhost(repo, branch, webserver, alias)
     common.BuildTeardown.remove_http_auth(repo, branch, webserver, alias)
     FeatureBranches.remove_drush_alias(alias, branch)
     common.BuildTeardown.remove_cron(repo, branch, alias)

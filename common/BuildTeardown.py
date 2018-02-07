@@ -5,11 +5,13 @@ import os
 
 
 @task
-def remove_vhost(repo, branch, webserver):
+def remove_vhost(repo, branch, webserver, alias):
+  if alias is None:
+    alias = repo
   with settings(warn_only=True):
     print "===> Unlinking and removing %s vhost..." % webserver
     # We grep the config files for the correct symlink to be sure we delete the right one
-    conf_file = sudo("find /etc/%s/sites-enabled/ -name '*%s*' -print0 | xargs -r -0 grep -H 'live.%s.%s' | awk '{print $1}' | cut -d '/' -f 5 | cut -d ':' -f 1" % (webserver, repo, repo, branch))
+    conf_file = sudo("find /etc/%s/sites-enabled/ -name '*%s*' -print0 | xargs -r -0 grep -H 'live.%s.%s' | awk '{print $1}' | cut -d '/' -f 5 | cut -d ':' -f 1" % (webserver, alias, repo, branch))
 
     print "%s conf file is: %s" % (webserver, conf_file)
     sudo("unlink /etc/%s/sites-enabled/%s" % (webserver, conf_file))
