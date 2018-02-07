@@ -147,7 +147,7 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
       run("drush @%s_%s -y sql-drop" % (alias, branch))
       if run("drush sql-sync -y @%s_%s @%s_%s" % (repo, syncbranch, repo, branch)).failed:
         print "===> Could not sync %s database. Reverting the %s database and aborting." % (syncbranch, branch)
-        Revert._revert_db(repo, branch, build)
+        Revert._revert_db(alias, branch, build)
         raise SystemError("Could not sync %s database. Reverting the %s database and aborting." % (syncbranch, branch))
       else:
         print "===> %s database synced successfully." % syncbranch
