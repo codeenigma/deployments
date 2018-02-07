@@ -285,7 +285,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
     execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
     # Do some final Drupal config tweaking
-    execute(InitialBuild.generate_drush_alias, repo, url, branch)
+    execute(InitialBuild.generate_drush_alias, repo, url, branch, alias)
     execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
     execute(Drupal.generate_drush_cron, repo, branch)
 

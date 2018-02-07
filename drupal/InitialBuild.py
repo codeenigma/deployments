@@ -11,15 +11,21 @@ import common.MySQL
 # Generate a drush alias for this site
 @task
 @roles('app_all')
-def generate_drush_alias(repo, url, branch):
+def generate_drush_alias(repo, url, branch, alias):
   print "===> Generating Drush alias"
-  # Copy drush script to server(s)
-  script_dir = os.path.dirname(os.path.realpath(__file__))
-  if put(script_dir + '/../util/drush_alias.sh', '/home/jenkins', mode=0755).failed:
-    raise SystemExit("Could not copy the drush script to the application server, aborting because we won't be able to make a drush alias")
-  else:
-    print "===> Drush alias preparation script copied to %s:/home/jenkins/drush_alias.sh" % env.host
-  sudo("/home/jenkins/drush_alias.sh %s %s %s" % (repo, url, branch))
+  # Make sure drush directory exists
+  sudo("mkdir -p /etc/drush")
+  # Make sure the alias file exists
+  sudo("touch /etc/drush/%s_%s.alias.drushrc.php" % (alias, branch))
+
+  # Append the necessary include and other settings
+  append_string = """<?php
+
+$aliases['%s_%s'] = array(
+  'root' => '/var/www/live.%s.%s/www',
+  'uri' => '%s',
+);""" % (alias, branch, repo, branch, url)
+  append("/etc/drush/%s_%s.alias.drushrc.php" % (alias, branch), append_string, use_sudo=True)
 
 
 @task
