@@ -88,14 +88,14 @@ def initial_build(repo, url, branch, build, site, alias, profile, buildtype, san
   print "===> This looks like the first build! We have some things to do.."
 
   print "===> Making the shared files dir and setting symlink"
-  sudo("mkdir -p /var/www/shared/%s_%s_files" % (repo, branch))
-  sudo("chown jenkins:www-data /var/www/shared/%s_%s_files" % (repo, branch))
-  sudo("chmod 775 /var/www/shared/%s_%s_files" % (repo, branch))
+  sudo("mkdir -p /var/www/shared/%s_%s_files" % (alias, branch))
+  sudo("chown jenkins:www-data /var/www/shared/%s_%s_files" % (alias, branch))
+  sudo("chmod 775 /var/www/shared/%s_%s_files" % (alias, branch))
 
   print "===> Making the private files dir"
-  sudo("mkdir -p /var/www/shared/%s_%s_private_files" % (repo, branch))
-  sudo("chown jenkins:www-data /var/www/shared/%s_%s_private_files" % (repo, branch))
-  sudo("chmod 775 /var/www/shared/%s_%s_private_files" % (repo, branch))
+  sudo("mkdir -p /var/www/shared/%s_%s_private_files" % (alias, branch))
+  sudo("chown jenkins:www-data /var/www/shared/%s_%s_private_files" % (alias, branch))
+  sudo("chmod 775 /var/www/shared/%s_%s_private_files" % (alias, branch))
 
   print "===> Preparing the database"
 
@@ -123,12 +123,11 @@ def initial_build(repo, url, branch, build, site, alias, profile, buildtype, san
     list_of_app_servers = env.roledefs['app_ip_all']
 
   # Prepare the database
-  site_root = "/var/www/%s_%s_%s/www" % (repo, branch, build)
-
   # We'll get back db_name, db_username, db_password and db_host from this call as a list in new_database
-  new_database = common.MySQL.mysql_new_database(repo, buildtype, site_root, rds, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
+  new_database = common.MySQL.mysql_new_database(repo, buildtype, rds, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
 
   # Now install Drupal
+  site_root = "/var/www/%s_%s_%s/www" % (repo, branch, build)
 
   # We need to actually run a drush si first, then drop the tables and import
   # the database in the db/ directory.
@@ -149,7 +148,9 @@ if (file_exists($file)) {
   if db_dir and dump_file:
     with cd("%s/sites/%s" % (site_root, site)):
       sudo("drush -y sql-drop")
+      site_root = "/var/www/%s_%s_%s" % (repo, branch, build)
       common.MySQL.mysql_import_dump(site_root, new_database[0], dump_file, new_database[3], rds, mysql_config)
+      site_root = "/var/www/%s_%s_%s/www" % (repo, branch, build)
   else:
     print "===> No database found to seed from, moving on."
 
@@ -164,16 +165,16 @@ if (file_exists($file)) {
       sanitised_email = 'example.com'
     with cd("%s/sites/%s" % (site_root, site)):
       with settings(warn_only=True):
-        if run("drush -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (repo, sanitised_email, sanitised_password)).failed:
+        if run("drush -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (alias, sanitised_email, sanitised_password)).failed:
           print "Could not sanitise database. Aborting this build."
           raise SystemError("Could not sanitise database. Aborting this build.")
         else:
-          print "===> Data sanitised, email domain set to %s, passwords set to %s" % (sanitised_email, sanitised_password)
+          print "===> Data sanitised, email domain set to %s+%%uid@%s, passwords set to %s" % (alias, sanitised_email, sanitised_password)
           print "Sanitised database."
 
   print "===> Correcting files directory permissions and ownership..."
-  sudo("chown -R jenkins:www-data /var/www/shared/%s_%s_files" % (repo, branch))
-  sudo("chmod 775 /var/www/shared/%s_%s_files" % (repo, branch))
+  sudo("chown -R jenkins:www-data /var/www/shared/%s_%s_files" % (alias, branch))
+  sudo("chmod 775 /var/www/shared/%s_%s_files" % (alias, branch))
 
   print "===> Temporarily moving settings.php to shared area /var/www/shared/%s_%s.settings.inc so all servers in a cluster can access it" % (alias, branch)
   sudo("mv /var/www/%s_%s_%s/www/sites/%s/settings.php /var/www/shared/%s_%s.settings.inc" % (repo, branch, build, site, alias, branch))

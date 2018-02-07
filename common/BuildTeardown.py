@@ -16,16 +16,20 @@ def remove_vhost(repo, branch, webserver):
     sudo("rm /etc/%s/sites-available/%s" % (webserver, conf_file))
 
 @task
-def remove_http_auth(repo, branch, webserver):
-  print "===> Removing htpasswd file, if it exists..."
+def remove_http_auth(repo, branch, webserver, alias=None):
+  if alias is None:
+    alias = repo
+  print "=> Removing htpasswd file, if it exists..."
   with settings(warn_only=True):
-    if sudo("stat /etc/%s/passwords/%s.%s.htpasswd" % (webserver, repo, branch)).failed:
-      print "No htpasswd file to remove. Carrying on with tear down."
+    if sudo("stat /etc/%s/passwords/%s.%s.htpasswd" % (webserver, alias, branch)).failed:
+      print "===> No htpasswd file to remove. Carrying on with tear down."
     else:
-      sudo("rm /etc/%s/passwords/%s.%s.htpasswd" % (webserver, repo, branch))
+      sudo("rm /etc/%s/passwords/%s.%s.htpasswd" % (webserver, alias, branch))
 
 @task
-def remove_cron(repo, branch):
+def remove_cron(repo, branch, alias=None):
+  if alias is None:
+    alias = repo
   with settings(warn_only=True):
     print "===> Removing cron file..."
-    sudo("rm /etc/cron.d/%s_%s_cron" % (repo, branch))
+    sudo("rm /etc/cron.d/%s_%s_cron" % (alias, branch))
