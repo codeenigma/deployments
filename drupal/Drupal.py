@@ -261,22 +261,22 @@ def drush_status(repo, branch, build, site, revert=False, revert_settings=False)
       if run("drush status | egrep 'Connected|Successful'").failed:
         print "Could not bootstrap the database!"
         if revert == False and revert_settings == True:
-          Revert._revert_settings(repo, branch, build)
+          Revert._revert_settings(repo, branch, build, site, alias)
         else:
           if revert == True:
             print "Reverting the database..."
             Revert._revert_db(repo, branch, build)
-            Revert._revert_settings(repo, branch, build)
+            Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("Could not bootstrap the database on this build! Aborting")
 
       if run("drush status").failed:
         if revert == False and revert_settings == True:
-          Revert._revert_settings(repo, branch, build)
+          Revert._revert_settings(repo, branch, build, site, alias)
         else:
           if revert == True:
             print "Reverting the database..."
             Revert._revert_db(repo, branch, build)
-            Revert._revert_settings(repo, branch, build)
+            Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("Could not bootstrap the database on this build! Aborting")
 
 
@@ -292,7 +292,7 @@ def drush_updatedb(repo, branch, build, site, drupal_version):
     if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
       print "Could not apply database updates! Reverting this database"
       Revert._revert_db(repo, branch, build)
-      Revert._revert_settings(repo, branch, build)
+      Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("Could not apply database updates! Reverted database. Site remains on previous build")
     if drupal_version == '8':
       if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y entity-updates'" % (repo, branch, build, site)).failed:
@@ -314,7 +314,7 @@ def drush_fra(repo, branch, build, site, drupal_version):
         if sudo("su -s /bin/bash www-data -c 'drush -y fra'" % (repo, branch, build)).failed:
           print "Could not revert features! Reverting database and settings..."
           Revert._revert_db(repo, branch, build)
-          Revert._revert_settings(repo, branch, build)
+          Revert._revert_settings(repo, branch, build, site, alias)
           raise SystemExit("Could not revert features! Site remains on previous build")
         else:
           drush_clear_cache(repo, branch, build, drupal_version)
@@ -433,7 +433,7 @@ def config_import(repo, branch, build, site, drupal_version, previous_build):
         sudo("unlink /var/www/live.%s.%s" % (repo, branch))
         sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
         Revert._revert_db(repo, branch, build)
-        Revert._revert_settings(repo, branch, build)
+        Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("Could not import configuration! Reverted database and settings. Site remains on previous build")
       else:
         print "===> Configuration imported. Running a cache rebuild..."
@@ -493,7 +493,7 @@ def go_online(repo, branch, build, previous_build, readonlymode, drupal_version)
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
           Revert._revert_db(repo, branch, build)
-          Revert._revert_settings(repo, branch, build)
+          Revert._revert_settings(repo, branch, build, site, alias)
       else:
         print "Hm, the readonly flag in config.ini was set to readonly, yet the readonlymode module does not exist. We'll revert to normal maintenance mode..."
         readonlymode = 'maintenance'
@@ -507,14 +507,14 @@ def go_online(repo, branch, build, previous_build, readonlymode, drupal_version)
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
           Revert._revert_db(repo, branch, build)
-          Revert._revert_settings(repo, branch, build)
+          Revert._revert_settings(repo, branch, build, site, alias)
       else:
         if run("drush @%s_%s -y vset site_offline 0" % (repo, branch)).failed:
           print "Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
           Revert._revert_db(repo, branch, build)
-          Revert._revert_settings(repo, branch, build)
+          Revert._revert_settings(repo, branch, build, site, alias)
 
         else:
           run("drush @%s_%s -y vset maintenance_mode 0" % (repo, branch))
