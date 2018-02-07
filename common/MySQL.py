@@ -10,7 +10,7 @@ import common.Utils
 # Create a new database
 @task
 @roles('app_primary')
-def mysql_new_database(repo, buildtype, site_root, rds=False, db_name=None, db_host=None, db_username=None, mysql_version=5.5, db_password=None, mysql_config='/etc/mysql/debian.cnf', app_hosts=None, dump_file=None):
+def mysql_new_database(repo, buildtype, rds=False, db_name=None, db_host=None, db_username=None, mysql_version=5.5, db_password=None, mysql_config='/etc/mysql/debian.cnf', app_hosts=None, dump_file=None):
   # Set default hosts
   if db_host is None:
     db_host = "localhost"
