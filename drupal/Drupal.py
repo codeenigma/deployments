@@ -139,12 +139,12 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
     if freshinstall:
       print "===> Database to get a fresh dump from is on the same server. Getting database dump now..."
       # Time to dump the database and save it to db/
-      run('drush @%s_%s sql-dump | bzip2 -f > /var/www/%s_%s_%s/db/%s_%s.sql.bz2' % (repo, syncbranch, repo, branch, build, repo, syncbranch))
+      run('drush @%s_%s sql-dump | bzip2 -f > /var/www/%s_%s_%s/db/%s_%s.sql.bz2' % (alias, syncbranch, repo, branch, build, alias, syncbranch))
     else:
       # Because freshinstall is False and the site we're syncing from is on the same server,
       # we can use drush sql-sync to sync that database to this one
       print "===> Database to sync to site is on the same server. Syncing %s database now..." % syncbranch
-      run("drush @%s_%s -y sql-drop" % (repo, branch))
+      run("drush @%s_%s -y sql-drop" % (alias, branch))
       if run("drush sql-sync -y @%s_%s @%s_%s" % (repo, syncbranch, repo, branch)).failed:
         print "===> Could not sync %s database. Reverting the %s database and aborting." % (syncbranch, branch)
         Revert._revert_db(repo, branch, build)
@@ -171,13 +171,13 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
       else:
         print "===> Obfuscate script copied to %s:/home/jenkins/drupal-obfuscate.rb - obfuscating data" % env.host
         with settings(hide('running', 'stdout', 'stderr')):
-          dbname = run("drush @%s_%s status  Database\ name | awk {'print $4'} | head -1" % (repo, syncbranch))
-          dbuser = run("drush @%s_%s status  Database\ user | awk {'print $4'} | head -1" % (repo, syncbranch))
-          dbpass = run("drush @%s_%s --show-passwords status  Database\ pass | awk {'print $4'} | head -1" % (repo, syncbranch))
-          dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (repo, syncbranch))
+          dbname = run("drush @%s_%s status  Database\ name | awk {'print $4'} | head -1" % (alias, syncbranch))
+          dbuser = run("drush @%s_%s status  Database\ user | awk {'print $4'} | head -1" % (alias, syncbranch))
+          dbpass = run("drush @%s_%s --show-passwords status  Database\ pass | awk {'print $4'} | head -1" % (alias, syncbranch))
+          dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (alias, syncbranch))
           run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, repo, now))
     else:
-      run('drush @%s_%s sql-dump | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (repo, syncbranch, repo, now))
+      run('drush @%s_%s sql-dump | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (alias, syncbranch, alias, now))
 
     print "===> Fetching the database from the remote server..."
     get('~/dbbackups/custombranch_%s_%s.sql.bz2' % (repo, now), '/tmp/dbbackups/custombranch_%s_%s_from_%s.sql.bz2' % (repo, now, syncbranch))
@@ -199,7 +199,7 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
       print "===> Importing the %s database into %s..." % (syncbranch, branch)
       # Need to drop all tables first in case there are existing tables that have to be ADDED
       # from an upgrade
-      run("drush @%s_%s -y sql-drop" % (repo, branch))
+      run("drush @%s_%s -y sql-drop" % (alias, branch))
       with settings(warn_only=True):
         if run("bzcat ~/dbbackups/custombranch_%s_%s_from_%s.sql.bz2 | drush @%s_%s sql-cli" % (repo, now, syncbranch, repo, branch)).failed:
           print "===> Cannot import %s database into %s. Reverting database and aborting." % (syncbranch, repo)
@@ -212,8 +212,8 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
             if sanitised_email is None:
               sanitised_email = 'example.com'
             print "===> Sanitising database..."
-            run("drush @%s_%s -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (repo, branch, repo, sanitised_email, sanitised_password))
-            print "===> Data sanitised, email domain set to %s, passwords set to %s" % (sanitised_email, sanitised_password)
+            run("drush @%s_%s -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (alias, branch, alias, sanitised_email, sanitised_password))
+            print "===> Data sanitised, email domain set to %s+%%uid@%s, passwords set to %s" % (alias, sanitised_email, sanitised_password)
           print "===> %s database imported." % syncbranch
 
       # Tidying up on host server
@@ -311,7 +311,7 @@ def drush_fra(repo, branch, build, site, alias, drupal_version):
     else:
       print "===> Reverting all features..."
       with settings(warn_only=True):
-        if sudo("su -s /bin/bash www-data -c 'drush -y fra'" % (repo, branch, build)).failed:
+        if sudo("su -s /bin/bash www-data -c 'drush -y fra'").failed:
           print "Could not revert features! Reverting database and settings..."
           Revert._revert_db(alias, branch, build)
           Revert._revert_settings(repo, branch, build, site, alias)
@@ -443,7 +443,7 @@ def config_import(repo, branch, build, site, alias, drupal_version, previous_bui
 # Take the site offline (prior to drush updatedb)
 @task
 @roles('app_primary')
-def go_offline(repo, branch, build, readonlymode, drupal_version):
+def go_offline(repo, branch, build, alias, readonlymode, drupal_version):
   # readonlymode can either be 'maintenance' (the default) or 'readonlymode', which uses the readonlymode module
 
   print "===> go_offline mode is %s" % readonlymode
@@ -455,10 +455,10 @@ def go_offline(repo, branch, build, readonlymode, drupal_version):
       if run("find /var/www/%s_%s_%s/www -type d -name readonlymode | egrep '.*'" % (repo, branch, build)).return_code == 0:
         print "It does exist, so enable it if it's not already enabled"
         # Enable the module if it isn't already enabled
-        run("drush @%s_%s en -y readonlymode" % (repo, branch))
+        run("drush @%s_%s en -y readonlymode" % (alias, branch))
         # Set the site_readonly mode variable to 1
         print "===> Setting readonlymode so content cannot be changed while database updates are run..."
-        run("drush @%s_%s -y vset site_readonly 1" % (repo, branch))
+        run("drush @%s_%s -y vset site_readonly 1" % (alias, branch))
       else:
         print "Hm, the readonly flag in config.ini was set to readonly, yet the readonlymode module does not exist. We'll revert to normal maintenance mode..."
         readonlymode = 'maintenance'
@@ -466,10 +466,10 @@ def go_offline(repo, branch, build, readonlymode, drupal_version):
   if readonlymode == "maintenance":
     print "===> Taking the site offline temporarily to do the drush updatedb..."
     if drupal_version == '8':
-      run("drush @%s_%s -y state-set system.maintenancemode 1" % (repo, branch))
+      run("drush @%s_%s -y state-set system.maintenancemode 1" % (alias, branch))
     else:
-      run("drush @%s_%s -y vset site_offline 1" % (repo, branch))
-      run("drush @%s_%s -y vset maintenance_mode 1" % (repo, branch))
+      run("drush @%s_%s -y vset site_offline 1" % (alias, branch))
+      run("drush @%s_%s -y vset maintenance_mode 1" % (alias, branch))
 
 
 # Take the site online (after drush updatedb)
@@ -517,7 +517,7 @@ def go_online(repo, branch, build, alias, previous_build, readonlymode, drupal_v
           Revert._revert_settings(repo, branch, build, site, alias)
 
         else:
-          run("drush @%s_%s -y vset maintenance_mode 0" % (repo, branch))
+          run("drush @%s_%s -y vset maintenance_mode 0" % (alias, branch))
 
 
 # Set the username and password of user 1 to something random if the buildtype is 'prod'

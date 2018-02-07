@@ -315,7 +315,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     if behat_config:
       if buildtype in behat_config['behat_buildtypes']:
-        behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+        behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
     else:
       print "===> No behat tests."
 
@@ -374,7 +374,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     # Time to update the database!
     if do_updates == True:
-      execute(Drupal.go_offline, repo, branch, build, readonlymode, drupal_version)
+      execute(Drupal.go_offline, repo, branch, build, alias, readonlymode, drupal_version)
       execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
       execute(Drupal.drush_updatedb, repo, branch, build, site, alias, drupal_version)            # This will revert the database if it fails
       if fra == True:
@@ -439,7 +439,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Run behat tests
     if behat_config:
       if buildtype in behat_config['behat_buildtypes']:
-        behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+        behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
     else:
       print "===> No behat tests."
 
