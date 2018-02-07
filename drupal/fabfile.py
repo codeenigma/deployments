@@ -266,7 +266,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       execute(Drupal.run_composer_install, repo, branch, build, composer_lock, no_dev)
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
-      Drupal.prepare_database(repo, branch, build, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
+      Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
 
     # Check for expected shared directories
     execute(common.Utils.create_config_directory, hosts=env.roledefs['app_all'])
@@ -331,7 +331,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Grab some information about the current build
     previous_build = common.Utils.get_previous_build(repo, cleanbranch, build)
     previous_db = common.Utils.get_previous_db(repo, cleanbranch, build)
-    execute(Drupal.backup_db, repo, cleanbranch, build)
+    execute(Drupal.backup_db, alias, cleanbranch, build)
 
     execute(common.Utils.clone_repo, repo, repourl, branch, build, None, ssh_key, hosts=env.roledefs['app_all'])
 
@@ -352,7 +352,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     if drupal_version != '8':
       import_config = False
     if freshdatabase == "Yes" and buildtype == "custombranch":
-      Drupal.prepare_database(repo, branch, build, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email, False)
+      Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email, False)
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
     execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build, alias, site)
@@ -370,19 +370,19 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Export the config if we need to (Drupal 8+)
     if config_export:
       execute(StandardHooks.config_export, repo, branch, build, drupal_version)
-    execute(Drupal.drush_status, repo, branch, build, site, revert_settings=True)
+    execute(Drupal.drush_status, repo, branch, build, site, alias, revert_settings=True)
 
     # Time to update the database!
     if do_updates == True:
       execute(Drupal.go_offline, repo, branch, build, readonlymode, drupal_version)
       execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
-      execute(Drupal.drush_updatedb, repo, branch, build, site, drupal_version)            # This will revert the database if it fails
+      execute(Drupal.drush_updatedb, repo, branch, build, site, alias, drupal_version)            # This will revert the database if it fails
       if fra == True:
         if branch in branches:
           execute(Drupal.drush_fra, repo, branch, build, site, drupal_version)
       if run_cron == True:
         execute(Drupal.drush_cron, repo, branch, build, site, drupal_version)
-      execute(Drupal.drush_status, repo, branch, build, site, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+      execute(Drupal.drush_status, repo, branch, build, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       # Cannot use try: because execute() return not compatible.
       execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
@@ -396,14 +396,14 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if import_config == True:
-        execute(Drupal.config_import, repo, branch, build, site, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
+        execute(Drupal.config_import, repo, branch, build, site, alias, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
       execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
-      execute(Drupal.go_online, repo, branch, build, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
-      execute(Drupal.check_node_access, repo, branch, notifications_email)
+      execute(Drupal.go_online, repo, branch, build, alias, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
+      execute(Drupal.check_node_access, alias, branch, notifications_email)
 
     else:
       print "####### WARNING: by skipping database updates we cannot check if the node access table will be rebuilt. If it will this is an intrusive action that may result in an extended outage."
-      execute(Drupal.drush_status, repo, branch, build, site, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+      execute(Drupal.drush_status, repo, branch, build, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       # Cannot use try: because execute() return not compatible.
       execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
@@ -417,7 +417,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if import_config == True:
-        execute(Drupal.config_import, repo, branch, build, site, drupal_version) # This will revert database, settings and live symlink if it fails.
+        execute(Drupal.config_import, repo, branch, build, site, alias, drupal_version) # This will revert database, settings and live symlink if it fails.
       execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
 
     # Final clean up and run tests, if applicable

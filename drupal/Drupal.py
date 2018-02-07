@@ -54,14 +54,14 @@ def configure_config_export(config):
 # Take a database backup
 @task
 @roles('app_primary')
-def backup_db(repo, branch, build):
+def backup_db(alias, branch, build):
   print "===> Ensuring backup directory exists"
   with settings(warn_only=True):
     if run("mkdir -p ~jenkins/dbbackups").failed:
       raise SystemExit("Could not create directory ~jenkins/dbbackups! Aborting early")
   print "===> Taking a database backup..."
   with settings(warn_only=True):
-    if run("drush @%s_%s sql-dump --skip-tables-key=common | gzip > ~jenkins/dbbackups/%s_%s_prior_to_%s.sql.gz; if [ ${PIPESTATUS[0]} -ne 0 ]; then exit 1; else exit 0; fi" % (repo, branch, repo, branch, build)).failed:
+    if run("drush @%s_%s sql-dump --skip-tables-key=common | gzip > ~jenkins/dbbackups/%s_%s_prior_to_%s.sql.gz; if [ ${PIPESTATUS[0]} -ne 0 ]; then exit 1; else exit 0; fi" % (alias, branch, alias, branch, build)).failed:
       failed_backup = True
     else:
       failed_backup = False
@@ -86,7 +86,7 @@ def generate_drush_cron(repo, branch):
 # This function is used to get a fresh database of the site to import into the custom
 # branch site during the initial_build() step
 @task
-def prepare_database(repo, branch, build, syncbranch, orig_host, sanitise, drupal_version, sanitised_password, sanitised_email, freshinstall=True):
+def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise, drupal_version, sanitised_password, sanitised_email, freshinstall=True):
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.read_config_file()
   now = common.Utils._gen_datetime()
@@ -203,7 +203,7 @@ def prepare_database(repo, branch, build, syncbranch, orig_host, sanitise, drupa
       with settings(warn_only=True):
         if run("bzcat ~/dbbackups/custombranch_%s_%s_from_%s.sql.bz2 | drush @%s_%s sql-cli" % (repo, now, syncbranch, repo, branch)).failed:
           print "===> Cannot import %s database into %s. Reverting database and aborting." % (syncbranch, repo)
-          _revert_db(repo, branch, build)
+          Revert._revert_db(alias, branch, build)
           raise SystemError("Cannot import %s database into %s. Reverting database and aborting." % (syncbranch, repo))
         else:
           if sanitise == "yes":
@@ -254,7 +254,7 @@ def run_composer_install(repo, branch, build, composer_lock, no_dev):
 # Run a drush status against that build
 @task
 @roles('app_primary')
-def drush_status(repo, branch, build, site, revert=False, revert_settings=False):
+def drush_status(repo, branch, build, site, alias, revert=False, revert_settings=False):
   print "===> Running a drush status test"
   with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
     with settings(warn_only=True):
@@ -265,7 +265,7 @@ def drush_status(repo, branch, build, site, revert=False, revert_settings=False)
         else:
           if revert == True:
             print "Reverting the database..."
-            Revert._revert_db(repo, branch, build)
+            Revert._revert_db(alias, branch, build)
             Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("Could not bootstrap the database on this build! Aborting")
 
@@ -275,7 +275,7 @@ def drush_status(repo, branch, build, site, revert=False, revert_settings=False)
         else:
           if revert == True:
             print "Reverting the database..."
-            Revert._revert_db(repo, branch, build)
+            Revert._revert_db(alias, branch, build)
             Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("Could not bootstrap the database on this build! Aborting")
 
@@ -283,7 +283,7 @@ def drush_status(repo, branch, build, site, revert=False, revert_settings=False)
 # Run drush updatedb to apply any database changes from hook_update's
 @task
 @roles('app_primary')
-def drush_updatedb(repo, branch, build, site, drupal_version):
+def drush_updatedb(repo, branch, build, site, alias, drupal_version):
   print "===> Running any database hook updates"
   with settings(warn_only=True):
     # Apparently APC cache can interfere with drush updatedb expected results here. Clear any chance of caches
@@ -291,7 +291,7 @@ def drush_updatedb(repo, branch, build, site, drupal_version):
     common.Services.clear_varnish_cache()
     if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
       print "Could not apply database updates! Reverting this database"
-      Revert._revert_db(repo, branch, build)
+      Revert._revert_db(alias, branch, build)
       Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("Could not apply database updates! Reverted database. Site remains on previous build")
     if drupal_version == '8':
@@ -304,7 +304,7 @@ def drush_updatedb(repo, branch, build, site, drupal_version):
 # Function to revert all features using --force
 @task
 @roles('app_primary')
-def drush_fra(repo, branch, build, site, drupal_version):
+def drush_fra(repo, branch, build, site, alias, drupal_version):
   with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
     if run("drush pm-list --pipe --type=module --status=enabled --no-core | grep -q ^features$"):
       print "===> Features module not installed, skipping feature revert"
@@ -313,7 +313,7 @@ def drush_fra(repo, branch, build, site, drupal_version):
       with settings(warn_only=True):
         if sudo("su -s /bin/bash www-data -c 'drush -y fra'" % (repo, branch, build)).failed:
           print "Could not revert features! Reverting database and settings..."
-          Revert._revert_db(repo, branch, build)
+          Revert._revert_db(alias, branch, build)
           Revert._revert_settings(repo, branch, build, site, alias)
           raise SystemExit("Could not revert features! Site remains on previous build")
         else:
@@ -423,7 +423,7 @@ def environment_indicator(repo, branch, build, buildtype, alias, site, drupal_ve
 # Function used by Drupal 8 builds to import site config
 @task
 @roles('app_primary')
-def config_import(repo, branch, build, site, drupal_version, previous_build):
+def config_import(repo, branch, build, site, alias, drupal_version, previous_build):
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version == '8':
@@ -432,7 +432,7 @@ def config_import(repo, branch, build, site, drupal_version, previous_build):
         print "Could not import configuration! Reverting this database and settings"
         sudo("unlink /var/www/live.%s.%s" % (repo, branch))
         sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-        Revert._revert_db(repo, branch, build)
+        Revert._revert_db(alias, branch, build)
         Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("Could not import configuration! Reverted database and settings. Site remains on previous build")
       else:
@@ -475,7 +475,7 @@ def go_offline(repo, branch, build, readonlymode, drupal_version):
 # Take the site online (after drush updatedb)
 @task
 @roles('app_primary')
-def go_online(repo, branch, build, previous_build, readonlymode, drupal_version):
+def go_online(repo, branch, build, alias, previous_build, readonlymode, drupal_version):
   # readonlymode can either be 'maintenance' (the default) or 'readonlymode', which uses the readonlymode module
 
   # If readonlymode is 'readonlymode', check that it exists
@@ -485,14 +485,14 @@ def go_online(repo, branch, build, previous_build, readonlymode, drupal_version)
       if run("find /var/www/%s_%s_%s/www -type d -name readonlymode | egrep '.*'" % (repo, branch, build)).return_code == 0:
         print "It does exist, so enable it if it's not already enabled"
         # Enable the module if it isn't already enabled
-        run("drush @%s_%s en -y readonlymode" % (repo, branch))
+        run("drush @%s_%s en -y readonlymode" % (alias, branch))
         # Set the site_readonly mode variable to 1
         print "===> Setting readonlymode back to 0 so content can once again be edited..."
-        if run("drush @%s_%s -y vset site_readonly 0" % (repo, branch)).failed:
+        if run("drush @%s_%s -y vset site_readonly 0" % (alias, branch)).failed:
           print "Could not set the site out of read only mode! Reverting this build and database."
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-          Revert._revert_db(repo, branch, build)
+          Revert._revert_db(alias, branch, build)
           Revert._revert_settings(repo, branch, build, site, alias)
       else:
         print "Hm, the readonly flag in config.ini was set to readonly, yet the readonlymode module does not exist. We'll revert to normal maintenance mode..."
@@ -502,18 +502,18 @@ def go_online(repo, branch, build, previous_build, readonlymode, drupal_version)
     print "===> Taking the site back online..."
     with settings(warn_only=True):
       if drupal_version == '8':
-        if run("drush @%s_%s -y state-set system.maintenancemode 0" % (repo, branch)).failed:
+        if run("drush @%s_%s -y state-set system.maintenancemode 0" % (alias, branch)).failed:
           print "Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-          Revert._revert_db(repo, branch, build)
+          Revert._revert_db(alias, branch, build)
           Revert._revert_settings(repo, branch, build, site, alias)
       else:
-        if run("drush @%s_%s -y vset site_offline 0" % (repo, branch)).failed:
+        if run("drush @%s_%s -y vset site_offline 0" % (alias, branch)).failed:
           print "Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-          Revert._revert_db(repo, branch, build)
+          Revert._revert_db(alias, branch, build)
           Revert._revert_settings(repo, branch, build, site, alias)
 
         else:
@@ -538,16 +538,16 @@ def secure_admin_password(repo, branch, build, site, drupal_version):
 
 # Check if node access table will get rebuilt and warn if necessary
 @task
-def check_node_access(repo, branch, notifications_email):
+def check_node_access(alias, branch, notifications_email):
   with settings(warn_only=True):
-    node_access_needs_rebuild = run("drush @%s_%s php-eval 'echo node_access_needs_rebuild();'" % (repo, branch))
+    node_access_needs_rebuild = run("drush @%s_%s php-eval 'echo node_access_needs_rebuild();'" % (alias, branch))
     if node_access_needs_rebuild == 1:
       print "####### WARNING: this release needs the content access table to be rebuilt. This is an intrusive operation that imply the site needs to stay in maintenance mode untill the whole process is finished."
       print "####### Depending on the number of nodes and the complexity of access rules, this can take several hours. Be sure to either plan the release appropriately, or when possible use alternative method that are not intrusive."
       print "####### We recommend you consider this module: https://www.drupal.org/project/node_access_rebuild_progressive"
       # Send an email if an address is provided in config.ini
       if notifications_email:
-        local("echo 'Your build for %s of branch %s has triggered a warning of a possible content access table rebuild - this may cause an extended outage of your website. Please review!' | mail -s 'Content access table warning' %s" % (repo, branch, notifications_email))
+        local("echo 'Your build for %s of branch %s has triggered a warning of a possible content access table rebuild - this may cause an extended outage of your website. Please review!' | mail -s 'Content access table warning' %s" % (alias, branch, notifications_email))
         print "===> Sent warning email to %s" % notifications_email
     else:
       print "===> Node access rebuild check completed, as far as we can tell this build is safe"

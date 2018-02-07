@@ -119,7 +119,6 @@ def remove_old_builds(repo, branch, keepbuilds, buildtype=None):
 
 
 # Adjust symlink in /var/www/project to point to the new build
-# this happens after database changes have been applied in drush_updatedb()
 @task
 def adjust_live_symlink(repo, branch, build, buildtype=None):
   # Use branch as buildtype if none provided
