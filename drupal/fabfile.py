@@ -392,7 +392,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       # The above paths should match - something is wrong if they don't!
       if not this_build == live_build:
         Revert._revert_db(repo, branch, build)
-        Revert._revert_settings(repo, branch, build)
+        Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if import_config == True:
@@ -413,7 +413,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       # The above paths should match - something is wrong if they don't!
       if not this_build == live_build:
         Revert._revert_db(repo, branch, build)
-        Revert._revert_settings(repo, branch, build)
+        Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if import_config == True:
@@ -449,7 +449,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       phpunit_tests_failed = common.Tests.run_phpunit_tests(repo, branch, build, phpunit_group, phpunit_test_directory, phpunit_path)
       if phpunit_fail_build and phpunit_tests_failed:
         Revert._revert_db(repo, branch, build)
-        Revert._revert_settings(repo, branch, build)
+        Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("####### phpunit tests failed and you have specified you want to fail and roll back when this happens. Reverting database")
       elif phpunit_tests_failed:
         print "####### phpunit tests failed but the build is set to disregard... continuing, but you should review your test output"
