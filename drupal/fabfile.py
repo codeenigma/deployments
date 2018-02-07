@@ -273,12 +273,12 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     execute(common.Utils.create_shared_directory, hosts=env.roledefs['app_all'])
     # Build out Drupal
     execute(InitialBuild.initial_build_create_live_symlink, repo, branch, build)
-    execute(InitialBuild.initial_build, repo, url, branch, build, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds)
-    execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build)
-    execute(InitialBuild.initial_build_move_settings, repo, branch)
+    execute(InitialBuild.initial_build, repo, url, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds)
+    execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build, site, alias)
+    execute(InitialBuild.initial_build_move_settings, alias, branch)
     # Configure the server
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
-    execute(InitialBuild.initial_build_vhost, repo, url, branch, build, buildtype, FeatureBranches.ssl_enabled, FeatureBranches.ssl_cert, FeatureBranches.ssl_ip, FeatureBranches.httpauth_pass, FeatureBranches.drupal_common_config, webserverport)
+    execute(InitialBuild.initial_build_vhost, repo, url, branch, build, alias, buildtype, FeatureBranches.ssl_enabled, FeatureBranches.ssl_cert, FeatureBranches.ssl_ip, FeatureBranches.httpauth_pass, FeatureBranches.drupal_common_config, webserverport)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
     # Restart services
     execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
@@ -300,7 +300,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     if buildtype == "custombranch":
       FeatureBranches.initial_db_and_config(repo, branch, build, import_config, drupal_version)
     else:
-      execute(InitialBuild.initial_build_updatedb, repo, branch, build, drupal_version)
+      execute(InitialBuild.initial_build_updatedb, repo, branch, build, site, drupal_version)
       execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
       if import_config:
         execute(InitialBuild.initial_build_config_import, repo, branch, build, site, drupal_version)
