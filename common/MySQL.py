@@ -100,7 +100,7 @@ def mysql_import_dump(site_root, db_name, dump_file, db_host=None, rds=False, my
 
   dump_file = site_root + '/db/' + dump_file
   print "===> Importing a database dump from %s into %s." % (dump_file, db_name)
-  if file.exists(dump_file):
+  if exists(dump_file):
     extension = dump_file[-3:]
     if extension == 'sql':
       sudo("mysql --defaults-file=%s %s < %s" % (mysql_config, db_name, dump_file))
@@ -110,6 +110,8 @@ def mysql_import_dump(site_root, db_name, dump_file, db_host=None, rds=False, my
       sudo("mysql --defaults-file=%s %s < bzcat %s" % (mysql_config, db_name, dump_file))
     else:
       SystemExit("###### Don't recognise the format of this database dump, assuming it's critical and aborting!")
+  else:
+    SystemExit("###### The database dump file provided does not exist, assuming it's critical and aborting!")
 
   # Put the correct host back for Fabric to continue
   if not db_host == "localhost" or rds:
