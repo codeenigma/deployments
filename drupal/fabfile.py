@@ -266,26 +266,26 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       execute(Drupal.run_composer_install, repo, branch, build, composer_lock, no_dev)
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
-      Drupal.prepare_database(repo, branch, build, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
+      dump_file = Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
 
     # Check for expected shared directories
     execute(common.Utils.create_config_directory, hosts=env.roledefs['app_all'])
     execute(common.Utils.create_shared_directory, hosts=env.roledefs['app_all'])
     # Build out Drupal
     execute(InitialBuild.initial_build_create_live_symlink, repo, branch, build)
-    execute(InitialBuild.initial_build, repo, url, branch, build, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds)
-    execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build)
-    execute(InitialBuild.initial_build_move_settings, repo, branch)
+    execute(InitialBuild.initial_build, repo, url, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds)
+    execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build, site, alias)
+    execute(InitialBuild.initial_build_move_settings, alias, branch)
     # Configure the server
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
-    execute(InitialBuild.initial_build_vhost, repo, url, branch, build, buildtype, FeatureBranches.ssl_enabled, FeatureBranches.ssl_cert, FeatureBranches.ssl_ip, FeatureBranches.httpauth_pass, FeatureBranches.drupal_common_config, webserverport)
+    execute(InitialBuild.initial_build_vhost, repo, url, branch, build, alias, buildtype, FeatureBranches.ssl_enabled, FeatureBranches.ssl_cert, FeatureBranches.ssl_ip, FeatureBranches.httpauth_pass, FeatureBranches.drupal_common_config, webserverport)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
     # Restart services
     execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
     execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
     execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
     # Do some final Drupal config tweaking
-    execute(InitialBuild.generate_drush_alias, repo, url, branch)
+    execute(InitialBuild.generate_drush_alias, repo, url, branch, alias)
     execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
     execute(Drupal.generate_drush_cron, repo, branch)
 
@@ -300,7 +300,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     if buildtype == "custombranch":
       FeatureBranches.initial_db_and_config(repo, branch, build, import_config, drupal_version)
     else:
-      execute(InitialBuild.initial_build_updatedb, repo, branch, build, drupal_version)
+      execute(InitialBuild.initial_build_updatedb, repo, branch, build, site, drupal_version)
       execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
       if import_config:
         execute(InitialBuild.initial_build_config_import, repo, branch, build, site, drupal_version)
@@ -315,7 +315,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     if behat_config:
       if buildtype in behat_config['behat_buildtypes']:
-        behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+        behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
     else:
       print "===> No behat tests."
 
@@ -331,7 +331,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Grab some information about the current build
     previous_build = common.Utils.get_previous_build(repo, cleanbranch, build)
     previous_db = common.Utils.get_previous_db(repo, cleanbranch, build)
-    execute(Drupal.backup_db, repo, cleanbranch, build)
+    execute(Drupal.backup_db, alias, cleanbranch, build)
 
     execute(common.Utils.clone_repo, repo, repourl, branch, build, None, ssh_key, hosts=env.roledefs['app_all'])
 
@@ -352,7 +352,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     if drupal_version != '8':
       import_config = False
     if freshdatabase == "Yes" and buildtype == "custombranch":
-      Drupal.prepare_database(repo, branch, build, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email, False)
+      Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email, False)
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
     execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build, alias, site)
@@ -370,19 +370,19 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Export the config if we need to (Drupal 8+)
     if config_export:
       execute(StandardHooks.config_export, repo, branch, build, drupal_version)
-    execute(Drupal.drush_status, repo, branch, build, site, revert_settings=True)
+    execute(Drupal.drush_status, repo, branch, build, site, alias, revert_settings=True)
 
     # Time to update the database!
     if do_updates == True:
-      execute(Drupal.go_offline, repo, branch, build, readonlymode, drupal_version)
+      execute(Drupal.go_offline, repo, branch, build, alias, readonlymode, drupal_version)
       execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
-      execute(Drupal.drush_updatedb, repo, branch, build, site, drupal_version)            # This will revert the database if it fails
+      execute(Drupal.drush_updatedb, repo, branch, build, site, alias, drupal_version)            # This will revert the database if it fails
       if fra == True:
         if branch in branches:
           execute(Drupal.drush_fra, repo, branch, build, site, drupal_version)
       if run_cron == True:
         execute(Drupal.drush_cron, repo, branch, build, site, drupal_version)
-      execute(Drupal.drush_status, repo, branch, build, site, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+      execute(Drupal.drush_status, repo, branch, build, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       # Cannot use try: because execute() return not compatible.
       execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
@@ -391,19 +391,19 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       this_build = "/var/www/%s_%s_%s" % (repo, branch, build)
       # The above paths should match - something is wrong if they don't!
       if not this_build == live_build:
-        Revert._revert_db(repo, branch, build)
-        Revert._revert_settings(repo, branch, build)
+        Revert._revert_db(alias, branch, build)
+        Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if import_config == True:
-        execute(Drupal.config_import, repo, branch, build, site, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
+        execute(Drupal.config_import, repo, branch, build, site, alias, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
       execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
-      execute(Drupal.go_online, repo, branch, build, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
-      execute(Drupal.check_node_access, repo, branch, notifications_email)
+      execute(Drupal.go_online, repo, branch, build, alias, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
+      execute(Drupal.check_node_access, alias, branch, notifications_email)
 
     else:
       print "####### WARNING: by skipping database updates we cannot check if the node access table will be rebuilt. If it will this is an intrusive action that may result in an extended outage."
-      execute(Drupal.drush_status, repo, branch, build, site, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+      execute(Drupal.drush_status, repo, branch, build, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       # Cannot use try: because execute() return not compatible.
       execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
@@ -412,12 +412,12 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       this_build = "/var/www/%s_%s_%s" % (repo, branch, build)
       # The above paths should match - something is wrong if they don't!
       if not this_build == live_build:
-        Revert._revert_db(repo, branch, build)
-        Revert._revert_settings(repo, branch, build)
+        Revert._revert_db(alias, branch, build)
+        Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if import_config == True:
-        execute(Drupal.config_import, repo, branch, build, site, drupal_version) # This will revert database, settings and live symlink if it fails.
+        execute(Drupal.config_import, repo, branch, build, site, alias, drupal_version) # This will revert database, settings and live symlink if it fails.
       execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
 
     # Final clean up and run tests, if applicable
@@ -439,7 +439,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Run behat tests
     if behat_config:
       if buildtype in behat_config['behat_buildtypes']:
-        behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+        behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
     else:
       print "===> No behat tests."
 
@@ -448,8 +448,8 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       # @TODO: We really need to figure out how to use execute() and fish returned variables from the response
       phpunit_tests_failed = common.Tests.run_phpunit_tests(repo, branch, build, phpunit_group, phpunit_test_directory, phpunit_path)
       if phpunit_fail_build and phpunit_tests_failed:
-        Revert._revert_db(repo, branch, build)
-        Revert._revert_settings(repo, branch, build)
+        Revert._revert_db(alias, branch, build)
+        Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("####### phpunit tests failed and you have specified you want to fail and roll back when this happens. Reverting database")
       elif phpunit_tests_failed:
         print "####### phpunit tests failed but the build is set to disregard... continuing, but you should review your test output"
