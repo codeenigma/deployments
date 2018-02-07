@@ -93,7 +93,7 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
   dump_file = None
 
   if syncbranch is None:
-    raise SystemError("Sync branch cannot be empty when wanting a fresh database when deploying a custom branch for the first time. Aborting early.")
+    raise SystemError("######## Sync branch cannot be empty when wanting a fresh database when deploying a custom branch for the first time. Aborting early.")
 
   current_env = env.host
 
@@ -111,11 +111,11 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
 
   # Let's first get the hostname of the server where the site we want a fresh db from resides
   # Typically, the stage site had a buildtype of [stage], but the master/dev site has [dev]
-  if config.has_section(sync_buildtype):
-    sync_branch_host = config.get(sync_buildtype, repo)
+  if config.has_section(syncbranch):
+    sync_branch_host = config.get(syncbranch, repo)
   else:
     # We cannot find a section with that buildtype, so abort
-    raise SystemError("######## Cannot find a buildtype %s in config.ini. Aborting." % sync_buildtype)
+    raise SystemError("######## Cannot find a buildtype %s in config.ini. Aborting." % syncbranch)
 
   # If sync_branch_host and current_env match, we don't need to connect to another
   # server to get the dump
