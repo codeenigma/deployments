@@ -298,7 +298,7 @@ def drush_updatedb(repo, branch, build, site, alias, drupal_version):
       if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y entity-updates'" % (repo, branch, build, site)).failed:
         print "Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
   print "===> Database updates applied"
-  drush_clear_cache(repo, branch, build, drupal_version)
+  drush_clear_cache(repo, branch, build, site, drupal_version)
 
 
 # Function to revert all features using --force
@@ -317,7 +317,7 @@ def drush_fra(repo, branch, build, site, alias, drupal_version):
           Revert._revert_settings(repo, branch, build, site, alias)
           raise SystemExit("Could not revert features! Site remains on previous build")
         else:
-          drush_clear_cache(repo, branch, build, drupal_version)
+          drush_clear_cache(repo, branch, build, site, drupal_version)
 
 
 # Function to run Drupal cron (mainly used by RBKC's microsites that use the Domain module)
@@ -437,7 +437,7 @@ def config_import(repo, branch, build, site, alias, drupal_version, previous_bui
         raise SystemExit("Could not import configuration! Reverted database and settings. Site remains on previous build")
       else:
         print "===> Configuration imported. Running a cache rebuild..."
-        drush_clear_cache(repo, branch, build, drupal_version)
+        drush_clear_cache(repo, branch, build, site, drupal_version)
 
 
 # Take the site offline (prior to drush updatedb)
