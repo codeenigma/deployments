@@ -5,20 +5,27 @@ import random
 import string
 # Custom Code Enigma modules
 import common.Utils
+import common.MySQL
 
 
 # Generate a drush alias for this site
 @task
 @roles('app_all')
-def generate_drush_alias(repo, url, branch):
+def generate_drush_alias(repo, url, branch, alias):
   print "===> Generating Drush alias"
-  # Copy drush script to server(s)
-  script_dir = os.path.dirname(os.path.realpath(__file__))
-  if put(script_dir + '/../util/drush_alias.sh', '/home/jenkins', mode=0755).failed:
-    raise SystemExit("Could not copy the drush script to the application server, aborting because we won't be able to make a drush alias")
-  else:
-    print "===> Drush alias preparation script copied to %s:/home/jenkins/drush_alias.sh" % env.host
-  sudo("/home/jenkins/drush_alias.sh %s %s %s" % (repo, url, branch))
+  # Make sure drush directory exists
+  sudo("mkdir -p /etc/drush")
+  # Make sure the alias file exists
+  sudo("touch /etc/drush/%s_%s.alias.drushrc.php" % (alias, branch))
+
+  # Append the necessary include and other settings
+  append_string = """<?php
+
+$aliases['%s_%s'] = array(
+  'root' => '/var/www/live.%s.%s/www',
+  'uri' => '%s',
+);""" % (alias, branch, repo, branch, url)
+  append("/etc/drush/%s_%s.alias.drushrc.php" % (alias, branch), append_string, use_sudo=True)
 
 
 @task
@@ -28,33 +35,34 @@ def initial_build_create_live_symlink(repo, branch, build):
   # We need to force this to avoid a repeat of https://redmine.codeenigma.net/issues/20779
   sudo("ln -nsf /var/www/%s_%s_%s /var/www/live.%s.%s" % (repo, branch, build, repo, branch))
 
-# If composer was run beforehand because the site is Drupal 8, it'll have created a sites/default/files directory with 777 perms. Move it aside and fix perms.
+# If composer was run beforehand because the site is Drupal 8, it will have created a
+# files directory for the site with 777 perms. Move it aside and fix perms.
 @task
 @roles('app_all')
-def initial_build_create_files_symlink(repo, branch, build):
+def initial_build_create_files_symlink(repo, branch, build, site, alias):
   with settings(warn_only=True):
-    if run("stat /var/www/%s_%s_%s/www/sites/default/files" % (repo, branch, build)).return_code == 0:
+    if run("stat /var/www/%s_%s_%s/www/sites/%s/files" % (repo, branch, build, site)).return_code == 0:
       print "===> Found a files directory, probably Drupal 8, making it safe"
-      sudo("mv /var/www/%s_%s_%s/www/sites/default/files /var/www/%s_%s_%s/www/sites/default/files_bak" % (repo, branch, build, repo, branch, build))
-      sudo("chmod 775 /var/www/%s_%s_%s/www/sites/default/files_bak" % (repo, branch, build))
-      sudo("find /var/www/%s_%s_%s/www/sites/default/files_bak -type d -print0 | xargs -r -0 chmod 775" % (repo, branch, build))
-      sudo("find /var/www/%s_%s_%s/www/sites/default/files_bak -type f -print0 | xargs -r -0 chmod 664" % (repo, branch, build))
-      sudo("mv /var/www/%s_%s_%s/www/sites/default/files_bak/* /var/www/shared/%s_%s_files/" % (repo, branch, build, repo, branch))
+      sudo("mv /var/www/%s_%s_%s/www/sites/%s/files /var/www/%s_%s_%s/www/sites/%s/files_bak" % (repo, branch, build, site, repo, branch, build, site))
+      sudo("chmod 775 /var/www/%s_%s_%s/www/sites/%s/files_bak" % (repo, branch, build, site))
+      sudo("find /var/www/%s_%s_%s/www/sites/%s/files_bak -type d -print0 | xargs -r -0 chmod 775" % (repo, branch, build, site))
+      sudo("find /var/www/%s_%s_%s/www/sites/%s/files_bak -type f -print0 | xargs -r -0 chmod 664" % (repo, branch, build, site))
+      sudo("mv /var/www/%s_%s_%s/www/sites/%s/files_bak/* /var/www/shared/%s_%s_files/" % (repo, branch, build, site, alias, branch))
   print "===> Creating files symlink"
-  sudo("ln -s /var/www/shared/%s_%s_files /var/www/%s_%s_%s/www/sites/default/files" % (repo, branch, repo, branch, build))
+  sudo("ln -s /var/www/shared/%s_%s_files /var/www/%s_%s_%s/www/sites/%s/files" % (alias, branch, repo, branch, build, site))
 
 
 # Run database updates, just in case. Separate function to the main Drupal one
 # as we cannot revert database or settings.php during an initial build.
 @task
 @roles('app_primary')
-def initial_build_updatedb(repo, branch, build, drupal_version):
+def initial_build_updatedb(repo, branch, build, site, drupal_version):
   print "===> Running any database hook updates"
   with settings(warn_only=True):
-    if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y updatedb'" % (repo, branch, build)).failed:
+    if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
       raise SystemExit("Could not apply database updates! Everything else has been done, but failing the build to alert to the fact database updates could not be run.")
     if drupal_version == '8':
-      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y entity-updates'" % (repo, branch, build)).failed:
+      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y entity-updates'" % (repo, branch, build, site)).failed:
         print "Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
   print "===> Database updates applied"
 
@@ -62,12 +70,12 @@ def initial_build_updatedb(repo, branch, build, drupal_version):
 # Function used by Drupal 8 builds to import site config
 @task
 @roles('app_primary')
-def initial_build_config_import(repo, branch, build, drupal_version):
+def initial_build_config_import(repo, branch, build, site, drupal_version):
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version == '8':
       print "===> Importing configuration for Drupal 8 site..."
-      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cim'" % (repo, branch, build)).failed:
+      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cim'" % (repo, branch, build, site)).failed:
         raise SystemExit("Could not import configuration! Failing the initial build.")
       else:
         print "===> Configuration imported."
@@ -76,27 +84,23 @@ def initial_build_config_import(repo, branch, build, drupal_version):
 # Stuff to do when this is the initial build
 @task
 @roles('app_primary')
-def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config, drupal_version, sanitised_password, sanitised_email, cluster=False, rds=False):
+def initial_build(repo, url, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster=False, rds=False):
   print "===> This looks like the first build! We have some things to do.."
 
-  drupal8 = False
-
   print "===> Making the shared files dir and setting symlink"
-  sudo("mkdir -p /var/www/shared/%s_%s_files" % (repo, branch))
-  sudo("chown jenkins:www-data /var/www/shared/%s_%s_files" % (repo, branch))
-  sudo("chmod 775 /var/www/shared/%s_%s_files" % (repo, branch))
+  sudo("mkdir -p /var/www/shared/%s_%s_files" % (alias, branch))
+  sudo("chown jenkins:www-data /var/www/shared/%s_%s_files" % (alias, branch))
+  sudo("chmod 775 /var/www/shared/%s_%s_files" % (alias, branch))
 
   print "===> Making the private files dir"
-  sudo("mkdir -p /var/www/shared/%s_%s_private_files" % (repo, branch))
-  sudo("chown jenkins:www-data /var/www/shared/%s_%s_private_files" % (repo, branch))
-  sudo("chmod 775 /var/www/shared/%s_%s_private_files" % (repo, branch))
+  sudo("mkdir -p /var/www/shared/%s_%s_private_files" % (alias, branch))
+  sudo("chown jenkins:www-data /var/www/shared/%s_%s_private_files" % (alias, branch))
+  sudo("chmod 775 /var/www/shared/%s_%s_private_files" % (alias, branch))
 
   print "===> Preparing the database"
-  # this process creates a database, database user/pass, imports the db dump from the repo
-  # and generates the settings.php database credential string. It's capable of working out
-  # whether the site is Drupal 6 or Drupal 7 and adjust its database string format appropriately.
-  newpass = common.Utils._gen_passwd()
-  #if(glob.glob("/var/www/%s_%s_%s/db/*.sql.bz2")):
+
+  # This process creates a database, database user/pass, imports the db dump from the repo
+  # and generates the settings.php database credential string via a drush site-install.
 
   # Check if a db/ directory exists first.
   db_dir = False
@@ -104,95 +108,51 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
     if run("find /var/www/%s_%s_%s -maxdepth 1 -type d -name db | egrep '.*'" % (repo, branch, build)).return_code == 0:
       db_dir = True
 
-  # Select the correct db script to use
-  dbscript = ""
-  if drupal_version == '8':
-    if cluster:
-      dbscript = "mysqlpreparenoimport_remote"
-      if rds:
-        dbscript = "mysqlpreparenoimport_rds"
-    else:
-      dbscript = "mysqlpreparenoimport"
-  else:
-    if db_dir:
-      if cluster:
-        dbscript = "mysqlprepare_remote"
-      else:
-        dbscript = "mysqlprepare"
-    else:
-      if cluster:
-        dbscript = "mysqlpreparenoimport_remote"
-        if rds:
-          dbscript = "mysqlpreparenoimport_rds"
-      else:
-        dbscript = "mysqlpreparenoimport"
-
-
-  print "===> Will use the script %s.sh for preparing the database" % dbscript
-
-  # Copy database script to server(s)
-  script_dir = os.path.dirname(os.path.realpath(__file__))
-  path_to_local_script = script_dir + '/../util/' + dbscript + '.sh'
-  if put(path_to_local_script, '/home/jenkins', mode=0755).failed:
-    raise SystemExit("Could not copy the database script to the application server, aborting because we won't be able to make a database")
-  else:
-    print "===> Database preparation script %s.sh copied to %s:/home/jenkins/%s.sh" % (dbscript, env.host, dbscript)
+  # We can default these to None, mysql_new_database() will sort itself out
+  list_of_app_servers = None
+  db_host = None
 
   # For clusters we need to do some extra things
-  app_ip_override = False
   if cluster:
     # This is the Database host that we need to insert into Drupal settings.php. It is different from the main db host because it might be a floating IP
-    dbhost = config.get('DrupalDBHost', 'dbhost')
-    # Convert a list of apps back into a string, to pass to the mysqlprepare script for setting appropriate GRANTs to the database
-    apps_list = ",".join(env.roledefs['app_all'])
+    db_host = config.get('DrupalDBHost', 'dbhost')
+    # Convert a list of apps back into a string, to pass to the MySQL new database function for setting appropriate GRANTs to the database
+    list_of_app_servers = env.roledefs['app_all']
 
-    if config.has_section('AppIPs'):
-      app_ip_override = True
-      apps_ip_list = ",".join(env.roledefs['app_ip_all'])
-
-  if app_ip_override:
-    list_of_app_servers = apps_ip_list
-  else:
-    list_of_app_servers = env.host
+  if config.has_section('AppIPs'):
+    list_of_app_servers = env.roledefs['app_ip_all']
 
   # Prepare the database
-  if db_dir:
-    if drupal_version == '8':
-      drupal8 = True
-      # We need to actually run a drush si first with Drupal 8. Something to do with hash salts.
-      # So, first run a mysqlpreparenoimport.sh, then drop the tables and import the database in
-      # the db/ directory.
-      sitedir = "/var/www/%s_%s_%s/www" % (repo, branch, build)
-      if cluster:
-        common.Utils._sshagent_run("/home/jenkins/%s.sh %s %s %s %s %s %s %s %s" % (dbscript, dbhost, repo, newpass, sitedir, branch, profile, list_of_app_servers, drupal8))
-      else:
-        sudo("/home/jenkins/%s.sh %s %s %s %s %s %s" % (dbscript, repo, newpass, sitedir, buildtype, profile, drupal8))
-      with cd("%s/sites/default" % sitedir):
-        sudo("drush -y sql-drop")
-        if sudo("bzcat /var/www/%s_%s_%s/db/*.sql.bz2 | drush -y sql-cli" % (repo, branch, build)).failed:
-          print "Could not import database. Aborting build."
-          raise SystemError("Could not import database. Aborting build.")
-    else:
-      sudo("bunzip2 /var/www/%s_%s_%s/db/*.sql.bz2" % (repo, branch, build))
-      sitedir = "/var/www/%s_%s_%s/www" % (repo, branch, build)
-      if cluster:
-        common.Utils._sshagent_run("/home/jenkins/%s.sh %s %s %s %s %s /var/www/%s_%s_%s/db %s" % (dbscript, dbhost, repo, newpass, sitedir, branch, repo, branch, build, list_of_app_servers))
-      else:
-        # mysqlprepare.sh <databasename> <databasepass> <site_root> <branch> <dumpfile>
-        sudo("/home/jenkins/%s.sh %s %s /var/www/live.%s.%s %s $(find /var/www/%s_%s_%s/db -type f -name *.sql)" % (dbscript, repo, newpass, repo, branch, buildtype, repo, branch, build))
+  # We'll get back db_name, db_username, db_password and db_host from this call as a list in new_database
+  new_database = common.MySQL.mysql_new_database(repo, buildtype, rds, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
+
+  # Now install Drupal
+  site_root = "/var/www/%s_%s_%s/www" % (repo, branch, build)
+
+  # We need to actually run a drush si first, then drop the tables and import
+  # the database in the db/ directory.
+  with cd("%s/sites/%s" % (site_root, site)):
+    run("cp default.settings.php settings.php")
+    db_url = "mysql://%s:%s@%s/%s" % (new_database[1], new_database[2], new_database[3], new_database[0])
+    print "===> Installing Drupal with MySQL string of %s" % db_url
+    run ("drush si %s -y --db-url=%s" % (profile, db_url))
+    # Append the necessary include and other settings
+    append_string = """$config_directories['sync'] = '../config/sync';
+$file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
+if (file_exists($file)) {
+  include_once($file);
+}""" % (repo, branch, build, site, buildtype)
+    append("settings.php", append_string, use_sudo=True)
+
+  # Now if we have a database to import we can do that
+  if db_dir and dump_file:
+    with cd("%s/sites/%s" % (site_root, site)):
+      sudo("drush -y sql-drop")
+      site_root = "/var/www/%s_%s_%s" % (repo, branch, build)
+      common.MySQL.mysql_import_dump(site_root, new_database[0], dump_file, new_database[3], rds, mysql_config)
+      site_root = "/var/www/%s_%s_%s/www" % (repo, branch, build)
   else:
-    sitedir = "/var/www/%s_%s_%s/www" % (repo, branch, build)
-    if drupal_version == '8':
-      drupal8 = True
-      if cluster:
-        common.Utils._sshagent_run("/home/jenkins/%s.sh %s %s %s %s %s %s %s %s" % (dbscript, dbhost, repo, newpass, sitedir, branch, profile, list_of_app_servers, drupal8))
-      else:
-        sudo("/home/jenkins/%s.sh %s %s %s %s %s %s" % (dbscript, repo, newpass, sitedir, buildtype, profile, drupal8))
-    else:
-      if cluster:
-        common.Utils._sshagent_run("/home/jenkins/%s.sh %s %s %s %s %s %s %s" % (dbscript, dbhost, repo, newpass, sitedir, branch, profile, list_of_app_servers))
-      else:
-        sudo("/home/jenkins/%s.sh %s %s %s %s %s" % (dbscript, repo, newpass, sitedir, buildtype, profile))
+    print "===> No database found to seed from, moving on."
 
   # This sanitisation bit normally only occurs during the initial deployment of a custom branch
   # which allows the user to select which database to use. They can choose whether it is santised
@@ -203,47 +163,45 @@ def initial_build(repo, url, branch, build, profile, buildtype, sanitise, config
       sanitised_password = common.Utils._gen_passwd()
     if sanitised_email is None:
       sanitised_email = 'example.com'
-    with cd("%s/sites/default" % sitedir):
+    with cd("%s/sites/%s" % (site_root, site)):
       with settings(warn_only=True):
-        if run("drush -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (repo, sanitised_email, sanitised_password)).failed:
+        if run("drush -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (alias, sanitised_email, sanitised_password)).failed:
           print "Could not sanitise database. Aborting this build."
           raise SystemError("Could not sanitise database. Aborting this build.")
         else:
-          print "===> Data sanitised, email domain set to %s, passwords set to %s" % (sanitised_email, sanitised_password)
+          print "===> Data sanitised, email domain set to %s+%%uid@%s, passwords set to %s" % (alias, sanitised_email, sanitised_password)
           print "Sanitised database."
 
-  if drupal_version == '8':
-    # If the site is Drupal 8, after the initial build, the config directory will have incorrect permissions, which is not ideal.
-    print "===> Correcting files directory permissions and ownership..."
-    sudo("chown -R jenkins:www-data /var/www/shared/%s_%s_files" % (repo, branch))
-    sudo("chmod 775 /var/www/shared/%s_%s_files" % (repo, branch))
+  print "===> Correcting files directory permissions and ownership..."
+  sudo("chown -R jenkins:www-data /var/www/shared/%s_%s_files" % (alias, branch))
+  sudo("chmod 775 /var/www/shared/%s_%s_files" % (alias, branch))
 
-  print "===> Temporarily moving settings.php to shared area /var/www/shared/%s_%s.settings.inc so all servers in a cluster can access it" % (repo, branch)
-  sudo("mv /var/www/%s_%s_%s/www/sites/default/settings.php /var/www/shared/%s_%s.settings.inc" % (repo, branch, build, repo, branch))
+  print "===> Temporarily moving settings.php to shared area /var/www/shared/%s_%s.settings.inc so all servers in a cluster can access it" % (alias, branch)
+  sudo("mv /var/www/%s_%s_%s/www/sites/%s/settings.php /var/www/shared/%s_%s.settings.inc" % (repo, branch, build, site, alias, branch))
 
 
 @task
 @roles('app_all')
-def initial_build_move_settings(repo, branch):
+def initial_build_move_settings(alias, branch):
   # Prepare the settings.inc file after installation
-  print "===> Copying %s_%s.settings.inc from shared to config area /var/www/config/%s_%s.settings.inc. Do an 'include' of this in your main settings.php, or else it will be symlinked directly as settings.php" % (repo, branch, repo, branch)
+  print "===> Copying %s_%s.settings.inc from shared to config area /var/www/config/%s_%s.settings.inc. Do an 'include' of this in your main settings.php, or else it will be symlinked directly as settings.php" % (alias, branch, alias, branch)
   # Try and make a config directory, just in case
   if sudo("mkdir -p /var/www/config").failed:
     raise SystemExit("Could not create shared config directory")
-  sudo("cp /var/www/shared/%s_%s.settings.inc /var/www/config/%s_%s.settings.inc" % (repo, branch, repo, branch))
-  sudo("chown jenkins:www-data /var/www/config/%s_%s.settings.inc" % (repo, branch))
-  sudo("chmod 644 /var/www/config/%s_%s.settings.inc" % (repo, branch))
+  sudo("cp /var/www/shared/%s_%s.settings.inc /var/www/config/%s_%s.settings.inc" % (alias, branch, alias, branch))
+  sudo("chown jenkins:www-data /var/www/config/%s_%s.settings.inc" % (alias, branch))
+  sudo("chmod 644 /var/www/config/%s_%s.settings.inc" % (alias, branch))
 
 
 # Copy the dummy vhost and change values.
 @task
 @roles('app_all')
-def initial_build_vhost(repo, url, branch, build, buildtype, ssl_enabled, ssl_cert, ssl_ip, httpauth_pass, drupal_common_config, webserverport):
+def initial_build_vhost(repo, url, branch, build, alias, buildtype, ssl_enabled, ssl_cert, ssl_ip, httpauth_pass, drupal_common_config, webserverport):
   # Some quick clean-up from earlier, delete the 'shared' settings.inc
   with settings(warn_only=True):
-    if run("stat /var/www/shared/%s_%s.settings.inc" % (repo, branch)).return_code == 0:
-      sudo("rm /var/www/shared/%s_%s.settings.inc" % (repo, branch))
-      print "===> Deleting /var/www/shared/%s_%s.settings.inc as we don't need it now" % (repo, branch)
+    if run("stat /var/www/shared/%s_%s.settings.inc" % (alias, branch)).return_code == 0:
+      sudo("rm /var/www/shared/%s_%s.settings.inc" % (alias, branch))
+      print "===> Deleting /var/www/shared/%s_%s.settings.inc as we don't need it now" % (alias, branch)
   # Work out whether we are running Apache or Nginx (compensating for RedHat which uses httpd as name)
   # Assume Nginx by default
   webserver = "nginx"

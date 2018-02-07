@@ -128,12 +128,12 @@ def configure_feature_branch(buildtype, config, branch):
 
 # Used for Drupal build teardowns.
 @task
-def remove_site(repo, branch):
+def remove_site(repo, branch, alias):
   # Drop DB...
   with cd("/var/www/live.%s.%s/www/sites/default" % (repo, branch)):
     with settings(warn_only=True):
       if run("drush status").failed:
-        dbname = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % repo)
+        dbname = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % alias)
         print "DEBUG INFO: dbname = %s" % dbname
         dbname = dbname.translate(None, "',")
         print "DEBUG INFO: dbname = %s" % dbname
@@ -142,7 +142,7 @@ def remove_site(repo, branch):
 
         # If the dbname variable is empty for whatever reason, resort to grepping settings.php
         if not dbname:
-          dbname = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % repo)
+          dbname = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % alias)
           print "DEBUG INFO: dbname = %s" % dbname
           dbname = dbname.translate(None, "',")
           print "DEBUG INFO: dbname = %s" % dbname
@@ -159,16 +159,16 @@ def remove_site(repo, branch):
 
     # Remove files directories
     print "===> Removing files directories..."
-    sudo("rm -rf /var/www/shared/%s_%s_*" % (repo, branch))
+    sudo("rm -rf /var/www/shared/%s_%s_*" % (alias, branch))
 
     # Remove shared settings file
     print "===> Removing settings.inc file..."
-    sudo("rm /var/www/config/%s_%s.settings.inc" % (repo, branch))
+    sudo("rm /var/www/config/%s_%s.settings.inc" % (alias, branch))
 
 
 @task
-def remove_drush_alias(repo, branch):
+def remove_drush_alias(alias, branch):
   with settings(warn_only=True):
     print "===> Removing drush alias..."
-    sudo("rm /etc/drush/%s_%s.alias.drushrc.php" % (repo, branch))
+    sudo("rm /etc/drush/%s_%s.alias.drushrc.php" % (alias, branch))
 

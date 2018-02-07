@@ -81,7 +81,7 @@ def run_tests(repo, branch, build, config):
 # Run behat tests, if present
 @task
 @roles('app_primary')
-def run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, junit, drupal_version, tags = [], disable_modules = []):
+def run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, junit, drupal_version, tags = [], disable_modules = []):
   cwd = os.getcwd()
   continue_tests = True
   tests_failed = False
@@ -92,13 +92,13 @@ def run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, junit, dru
       if disable_modules:
         if drupal_version == '8':
           for module in disable_modules:
-            if run("drush @%s_%s -y pm-uninstall %s" % (repo, branch, module)).failed:
+            if run("drush @%s_%s -y pm-uninstall %s" % (alias, branch, module)).failed:
               print "Cannot disable %s. Stopping tests early..." % module
               continue_tests = False
               break
         else:
           for module in disable_modules:
-            if run("drush @%s_%s -y dis %s" % (repo, branch, module)).failed:
+            if run("drush @%s_%s -y dis %s" % (alias, branch, module)).failed:
               print "Cannot disable %s. Stopping tests early..." % module
               continue_tests = False
               break
@@ -180,24 +180,24 @@ def run_behat_tests(repo, branch, build, buildtype, url, ssl_enabled, junit, dru
 
     # Re-enable modules
     if disable_modules:
-      reenable_modules(repo, branch, buildtype, drupal_version, disable_modules)
+      reenable_modules(alias, branch, buildtype, drupal_version, disable_modules)
 
     # Send test status back to main fabfile
     return tests_failed
 
 
 @task
-def reenable_modules(repo, branch, buildtype, drupal_version, enable_modules = []):
+def reenable_modules(alias, branch, buildtype, drupal_version, enable_modules = []):
   with settings(warn_only=True):
     if drupal_version == '8':
-      if run("drush @%s_%s -y cim" % (repo, branch)).failed:
+      if run("drush @%s_%s -y cim" % (alias, branch)).failed:
         print "Cannot import config to enable modules. Manual investigation is required."
       else:
         print "Modules re-enabled via config import."
     else:
       if enable_modules:
         for module in enable_modules:
-          if run("drush @%s_%s -y en %s" % (repo, branch, module)).failed:
+          if run("drush @%s_%s -y en %s" % (alias, branch, module)).failed:
             print "Cannot enable %s. Manual investigation is required." % module
           else:
             print "%s re-enabled." % module

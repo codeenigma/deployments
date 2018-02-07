@@ -54,14 +54,14 @@ def configure_config_export(config):
 # Take a database backup
 @task
 @roles('app_primary')
-def backup_db(repo, branch, build):
+def backup_db(alias, branch, build):
   print "===> Ensuring backup directory exists"
   with settings(warn_only=True):
     if run("mkdir -p ~jenkins/dbbackups").failed:
       raise SystemExit("Could not create directory ~jenkins/dbbackups! Aborting early")
   print "===> Taking a database backup..."
   with settings(warn_only=True):
-    if run("drush @%s_%s sql-dump --skip-tables-key=common | gzip > ~jenkins/dbbackups/%s_%s_prior_to_%s.sql.gz; if [ ${PIPESTATUS[0]} -ne 0 ]; then exit 1; else exit 0; fi" % (repo, branch, repo, branch, build)).failed:
+    if run("drush @%s_%s sql-dump --skip-tables-key=common | gzip > ~jenkins/dbbackups/%s_%s_prior_to_%s.sql.gz; if [ ${PIPESTATUS[0]} -ne 0 ]; then exit 1; else exit 0; fi" % (alias, branch, alias, branch, build)).failed:
       failed_backup = True
     else:
       failed_backup = False
@@ -86,13 +86,14 @@ def generate_drush_cron(repo, branch):
 # This function is used to get a fresh database of the site to import into the custom
 # branch site during the initial_build() step
 @task
-def prepare_database(repo, branch, build, syncbranch, orig_host, sanitise, drupal_version, sanitised_password, sanitised_email, freshinstall=True):
+def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise, drupal_version, sanitised_password, sanitised_email, freshinstall=True):
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.read_config_file()
   now = common.Utils._gen_datetime()
+  dump_file = None
 
   if syncbranch is None:
-    raise SystemError("Sync branch cannot be empty when wanting a fresh database when deploying a custom branch for the first time. Aborting early.")
+    raise SystemError("######## Sync branch cannot be empty when wanting a fresh database when deploying a custom branch for the first time. Aborting early.")
 
   current_env = env.host
 
@@ -110,45 +111,34 @@ def prepare_database(repo, branch, build, syncbranch, orig_host, sanitise, drupa
 
   # Let's first get the hostname of the server where the site we want a fresh db from resides
   # Typically, the stage site had a buildtype of [stage], but the master/dev site has [dev]
-  # But there are cases where the 'master' branch is the production site
-  # TODO: Find a cleaner way to pass the server and branch for getting fresh database dumps
-  sync_buildtype = syncbranch
-  if syncbranch == "master":
-    # @TODO: Another Emlyn wtf!
-    master_deploy = ['govwalesd8', 'govwalesd7']
-    if repo in master_deploy:
-      sync_buildtype = "prod"
-
-  if config.has_section(sync_buildtype):
-    sync_branch_host = config.get(sync_buildtype, repo)
+  if config.has_section(syncbranch):
+    sync_branch_host = config.get(syncbranch, repo)
   else:
     # We cannot find a section with that buildtype, so abort
-    print "===> Cannot find a buildtype %s in config.ini. Aborting." % sync_buildtype
-    raise SystemError("Cannot find a buildtype %s in config.ini. Aborting." % sync_buildtype)
+    raise SystemError("######## Cannot find a buildtype %s in config.ini. Aborting." % syncbranch)
 
   # If sync_branch_host and current_env match, we don't need to connect to another
   # server to get the dump
   if sync_branch_host == current_env:
     # Check a site exists on this server
-    if run('drush sa | grep \'^@\?%s_%s$\' > /dev/null' % (repo, syncbranch)).failed:
-      print "===> Cannot find a site with the alias %s_%s. Aborting." % (repo, syncbranch)
-      raise SystemError("Cannot find a site with the alias %s_%s. Aborting." % (repo, syncbranch))
+    if run('drush sa | grep \'^@\?%s_%s$\' > /dev/null' % (alias, syncbranch)).failed:
+      raise SystemError("######## Cannot find a site with the alias %s_%s. Aborting." % (alias, syncbranch))
 
     # If freshinstall is True, this occurs during the initial build, so we create a new database
     # dump in the db/ directory which will be imported
     if freshinstall:
       print "===> Database to get a fresh dump from is on the same server. Getting database dump now..."
       # Time to dump the database and save it to db/
-      run('drush @%s_%s sql-dump | bzip2 -f > /var/www/%s_%s_%s/db/%s_%s.sql.bz2' % (repo, syncbranch, repo, branch, build, repo, syncbranch))
+      dump_file = "%s_%s.sql.bz2" % (alias, syncbranch)
+      run('drush @%s_%s sql-dump | bzip2 -f > /var/www/%s_%s_%s/db/%s' % (alias, syncbranch, repo, branch, build, dump_file))
     else:
       # Because freshinstall is False and the site we're syncing from is on the same server,
       # we can use drush sql-sync to sync that database to this one
       print "===> Database to sync to site is on the same server. Syncing %s database now..." % syncbranch
-      run("drush @%s_%s -y sql-drop" % (repo, branch))
-      if run("drush sql-sync -y @%s_%s @%s_%s" % (repo, syncbranch, repo, branch)).failed:
-        print "===> Could not sync %s database. Reverting the %s database and aborting." % (syncbranch, branch)
-        Revert._revert_db(repo, branch, build)
-        raise SystemError("Could not sync %s database. Reverting the %s database and aborting." % (syncbranch, branch))
+      run("drush @%s_%s -y sql-drop" % (alias, branch))
+      if run("drush sql-sync -y @%s_%s @%s_%s" % (alias, syncbranch, alias, branch)).failed:
+        Revert._revert_db(alias, branch, build)
+        raise SystemError("######## Could not sync %s database. Reverting the %s database and aborting." % (syncbranch, branch))
       else:
         print "===> %s database synced successfully." % syncbranch
 
@@ -160,28 +150,28 @@ def prepare_database(repo, branch, build, syncbranch, orig_host, sanitise, drupa
     print "===> Switching host to %s to get database dump..." % env.host_string
 
     # Check the site exists on the host server. If not, abort
-    if run('drush sa | grep \'^@\?%s_%s$\' > /dev/null' % (repo, syncbranch)).failed:
-      print "===> Cannot find a site with the alias %s_%s. Aborting." % (repo, syncbranch)
-      raise SystemError("Cannot find a site with the alias %s_%s. Aborting." % (repo, syncbranch))
+    if run('drush sa | grep \'^@\?%s_%s$\' > /dev/null' % (alias, syncbranch)).failed:
+      raise SystemError("######## Cannot find a site with the alias %s_%s. Aborting." % (alias, syncbranch))
 
     if sanitise == "yes":
       script_dir = os.path.dirname(os.path.realpath(__file__))
       if put(script_dir + '/../util/drupal-obfuscate.rb', '/home/jenkins', mode=0755).failed:
-        raise SystemExit("Could not copy the obfuscate script to the application server, aborting as we cannot safely sanitise the live data")
+        raise SystemExit("######## Could not copy the obfuscate script to the application server, aborting as we cannot safely sanitise the live data")
       else:
         print "===> Obfuscate script copied to %s:/home/jenkins/drupal-obfuscate.rb - obfuscating data" % env.host
         with settings(hide('running', 'stdout', 'stderr')):
-          dbname = run("drush @%s_%s status  Database\ name | awk {'print $4'} | head -1" % (repo, syncbranch))
-          dbuser = run("drush @%s_%s status  Database\ user | awk {'print $4'} | head -1" % (repo, syncbranch))
-          dbpass = run("drush @%s_%s --show-passwords status  Database\ pass | awk {'print $4'} | head -1" % (repo, syncbranch))
-          dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (repo, syncbranch))
-          run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, repo, now))
+          dbname = run("drush @%s_%s status  Database\ name | awk {'print $4'} | head -1" % (alias, syncbranch))
+          dbuser = run("drush @%s_%s status  Database\ user | awk {'print $4'} | head -1" % (alias, syncbranch))
+          dbpass = run("drush @%s_%s --show-passwords status  Database\ pass | awk {'print $4'} | head -1" % (alias, syncbranch))
+          dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (alias, syncbranch))
+          run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, alias, now))
     else:
-      run('drush @%s_%s sql-dump | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (repo, syncbranch, repo, now))
+      run('drush @%s_%s sql-dump | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (alias, syncbranch, alias, now))
 
     print "===> Fetching the database from the remote server..."
-    get('~/dbbackups/custombranch_%s_%s.sql.bz2' % (repo, now), '/tmp/dbbackups/custombranch_%s_%s_from_%s.sql.bz2' % (repo, now, syncbranch))
-    run('rm ~/dbbackups/custombranch_%s_%s.sql.bz2' % (repo, now))
+    dump_file = "custombranch_%s_%s_from_%s.sql.bz2" % (alias, now, syncbranch)
+    get('~/dbbackups/custombranch_%s_%s.sql.bz2' % (alias, now), '/tmp/dbbackups/%s' % dump_file)
+    run('rm ~/dbbackups/custombranch_%s_%s.sql.bz2' % (alias, now))
 
     # Switch back to original host and send the database dump to it
     env.host_string = orig_host
@@ -193,18 +183,17 @@ def prepare_database(repo, branch, build, syncbranch, orig_host, sanitise, drupa
     # sync the chosen database to the custom branch site, so we copy it to /home/jenkins/dbbackups
     # then import it
     if freshinstall:
-      local('scp /tmp/dbbackups/custombranch_%s_%s_from_%s.sql.bz2 %s:/var/www/%s_%s_%s/db/' % (repo, now, syncbranch, env.host_string, repo, branch, build))
+      local('scp /tmp/dbbackups/%s %s:/var/www/%s_%s_%s/db/' % (dump_file, env.host_string, repo, branch, build))
     else:
-      local('scp /tmp/dbbackups/custombranch_%s_%s_from_%s.sql.bz2 %s:~/dbbackups/' % (repo, now, syncbranch, env.host_string))
+      local('scp /tmp/dbbackups/%s %s:~/dbbackups/' % (dump_file, env.host_string))
       print "===> Importing the %s database into %s..." % (syncbranch, branch)
       # Need to drop all tables first in case there are existing tables that have to be ADDED
       # from an upgrade
-      run("drush @%s_%s -y sql-drop" % (repo, branch))
+      run("drush @%s_%s -y sql-drop" % (alias, branch))
       with settings(warn_only=True):
-        if run("bzcat ~/dbbackups/custombranch_%s_%s_from_%s.sql.bz2 | drush @%s_%s sql-cli" % (repo, now, syncbranch, repo, branch)).failed:
-          print "===> Cannot import %s database into %s. Reverting database and aborting." % (syncbranch, repo)
-          _revert_db(repo, branch, build)
-          raise SystemError("Cannot import %s database into %s. Reverting database and aborting." % (syncbranch, repo))
+        if run("bzcat ~/dbbackups/%s | drush @%s_%s sql-cli" % (dump_file, alias, branch)).failed:
+          Revert._revert_db(alias, branch, build)
+          raise SystemError("######## Cannot import %s database into %s. Reverting database and aborting." % (syncbranch, alias))
         else:
           if sanitise == "yes":
             if sanitised_password is None:
@@ -212,15 +201,21 @@ def prepare_database(repo, branch, build, syncbranch, orig_host, sanitise, drupa
             if sanitised_email is None:
               sanitised_email = 'example.com'
             print "===> Sanitising database..."
-            run("drush @%s_%s -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (repo, branch, repo, sanitised_email, sanitised_password))
-            print "===> Data sanitised, email domain set to %s, passwords set to %s" % (sanitised_email, sanitised_password)
+            run("drush @%s_%s -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (alias, branch, alias, sanitised_email, sanitised_password))
+            print "===> Data sanitised, email domain set to %s+%%uid@%s, passwords set to %s" % (alias, sanitised_email, sanitised_password)
           print "===> %s database imported." % syncbranch
 
       # Tidying up on host server
-      run("rm ~/dbbackups/custombranch_%s_%s_from_%s.sql.bz2" % (repo, now, syncbranch))
+      run("rm ~/dbbackups/%s" % dump_file)
 
     # Tidying up on Jenkins server
-    local('rm /tmp/dbbackups/custombranch_%s_%s_from_%s.sql.bz2' % (repo, now, syncbranch))
+    local('rm /tmp/dbbackups/%s' % dump_file)
+
+    # For cases where we processed the import, we do not want to send dump_file back
+    dump_file = None
+
+  # Send the dump_file back for later use
+  return dump_file
 
 
 # Function to install composer
@@ -254,103 +249,103 @@ def run_composer_install(repo, branch, build, composer_lock, no_dev):
 # Run a drush status against that build
 @task
 @roles('app_primary')
-def drush_status(repo, branch, build, revert=False, revert_settings=False):
+def drush_status(repo, branch, build, site, alias, revert=False, revert_settings=False):
   print "===> Running a drush status test"
-  with cd("/var/www/%s_%s_%s/www/sites/default" % (repo, branch, build)):
+  with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
     with settings(warn_only=True):
       if run("drush status | egrep 'Connected|Successful'").failed:
         print "Could not bootstrap the database!"
         if revert == False and revert_settings == True:
-          Revert._revert_settings(repo, branch, build)
+          Revert._revert_settings(repo, branch, build, site, alias)
         else:
           if revert == True:
             print "Reverting the database..."
-            Revert._revert_db(repo, branch, build)
-            Revert._revert_settings(repo, branch, build)
+            Revert._revert_db(alias, branch, build)
+            Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("Could not bootstrap the database on this build! Aborting")
 
       if run("drush status").failed:
         if revert == False and revert_settings == True:
-          Revert._revert_settings(repo, branch, build)
+          Revert._revert_settings(repo, branch, build, site, alias)
         else:
           if revert == True:
             print "Reverting the database..."
-            Revert._revert_db(repo, branch, build)
-            Revert._revert_settings(repo, branch, build)
+            Revert._revert_db(alias, branch, build)
+            Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("Could not bootstrap the database on this build! Aborting")
 
 
 # Run drush updatedb to apply any database changes from hook_update's
 @task
 @roles('app_primary')
-def drush_updatedb(repo, branch, build, drupal_version):
+def drush_updatedb(repo, branch, build, site, alias, drupal_version):
   print "===> Running any database hook updates"
   with settings(warn_only=True):
     # Apparently APC cache can interfere with drush updatedb expected results here. Clear any chance of caches
     common.Services.clear_php_cache()
     common.Services.clear_varnish_cache()
-    if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y updatedb'" % (repo, branch, build)).failed:
+    if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
       print "Could not apply database updates! Reverting this database"
-      Revert._revert_db(repo, branch, build)
-      Revert._revert_settings(repo, branch, build)
+      Revert._revert_db(alias, branch, build)
+      Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("Could not apply database updates! Reverted database. Site remains on previous build")
     if drupal_version == '8':
-      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y entity-updates'" % (repo, branch, build)).failed:
+      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y entity-updates'" % (repo, branch, build, site)).failed:
         print "Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
   print "===> Database updates applied"
-  drush_clear_cache(repo, branch, build, drupal_version)
+  drush_clear_cache(repo, branch, build, site, drupal_version)
 
 
 # Function to revert all features using --force
 @task
 @roles('app_primary')
-def drush_fra(repo, branch, build, drupal_version):
-  with cd("/var/www/%s_%s_%s/www/sites/default" % (repo, branch, build)):
+def drush_fra(repo, branch, build, site, alias, drupal_version):
+  with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
     if run("drush pm-list --pipe --type=module --status=enabled --no-core | grep -q ^features$"):
       print "===> Features module not installed, skipping feature revert"
     else:
       print "===> Reverting all features..."
       with settings(warn_only=True):
-        if sudo("su -s /bin/bash www-data -c 'drush -y fra'" % (repo, branch, build)).failed:
+        if sudo("su -s /bin/bash www-data -c 'drush -y fra'").failed:
           print "Could not revert features! Reverting database and settings..."
-          Revert._revert_db(repo, branch, build)
-          Revert._revert_settings(repo, branch, build)
+          Revert._revert_db(alias, branch, build)
+          Revert._revert_settings(repo, branch, build, site, alias)
           raise SystemExit("Could not revert features! Site remains on previous build")
         else:
-          drush_clear_cache(repo, branch, build, drupal_version)
+          drush_clear_cache(repo, branch, build, site, drupal_version)
 
 
 # Function to run Drupal cron (mainly used by RBKC's microsites that use the Domain module)
 @task
 @roles('app_primary')
-def drush_cron(repo, branch, build, drupal_version):
+def drush_cron(repo, branch, build, site, drupal_version):
   print "===> Running Drupal cron..."
   with settings(warn_only=True):
-    with cd("/var/www/%s_%s_%s/www/sites/default" % (repo, branch, build)):
+    with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
       if sudo("drush -y cron").failed:
         print "Could not run cron!"
         raise SystemExit("Could not run cron! Site remains on previous build.")
       else:
-        drush_clear_cache(repo, branch, build, drupal_version)
+        drush_clear_cache(repo, branch, build, site, drupal_version)
 
 
 # Function that can be used to clear Drupal cache
 @task
 @roles('app_primary')
-def drush_clear_cache(repo, branch, build, drupal_version):
+def drush_clear_cache(repo, branch, build, site, drupal_version):
   print "===> Clearing Drupal cache..."
   with settings(warn_only=True):
     if drupal_version == '8':
-      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cr'" % (repo, branch, build))
+      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cr'" % (repo, branch, build, site))
     else:
-      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cc all'" % (repo, branch, build))
+      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cc all'" % (repo, branch, build, site))
 
 
 # Manage or setup the 'environment_indicator' Drupal module, if it exists in the build
 # See RS11494
 @task
 @roles('app_primary')
-def environment_indicator(repo, branch, build, buildtype, drupal_version):
+def environment_indicator(repo, branch, build, buildtype, alias, site, drupal_version):
   # Check if the module exists in the build
   with settings(warn_only=True):
     if run("find /var/www/%s_%s_%s/www -type d -name environment_indicator | egrep '.*'" % (repo, branch, build)).return_code == 0:
@@ -379,44 +374,41 @@ def environment_indicator(repo, branch, build, buildtype, drupal_version):
 
       # Unfortunately this can't check inside the $buildtype.settings.php include, if there is one, so we still need to
       # check for that.
-      print "===> Drupal 7 site, checking in /var/www/%s_%s_%s/www/sites/default/%s.settings.php for $conf['environment_indicator_overwritten_name']" % (repo, branch, build, buildtype)
+      print "===> Drupal 7 site, checking in /var/www/%s_%s_%s/www/sites/%s/%s.settings.php for $conf['environment_indicator_overwritten_name']" % (repo, branch, build, site, buildtype)
       contain_string = "$conf['environment_indicator_overwritten_name']"
-      settings_file = "/var/www/%s_%s_%s/www/sites/default/%s.settings.php" % (repo, branch, build, buildtype)
+      settings_file = "/var/www/%s_%s_%s/www/sites/%s/%s.settings.php" % (repo, branch, build, site, buildtype)
       does_contain = contains(settings_file, contain_string, exact=False, use_sudo=True)
 
       if does_contain:
-        print "===> Settings already exist in %s.settings.php, we will not write anything to /var/www/config/%s_%s.settings.inc" % (buildtype, repo, branch)
+        print "===> Settings already exist in %s.settings.php, we will not write anything to /var/www/config/%s_%s.settings.inc" % (buildtype, alias, branch)
 
       else:
-        print "===> Checking for and appending environment_indicator settings to /var/www/config/%s_%s.settings.inc" % (repo, branch)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$conf['environment_indicator_overwrite'] = 'TRUE';", True)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$conf['environment_indicator_overwritten_name'] = '%s';" % buildtype, True)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$conf['environment_indicator_overwritten_color'] = '%s';" % environment_indicator_color, True)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$conf['environment_indicator_overwritten_text_color'] = '#ffffff';", True)
+        print "===> Checking for and appending environment_indicator settings to /var/www/config/%s_%s.settings.inc" % (alias, branch)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$conf['environment_indicator_overwrite'] = 'TRUE';", True)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$conf['environment_indicator_overwritten_name'] = '%s';" % buildtype, True)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$conf['environment_indicator_overwritten_color'] = '%s';" % environment_indicator_color, True)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$conf['environment_indicator_overwritten_text_color'] = '#ffffff';", True)
 
     if drupal_version == '8':
 
       # Unfortunately this can't check inside the $buildtype.settings.php include, if there is one, so we still need to
       # check for that.
-      print "===> Drupal 8 site, checking in /var/www/%s_%s_%s/www/sites/default/%s.settings.php for $config['environment_indicator.indicator']['name']" % (repo, branch, build, buildtype)
+      print "===> Drupal 8 site, checking in /var/www/%s_%s_%s/www/sites/%s/%s.settings.php for $config['environment_indicator.indicator']['name']" % (repo, branch, build, site, buildtype)
       contain_string = "$config['environment_indicator.indicator']['name']"
-      settings_file = "/var/www/%s_%s_%s/www/sites/default/%s.settings.php" % (repo, branch, build, buildtype)
+      settings_file = "/var/www/%s_%s_%s/www/sites/%s/%s.settings.php" % (repo, branch, build, site, buildtype)
       does_contain = contains(settings_file, contain_string, exact=False, use_sudo=True)
 
       if does_contain:
-        print "===> Settings already exist in %s.settings.php, we will not write anything to /var/www/config/%s_%s.settings.inc" % (buildtype, repo, branch)
+        print "===> Settings already exist in %s.settings.php, we will not write anything to /var/www/config/%s_%s.settings.inc" % (buildtype, alias, branch)
 
       else:
-        print "===> Checking for and appending environment_indicator settings to /var/www/config/%s_%s.settings.inc" % (repo, branch)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$config['environment_indicator.indicator']['name'] = '%s';" % buildtype, True)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$config['environment_indicator.indicator']['bg_color'] = '%s';" % environment_indicator_color, True)
-        append("/var/www/config/%s_%s.settings.inc" % (repo, branch), "$config['environment_indicator.indicator']['fg_color'] = '#ffffff';", True)
+        print "===> Checking for and appending environment_indicator settings to /var/www/config/%s_%s.settings.inc" % (alias, branch)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$config['environment_indicator.indicator']['name'] = '%s';" % buildtype, True)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$config['environment_indicator.indicator']['bg_color'] = '%s';" % environment_indicator_color, True)
+        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$config['environment_indicator.indicator']['fg_color'] = '#ffffff';", True)
 
     if drupal_version == '7' or drupal_version == '8':
-      # Enable the module (if not already enabled)
-      #with cd("/var/www/%s_%s_%s/www/sites/default" % (repo, branch, build)):
-      #  run("drush -y en environment_indicator")
-      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y en environment_indicator'" % (repo, branch, build))
+      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y en environment_indicator'" % (repo, branch, build, site))
     if drupal_version == '6':
       print "Drupal 6 site. Not setting up environment_indicator at this time.."
   else:
@@ -426,27 +418,27 @@ def environment_indicator(repo, branch, build, buildtype, drupal_version):
 # Function used by Drupal 8 builds to import site config
 @task
 @roles('app_primary')
-def config_import(repo, branch, build, drupal_version, previous_build):
+def config_import(repo, branch, build, site, alias, drupal_version, previous_build):
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version == '8':
       print "===> Importing configuration for Drupal 8 site..."
-      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cim'" % (repo, branch, build)).failed:
+      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cim'" % (repo, branch, build, site)).failed:
         print "Could not import configuration! Reverting this database and settings"
         sudo("unlink /var/www/live.%s.%s" % (repo, branch))
         sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-        Revert._revert_db(repo, branch, build)
-        Revert._revert_settings(repo, branch, build)
+        Revert._revert_db(alias, branch, build)
+        Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("Could not import configuration! Reverted database and settings. Site remains on previous build")
       else:
         print "===> Configuration imported. Running a cache rebuild..."
-        drush_clear_cache(repo, branch, build, drupal_version)
+        drush_clear_cache(repo, branch, build, site, drupal_version)
 
 
 # Take the site offline (prior to drush updatedb)
 @task
 @roles('app_primary')
-def go_offline(repo, branch, build, readonlymode, drupal_version):
+def go_offline(repo, branch, build, alias, readonlymode, drupal_version):
   # readonlymode can either be 'maintenance' (the default) or 'readonlymode', which uses the readonlymode module
 
   print "===> go_offline mode is %s" % readonlymode
@@ -458,10 +450,10 @@ def go_offline(repo, branch, build, readonlymode, drupal_version):
       if run("find /var/www/%s_%s_%s/www -type d -name readonlymode | egrep '.*'" % (repo, branch, build)).return_code == 0:
         print "It does exist, so enable it if it's not already enabled"
         # Enable the module if it isn't already enabled
-        run("drush @%s_%s en -y readonlymode" % (repo, branch))
+        run("drush @%s_%s en -y readonlymode" % (alias, branch))
         # Set the site_readonly mode variable to 1
         print "===> Setting readonlymode so content cannot be changed while database updates are run..."
-        run("drush @%s_%s -y vset site_readonly 1" % (repo, branch))
+        run("drush @%s_%s -y vset site_readonly 1" % (alias, branch))
       else:
         print "Hm, the readonly flag in config.ini was set to readonly, yet the readonlymode module does not exist. We'll revert to normal maintenance mode..."
         readonlymode = 'maintenance'
@@ -469,16 +461,16 @@ def go_offline(repo, branch, build, readonlymode, drupal_version):
   if readonlymode == "maintenance":
     print "===> Taking the site offline temporarily to do the drush updatedb..."
     if drupal_version == '8':
-      run("drush @%s_%s -y state-set system.maintenancemode 1" % (repo, branch))
+      run("drush @%s_%s -y state-set system.maintenancemode 1" % (alias, branch))
     else:
-      run("drush @%s_%s -y vset site_offline 1" % (repo, branch))
-      run("drush @%s_%s -y vset maintenance_mode 1" % (repo, branch))
+      run("drush @%s_%s -y vset site_offline 1" % (alias, branch))
+      run("drush @%s_%s -y vset maintenance_mode 1" % (alias, branch))
 
 
 # Take the site online (after drush updatedb)
 @task
 @roles('app_primary')
-def go_online(repo, branch, build, previous_build, readonlymode, drupal_version):
+def go_online(repo, branch, build, alias, previous_build, readonlymode, drupal_version):
   # readonlymode can either be 'maintenance' (the default) or 'readonlymode', which uses the readonlymode module
 
   # If readonlymode is 'readonlymode', check that it exists
@@ -488,15 +480,15 @@ def go_online(repo, branch, build, previous_build, readonlymode, drupal_version)
       if run("find /var/www/%s_%s_%s/www -type d -name readonlymode | egrep '.*'" % (repo, branch, build)).return_code == 0:
         print "It does exist, so enable it if it's not already enabled"
         # Enable the module if it isn't already enabled
-        run("drush @%s_%s en -y readonlymode" % (repo, branch))
+        run("drush @%s_%s en -y readonlymode" % (alias, branch))
         # Set the site_readonly mode variable to 1
         print "===> Setting readonlymode back to 0 so content can once again be edited..."
-        if run("drush @%s_%s -y vset site_readonly 0" % (repo, branch)).failed:
+        if run("drush @%s_%s -y vset site_readonly 0" % (alias, branch)).failed:
           print "Could not set the site out of read only mode! Reverting this build and database."
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-          Revert._revert_db(repo, branch, build)
-          Revert._revert_settings(repo, branch, build)
+          Revert._revert_db(alias, branch, build)
+          Revert._revert_settings(repo, branch, build, site, alias)
       else:
         print "Hm, the readonly flag in config.ini was set to readonly, yet the readonlymode module does not exist. We'll revert to normal maintenance mode..."
         readonlymode = 'maintenance'
@@ -505,32 +497,32 @@ def go_online(repo, branch, build, previous_build, readonlymode, drupal_version)
     print "===> Taking the site back online..."
     with settings(warn_only=True):
       if drupal_version == '8':
-        if run("drush @%s_%s -y state-set system.maintenancemode 0" % (repo, branch)).failed:
+        if run("drush @%s_%s -y state-set system.maintenancemode 0" % (alias, branch)).failed:
           print "Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-          Revert._revert_db(repo, branch, build)
-          Revert._revert_settings(repo, branch, build)
+          Revert._revert_db(alias, branch, build)
+          Revert._revert_settings(repo, branch, build, site, alias)
       else:
-        if run("drush @%s_%s -y vset site_offline 0" % (repo, branch)).failed:
+        if run("drush @%s_%s -y vset site_offline 0" % (alias, branch)).failed:
           print "Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-          Revert._revert_db(repo, branch, build)
-          Revert._revert_settings(repo, branch, build)
+          Revert._revert_db(alias, branch, build)
+          Revert._revert_settings(repo, branch, build, site, alias)
 
         else:
-          run("drush @%s_%s -y vset maintenance_mode 0" % (repo, branch))
+          run("drush @%s_%s -y vset maintenance_mode 0" % (alias, branch))
 
 
 # Set the username and password of user 1 to something random if the buildtype is 'prod'
 @task
 @roles('app_primary')
-def secure_admin_password(repo, branch, build, drupal_version):
+def secure_admin_password(repo, branch, build, site, drupal_version):
   print "===> Setting secure username and password for uid 1"
   u1pass = common.Utils._gen_passwd(20)
   u1name = common.Utils._gen_passwd(20)
-  with cd('/var/www/%s_%s_%s/www/sites/default' % (repo, branch, build)):
+  with cd('/var/www/%s_%s_%s/www/sites/%s' % (repo, branch, build, site)):
     with settings(warn_only=True):
       if drupal_version == '8':
         run('drush sqlq "UPDATE users_field_data SET name = \'%s\' WHERE uid = 1"' % u1name)
@@ -541,16 +533,16 @@ def secure_admin_password(repo, branch, build, drupal_version):
 
 # Check if node access table will get rebuilt and warn if necessary
 @task
-def check_node_access(repo, branch, notifications_email):
+def check_node_access(alias, branch, notifications_email):
   with settings(warn_only=True):
-    node_access_needs_rebuild = run("drush @%s_%s php-eval 'echo node_access_needs_rebuild();'" % (repo, branch))
+    node_access_needs_rebuild = run("drush @%s_%s php-eval 'echo node_access_needs_rebuild();'" % (alias, branch))
     if node_access_needs_rebuild == 1:
       print "####### WARNING: this release needs the content access table to be rebuilt. This is an intrusive operation that imply the site needs to stay in maintenance mode untill the whole process is finished."
       print "####### Depending on the number of nodes and the complexity of access rules, this can take several hours. Be sure to either plan the release appropriately, or when possible use alternative method that are not intrusive."
       print "####### We recommend you consider this module: https://www.drupal.org/project/node_access_rebuild_progressive"
       # Send an email if an address is provided in config.ini
       if notifications_email:
-        local("echo 'Your build for %s of branch %s has triggered a warning of a possible content access table rebuild - this may cause an extended outage of your website. Please review!' | mail -s 'Content access table warning' %s" % (repo, branch, notifications_email))
+        local("echo 'Your build for %s of branch %s has triggered a warning of a possible content access table rebuild - this may cause an extended outage of your website. Please review!' | mail -s 'Content access table warning' %s" % (alias, branch, notifications_email))
         print "===> Sent warning email to %s" % notifications_email
     else:
       print "===> Node access rebuild check completed, as far as we can tell this build is safe"

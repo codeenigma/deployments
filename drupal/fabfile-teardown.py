@@ -17,7 +17,9 @@ env.shell = '/bin/bash -c'
 
 
 @task
-def main(repo, branch, buildtype, url=None, restartvarnish="yes", restartwebserver="yes"):
+def main(repo, branch, buildtype, alias=None, url=None, restartvarnish="yes", restartwebserver="yes"):
+  if alias is None:
+    alias = repo
 
   global varnish_restart
   global nginx_restart
@@ -52,7 +54,7 @@ def main(repo, branch, buildtype, url=None, restartvarnish="yes", restartwebserv
 
   # Check that the site actually exists before proceeding
   with settings(warn_only=True):
-    if run('drush sa | grep \'^@\?%s_%s$\' > /dev/null' % (repo, branch)).failed:
+    if run('drush sa | grep \'^@\?%s_%s$\' > /dev/null' % (alias, branch)).failed:
       print "===> The %s site does not exist on the server, so there is nothing to tear down. Aborting." % branch
       raise SystemError("The %s site does not exist on the server, so there is nothing to tear down. Aborting." % branch)
 
@@ -60,11 +62,11 @@ def main(repo, branch, buildtype, url=None, restartvarnish="yes", restartwebserv
   # --------------
   # If this is the first build, attempt to install the site for the first time.
   try:
-    FeatureBranches.remove_site(repo, branch)
-    common.BuildTeardown.remove_vhost(repo, branch, webserver)
-    common.BuildTeardown.remove_http_auth(repo, branch, webserver)
-    FeatureBranches.remove_drush_alias(repo, branch)
-    common.BuildTeardown.remove_cron(repo, branch)
+    FeatureBranches.remove_site(repo, branch, alias)
+    common.BuildTeardown.remove_vhost(repo, branch, webserver, alias)
+    common.BuildTeardown.remove_http_auth(repo, branch, webserver, alias)
+    FeatureBranches.remove_drush_alias(alias, branch)
+    common.BuildTeardown.remove_cron(repo, branch, alias)
 
   except:
     e = sys.exc_info()[1]
