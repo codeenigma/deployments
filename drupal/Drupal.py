@@ -211,7 +211,7 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
     # Tidying up on Jenkins server
     local('rm /tmp/dbbackups/%s' % dump_file)
 
-    # For cases we were processed the import, we do not want to send dump_file back
+    # For cases where we processed the import, we do not want to send dump_file back
     dump_file = None
 
   # Send the dump_file back for later use
