@@ -266,7 +266,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       execute(Drupal.run_composer_install, repo, branch, build, composer_lock, no_dev)
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
-      Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
+      dump_file = Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
 
     # Check for expected shared directories
     execute(common.Utils.create_config_directory, hosts=env.roledefs['app_all'])

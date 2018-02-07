@@ -90,6 +90,7 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.read_config_file()
   now = common.Utils._gen_datetime()
+  dump_file = None
 
   if syncbranch is None:
     raise SystemError("Sync branch cannot be empty when wanting a fresh database when deploying a custom branch for the first time. Aborting early.")
@@ -110,45 +111,34 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
 
   # Let's first get the hostname of the server where the site we want a fresh db from resides
   # Typically, the stage site had a buildtype of [stage], but the master/dev site has [dev]
-  # But there are cases where the 'master' branch is the production site
-  # TODO: Find a cleaner way to pass the server and branch for getting fresh database dumps
-  sync_buildtype = syncbranch
-  if syncbranch == "master":
-    # @TODO: Another Emlyn wtf!
-    master_deploy = ['govwalesd8', 'govwalesd7']
-    if repo in master_deploy:
-      sync_buildtype = "prod"
-
   if config.has_section(sync_buildtype):
     sync_branch_host = config.get(sync_buildtype, repo)
   else:
     # We cannot find a section with that buildtype, so abort
-    print "===> Cannot find a buildtype %s in config.ini. Aborting." % sync_buildtype
-    raise SystemError("Cannot find a buildtype %s in config.ini. Aborting." % sync_buildtype)
+    raise SystemError("######## Cannot find a buildtype %s in config.ini. Aborting." % sync_buildtype)
 
   # If sync_branch_host and current_env match, we don't need to connect to another
   # server to get the dump
   if sync_branch_host == current_env:
     # Check a site exists on this server
-    if run('drush sa | grep \'^@\?%s_%s$\' > /dev/null' % (repo, syncbranch)).failed:
-      print "===> Cannot find a site with the alias %s_%s. Aborting." % (repo, syncbranch)
-      raise SystemError("Cannot find a site with the alias %s_%s. Aborting." % (repo, syncbranch))
+    if run('drush sa | grep \'^@\?%s_%s$\' > /dev/null' % (alias, syncbranch)).failed:
+      raise SystemError("######## Cannot find a site with the alias %s_%s. Aborting." % (alias, syncbranch))
 
     # If freshinstall is True, this occurs during the initial build, so we create a new database
     # dump in the db/ directory which will be imported
     if freshinstall:
       print "===> Database to get a fresh dump from is on the same server. Getting database dump now..."
       # Time to dump the database and save it to db/
-      run('drush @%s_%s sql-dump | bzip2 -f > /var/www/%s_%s_%s/db/%s_%s.sql.bz2' % (alias, syncbranch, repo, branch, build, alias, syncbranch))
+      dump_file = "%s_%s.sql.bz2" % (alias, syncbranch)
+      run('drush @%s_%s sql-dump | bzip2 -f > /var/www/%s_%s_%s/db/%s' % (alias, syncbranch, repo, branch, build, dump_file))
     else:
       # Because freshinstall is False and the site we're syncing from is on the same server,
       # we can use drush sql-sync to sync that database to this one
       print "===> Database to sync to site is on the same server. Syncing %s database now..." % syncbranch
       run("drush @%s_%s -y sql-drop" % (alias, branch))
-      if run("drush sql-sync -y @%s_%s @%s_%s" % (repo, syncbranch, repo, branch)).failed:
-        print "===> Could not sync %s database. Reverting the %s database and aborting." % (syncbranch, branch)
+      if run("drush sql-sync -y @%s_%s @%s_%s" % (alias, syncbranch, alias, branch)).failed:
         Revert._revert_db(alias, branch, build)
-        raise SystemError("Could not sync %s database. Reverting the %s database and aborting." % (syncbranch, branch))
+        raise SystemError("######## Could not sync %s database. Reverting the %s database and aborting." % (syncbranch, branch))
       else:
         print "===> %s database synced successfully." % syncbranch
 
@@ -160,14 +150,13 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
     print "===> Switching host to %s to get database dump..." % env.host_string
 
     # Check the site exists on the host server. If not, abort
-    if run('drush sa | grep \'^@\?%s_%s$\' > /dev/null' % (repo, syncbranch)).failed:
-      print "===> Cannot find a site with the alias %s_%s. Aborting." % (repo, syncbranch)
-      raise SystemError("Cannot find a site with the alias %s_%s. Aborting." % (repo, syncbranch))
+    if run('drush sa | grep \'^@\?%s_%s$\' > /dev/null' % (alias, syncbranch)).failed:
+      raise SystemError("######## Cannot find a site with the alias %s_%s. Aborting." % (alias, syncbranch))
 
     if sanitise == "yes":
       script_dir = os.path.dirname(os.path.realpath(__file__))
       if put(script_dir + '/../util/drupal-obfuscate.rb', '/home/jenkins', mode=0755).failed:
-        raise SystemExit("Could not copy the obfuscate script to the application server, aborting as we cannot safely sanitise the live data")
+        raise SystemExit("######## Could not copy the obfuscate script to the application server, aborting as we cannot safely sanitise the live data")
       else:
         print "===> Obfuscate script copied to %s:/home/jenkins/drupal-obfuscate.rb - obfuscating data" % env.host
         with settings(hide('running', 'stdout', 'stderr')):
@@ -175,13 +164,14 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
           dbuser = run("drush @%s_%s status  Database\ user | awk {'print $4'} | head -1" % (alias, syncbranch))
           dbpass = run("drush @%s_%s --show-passwords status  Database\ pass | awk {'print $4'} | head -1" % (alias, syncbranch))
           dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (alias, syncbranch))
-          run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, repo, now))
+          run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, alias, now))
     else:
       run('drush @%s_%s sql-dump | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (alias, syncbranch, alias, now))
 
     print "===> Fetching the database from the remote server..."
-    get('~/dbbackups/custombranch_%s_%s.sql.bz2' % (repo, now), '/tmp/dbbackups/custombranch_%s_%s_from_%s.sql.bz2' % (repo, now, syncbranch))
-    run('rm ~/dbbackups/custombranch_%s_%s.sql.bz2' % (repo, now))
+    dump_file = "custombranch_%s_%s_from_%s.sql.bz2" % (alias, now, syncbranch)
+    get('~/dbbackups/custombranch_%s_%s.sql.bz2' % (alias, now), '/tmp/dbbackups/%s' % dump_file)
+    run('rm ~/dbbackups/custombranch_%s_%s.sql.bz2' % (alias, now))
 
     # Switch back to original host and send the database dump to it
     env.host_string = orig_host
@@ -193,18 +183,17 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
     # sync the chosen database to the custom branch site, so we copy it to /home/jenkins/dbbackups
     # then import it
     if freshinstall:
-      local('scp /tmp/dbbackups/custombranch_%s_%s_from_%s.sql.bz2 %s:/var/www/%s_%s_%s/db/' % (repo, now, syncbranch, env.host_string, repo, branch, build))
+      local('scp /tmp/dbbackups/%s %s:/var/www/%s_%s_%s/db/' % (dump_file, env.host_string, repo, branch, build))
     else:
-      local('scp /tmp/dbbackups/custombranch_%s_%s_from_%s.sql.bz2 %s:~/dbbackups/' % (repo, now, syncbranch, env.host_string))
+      local('scp /tmp/dbbackups/%s %s:~/dbbackups/' % (dump_file, env.host_string))
       print "===> Importing the %s database into %s..." % (syncbranch, branch)
       # Need to drop all tables first in case there are existing tables that have to be ADDED
       # from an upgrade
       run("drush @%s_%s -y sql-drop" % (alias, branch))
       with settings(warn_only=True):
-        if run("bzcat ~/dbbackups/custombranch_%s_%s_from_%s.sql.bz2 | drush @%s_%s sql-cli" % (repo, now, syncbranch, repo, branch)).failed:
-          print "===> Cannot import %s database into %s. Reverting database and aborting." % (syncbranch, repo)
+        if run("bzcat ~/dbbackups/%s | drush @%s_%s sql-cli" % (dump_file, alias, branch)).failed:
           Revert._revert_db(alias, branch, build)
-          raise SystemError("Cannot import %s database into %s. Reverting database and aborting." % (syncbranch, repo))
+          raise SystemError("######## Cannot import %s database into %s. Reverting database and aborting." % (syncbranch, alias))
         else:
           if sanitise == "yes":
             if sanitised_password is None:
@@ -217,10 +206,16 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
           print "===> %s database imported." % syncbranch
 
       # Tidying up on host server
-      run("rm ~/dbbackups/custombranch_%s_%s_from_%s.sql.bz2" % (repo, now, syncbranch))
+      run("rm ~/dbbackups/%s" % dump_file)
 
     # Tidying up on Jenkins server
-    local('rm /tmp/dbbackups/custombranch_%s_%s_from_%s.sql.bz2' % (repo, now, syncbranch))
+    local('rm /tmp/dbbackups/%s' % dump_file)
+
+    # For cases we were processed the import, we do not want to send dump_file back
+    dump_file = None
+
+  # Send the dump_file back for later use
+  return dump_file
 
 
 # Function to install composer
