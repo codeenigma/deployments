@@ -379,7 +379,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       execute(Drupal.drush_updatedb, repo, branch, build, site, alias, drupal_version)            # This will revert the database if it fails
       if fra == True:
         if branch in branches:
-          execute(Drupal.drush_fra, repo, branch, build, site, drupal_version)
+          execute(Drupal.drush_fra, repo, branch, build, site, alias, drupal_version)
       if run_cron == True:
         execute(Drupal.drush_cron, repo, branch, build, site, drupal_version)
       execute(Drupal.drush_status, repo, branch, build, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
