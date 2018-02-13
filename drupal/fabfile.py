@@ -266,7 +266,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale)
       else:
         # Otherwise it's an existing build
-        existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, composer_lock, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, branches)
+        existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, composer, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, branches)
 
     # After any build we want to run all the available automated tests
     test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, site)
@@ -356,7 +356,7 @@ def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildt
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, composer_lock, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, branches):
+def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, branches):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   # Grab some information about the current build
   previous_build = common.Utils.get_previous_build(repo, branch, build)
@@ -366,9 +366,6 @@ def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, com
   execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
   execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
   execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build, alias, site)
-  # Run composer if we need to
-  if drupal_version == '8' and composer is True:
-    execute(Drupal.run_composer_install, repo, branch, build, composer_lock, no_dev)
 
   # Let's allow developers to perform some actions right after Drupal is built
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
