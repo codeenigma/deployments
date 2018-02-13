@@ -247,9 +247,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     import_config = False
   if drupal_version == '8' and composer is True:
     execute(Drupal.run_composer_install, repo, branch, build, composer_lock, no_dev)
-  if freshdatabase == "Yes" and buildtype == "custombranch":
-    # For now custombranch builds to clusters cannot work
-    dump_file = Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
 
   # Compile a site mapping, which is needed if this is a multisite build
   # Just sets to 'default' if it is not
@@ -257,6 +254,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   mapping = Drupal.configure_site_mapping(repo, mapping, config)
   # Run new installs
   for alias,site in mapping.iteritems():
+    if freshdatabase == "Yes" and buildtype == "custombranch":
+      # For now custombranch builds to clusters cannot work
+      dump_file = Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
     url = common.Utils.generate_url(url, alias, branch)
     # Now check if we have a Drush alias with that name. If not, run an install
     with settings(hide('warnings', 'stderr'), warn_only=True):
