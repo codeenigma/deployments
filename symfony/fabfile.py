@@ -56,14 +56,14 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
     console_buildtype = buildtype
 
   # Let's allow developers to perform some early actions if they need to
-  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
+  execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
 
   with settings(warn_only=True):
     if run("stat /var/www/config/%s_%s.parameters.yml" % (repo, console_buildtype)).failed:
       # Initial build
       execute(InitialBuild.initial_config, repo, buildtype, build)
       # Let's allow developers to perform some post-initial-build actions if they need to
-      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-initial', hosts=env.roledefs['app_all'])
+      execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='post-initial', hosts=env.roledefs['app_all'])
     else:
       if keepbackup:
         execute(Symfony.backup_db, repo, console_buildtype, build)
@@ -82,7 +82,7 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
   execute(AdjustConfiguration.adjust_parameters_yml, repo, buildtype, build)
 
   # Let's allow developers to perform some actions right after the app is built
-  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
+  execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
 
   # Only run composer if there is no vendor directory
   with settings(warn_only=True):
@@ -107,6 +107,6 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
   execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
 
   # Let's allow developers to perform some post-build actions if they need to
-  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
+  execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
 
   execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, buildtype, hosts=env.roledefs['app_all'])

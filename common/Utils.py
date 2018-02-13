@@ -307,8 +307,11 @@ def create_shared_directory():
       print "===> Shared directory already exists"
 
 
+# @TODO build_path is temporary, it's currently branch from Drupal
+# Ultimately we can remove entirely and just use buildtype, once
+# Drupal scripts are repaired.
 @task
-def perform_client_deploy_hook(repo, branch, build, buildtype, config, stage):
+def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage):
   cwd = os.getcwd()
   print "===> Looking for custom developer hooks at the %s stage for %s builds" % (stage, buildtype)
 
@@ -323,7 +326,7 @@ def perform_client_deploy_hook(repo, branch, build, buildtype, config, stage):
         malicious_code = False
         with settings(warn_only=True):
           for disallowed in malicious_commands:
-            if run("grep '%s' /var/www/%s_%s_%s/build-hooks/%s" % (disallowed, repo, branch, build, option)).return_code == 0:
+            if run("grep '%s' /var/www/%s_%s_%s/build-hooks/%s" % (disallowed, repo, build_path, build, option)).return_code == 0:
               print "We found %s in the %s file, so as a result, we are not running that hook file." % (disallowed, option)
               malicious_code = True
               break
@@ -332,15 +335,15 @@ def perform_client_deploy_hook(repo, branch, build, buildtype, config, stage):
           if option[-2:] == 'sh':
             print "===> Executing shell script %s" % option
 
-            run("chmod +x /var/www/%s_%s_%s/build-hooks/%s" %(repo, branch, build, option))
+            run("chmod +x /var/www/%s_%s_%s/build-hooks/%s" %(repo, build_path, build, option))
             if stage != 'pre':
               with settings(warn_only=True):
-                if run("/var/www/%s_%s_%s/build-hooks/%s" %(repo, branch, build, option)).failed:
+                if run("/var/www/%s_%s_%s/build-hooks/%s" %(repo, build_path, build, option)).failed:
                   print "Could not run build hook. Uh oh."
                 else:
                   print "Finished running build hook."
             else:
-              if run("/var/www/%s_%s_%s/build-hooks/%s" %(repo, branch, build, option)).failed:
+              if run("/var/www/%s_%s_%s/build-hooks/%s" %(repo, build_path, build, option)).failed:
                 print "Could not run build hook. Uh oh."
               else:
                 print "Finished running build hook."
@@ -351,12 +354,12 @@ def perform_client_deploy_hook(repo, branch, build, buildtype, config, stage):
 
             if stage != 'pre':
               with settings(warn_only=True):
-                if local("fab -H %s -f %s main:repo=%s,branch=%s,build=%s" % (env.host, hook_file, repo, branch, build)).failed:
+                if local("fab -H %s -f %s main:repo=%s,branch=%s,build=%s" % (env.host, hook_file, repo, build_path, build)).failed:
                   print "Could not run build hook. Uh oh."
                 else:
                   print "Finished running build hook."
             else:
-              if local("fab -H %s -f %s main:repo=%s,branch=%s,build=%s" % (env.host, hook_file, repo, branch, build)).failed:
+              if local("fab -H %s -f %s main:repo=%s,branch=%s,build=%s" % (env.host, hook_file, repo, build_path, build)).failed:
                 print "Could not run build hook. Uh oh."
               else:
                 print "Finished running build hook."
