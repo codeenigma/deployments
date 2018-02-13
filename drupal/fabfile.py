@@ -19,6 +19,7 @@ import InitialBuild
 import Revert
 import StandardHooks
 import Autoscale
+import Multisite
 # Needed to get variables set in modules back into the main script
 from DrupalTests import *
 from FeatureBranches import *
