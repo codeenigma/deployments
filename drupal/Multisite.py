@@ -24,10 +24,10 @@ def _revert_settings(alias, branch, build, buildtype, buildsite):
 
 @task
 def configure_site_mapping(repo, mapping, config):
+  sites = []
   # [Sites] is defined in config.ini
   if config.has_section("Sites"):
     print "===> Found a Sites section. Determining which sites to deploy..."
-    sites = []
     for option in config.options("Sites"):
       line = config.get("Sites", option)
       if dontbuild:
