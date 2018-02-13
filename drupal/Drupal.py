@@ -10,6 +10,9 @@ import Revert
 
 @task
 def drush_fra_branches(config, branch):
+  # Default to master and stage to prevent any current jobs using
+  # the previous version of this function from breaking.
+  branches = ['master', 'stage']
   # If a 'branches' option exists in the [Features] section in config.ini, proceed
   if config.has_option("Features", "branches"):
     branches = []
@@ -25,11 +28,7 @@ def drush_fra_branches(config, branch):
       for each_branch in revert_features:
         each_branch = each_branch.strip()
         branches.append(each_branch)
-  # If a 'branches' option does not exist in the [Features] section, add master and stage
-  # to the branches list. This is prevent any current jobs using the previous version of
-  # this function to break
-  else:
-    branches = ['master', 'stage']
+
   return branches
 
 
