@@ -8,6 +8,42 @@ import common.Utils
 import Revert
 
 
+# Function to set up a site mapping for Drupal multisites, if applicable.
+@task
+def configure_site_mapping(repo, mapping, config):
+  sites = []
+  # [Sites] is defined in config.ini
+  if config.has_section("Sites"):
+    print "===> Found a Sites section. Determining which sites to deploy..."
+    for option in config.options("Sites"):
+      line = config.get("Sites", option)
+      if dontbuild:
+        print "line: %s" % line
+      line = line.split(',')
+      for sitename in line:
+        sitename = sitename.strip()
+        sites.append(sitename)
+
+  if not sites:
+    print "There isn't a Sites section, so we assume this is standard deployment."
+    buildsite = 'default'
+    alias = repo
+    mapping.update({alias:buildsite})
+  # @TODO: can this use sites.php?
+  else:
+    dirs = os.walk('www/sites').next()[1]
+    for buildsite in dirs:
+      if buildsite in sites:
+        if buildsite == 'default':
+          alias = repo
+        else:
+          alias = "%s_%s" % (repo, buildsite)
+        mapping.update({alias:buildsite})
+
+  print "Final mapping is: %s" % mapping
+  return mapping
+
+
 @task
 def drush_fra_branches(config, branch):
   # Default to master and stage to prevent any current jobs using

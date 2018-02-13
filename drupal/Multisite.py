@@ -52,7 +52,7 @@ def configure_site_mapping(repo, mapping, config):
         else:
           alias = "%s_%s" % (repo, buildsite)
         mapping.update({alias:buildsite})
-  
+
   print "Final mapping is: %s" % mapping
   return mapping
 

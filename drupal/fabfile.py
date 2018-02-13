@@ -19,7 +19,6 @@ import InitialBuild
 import Revert
 import StandardHooks
 import Autoscale
-import Multisite
 # Needed to get variables set in modules back into the main script
 from DrupalTests import *
 from FeatureBranches import *
@@ -255,7 +254,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Compile a site mapping, which is needed if this is a multisite build
   # Just sets to 'default' if it is not
   mapping = {}
-  mapping = Multisite.configure_site_mapping(repo, mapping, config)
+  mapping = Drupal.configure_site_mapping(repo, mapping, config)
   # Run new installs
   for alias,site in mapping.iteritems():
     url = common.Utils.generate_url(url, alias, branch)
