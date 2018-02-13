@@ -21,28 +21,36 @@ def _revert_settings(alias, branch, build, buildtype, buildsite):
     sed(settings_file, replace_string, replace_with, limit='', use_sudo=True, backup='', flags="i", shell=True)
     print "===> Reverted settings.php"
 
-
 @task
 def configure_site_mapping(repo, mapping, config):
-  sites = []
-  # [Sites] is defined in config.ini
+  dontbuild = False
+
   if config.has_section("Sites"):
     print "===> Found a Sites section. Determining which sites to deploy..."
+    sites = []
     for option in config.options("Sites"):
       line = config.get("Sites", option)
       if dontbuild:
         print "line: %s" % line
+
       line = line.split(',')
+      if dontbuild:
+        print "line split: %s" % line
+
       for sitename in line:
         sitename = sitename.strip()
+        if dontbuild:
+          print "sitename: %s" % sitename
+
         sites.append(sitename)
+        if dontbuild:
+          print "sites: %s" % sites
 
   if not sites:
     print "There isn't a Sites section, so we assume this is standard deployment."
     buildsite = 'default'
     alias = repo
     mapping.update({alias:buildsite})
-  # @TODO: can this use sites.php?
   else:
     dirs = os.walk('www/sites').next()[1]
     for buildsite in dirs:
@@ -52,7 +60,7 @@ def configure_site_mapping(repo, mapping, config):
         else:
           alias = "%s_%s" % (repo, buildsite)
         mapping.update({alias:buildsite})
-
+  
   print "Final mapping is: %s" % mapping
   return mapping
 
@@ -78,14 +86,14 @@ def drush_cache_clear(repo, branch, build, buildsite, drupal_version):
 @task
 @roles('app_primary')
 def check_for_new_installs(repo, branch, build, mapping):
-  sites_to_install = {}
+  sites_to_install = []
   for alias,buildsite in mapping.iteritems():
     url = generate_multisite_url(alias, branch)
     # Now check if we have a Drush alias with that name. If not, run an install
     with settings(hide('warnings', 'stderr'), warn_only=True):
       if run("drush sa | grep ^@%s_%s$ > /dev/null" % (alias, branch)).failed:
         print "Didn't find a Drush alias %s_%s so we'll install this new site %s" % (alias, branch, url)
-        sites_to_install.update({alias:buildsite})
+        sites_to_install.append(buildsite)
   if sites_to_install:
     print "List of new sites to install: %s" % sites_to_install
   else:
@@ -93,6 +101,14 @@ def check_for_new_installs(repo, branch, build, mapping):
     sites_to_install = None
 
   return sites_to_install
+
+
+@task
+@roles('app_all')
+def create_config_dir():
+  print "Create /var/www/config if it doesn't exist and set correct ownership."
+  sudo("mkdir -p /var/www/config")
+  sudo("chown jenkins:www-data /var/www/config")
 
 
 @task
