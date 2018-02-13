@@ -269,7 +269,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, composer_lock, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, branches)
 
     # After any build we want to run all the available automated tests
-    test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_group, phpunit_test_directory, phpunit_path, site)
+    test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, site)
 
     # Now everything should be in a good state, let's enable environment indicator for this site, if present
     execute(Drupal.environment_indicator, repo, branch, build, buildtype, alias, site, drupal_version)
@@ -441,7 +441,7 @@ def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, com
 
 # Wrapper function for runnning automated tests on a site
 @task
-def test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_group, phpunit_test_directory, phpunit_path, site):
+def test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, site):
   # Run simpletest tests
   execute(DrupalTests.run_tests, repo, branch, build, config)
 
