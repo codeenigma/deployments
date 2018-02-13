@@ -266,7 +266,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale)
       else:
         # Otherwise it's an existing build
-        existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, composer_lock, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates)
+        existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, composer_lock, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron)
 
     # After any build we want to run all the available automated tests
     test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_group, phpunit_test_directory, phpunit_path, site)
@@ -356,7 +356,7 @@ def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildt
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, composer_lock, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates):
+def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, composer_lock, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   # Grab some information about the current build
   previous_build = common.Utils.get_previous_build(repo, branch, build)
