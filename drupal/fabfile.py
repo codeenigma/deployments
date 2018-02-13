@@ -263,10 +263,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     with settings(hide('warnings', 'stderr'), warn_only=True):
       if run("drush sa | grep ^@%s_%s$ > /dev/null" % (alias, branch)).failed:
         print "Didn't find a Drush alias %s_%s so we'll install this new site %s" % (alias, branch, url)
-        initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config)
+        initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale)
       else:
         # Otherwise it's an existing build
-        existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, composer_lock, no_dev, config, drupal_version, readonlymode, notifications_email)
+        existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, composer_lock, no_dev, config, drupal_version, readonlymode, notifications_email, autoscale)
 
     # After any build we want to run all the available automated tests
     test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_group, phpunit_test_directory, phpunit_path, site)
@@ -304,7 +304,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
 # Wrapper function for carrying out a first build of a site
 @task
-def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config):
+def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale):
 # Set a URL if one wasn't already provided and clean it up if it was
   url = common.Utils.generate_url(url, repo, branch)
   print "===> URL is http://%s" % url
@@ -356,7 +356,7 @@ def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildt
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, composer_lock, no_dev, config, drupal_version, readonlymode, notifications_email):
+def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, composer_lock, no_dev, config, drupal_version, readonlymode, notifications_email, autoscale):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   # Grab some information about the current build
   previous_build = common.Utils.get_previous_build(repo, branch, build)
