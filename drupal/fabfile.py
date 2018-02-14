@@ -464,4 +464,3 @@ def test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config,
     print "===> No phpunit tests."
 
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', hosts=env.roledefs['app_all'])
-
