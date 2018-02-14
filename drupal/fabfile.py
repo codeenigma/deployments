@@ -367,7 +367,7 @@ def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildt
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, branches):
+def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   # Grab some information about the current build
   previous_build = common.Utils.get_previous_build(repo, branch, build)
