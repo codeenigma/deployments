@@ -48,24 +48,43 @@ def configure_site_mapping(repo, mapping, config):
 def drush_fra_branches(config, branch):
   # Default to master and stage to prevent any current jobs using
   # the previous version of this function from breaking.
-  branches = ['master', 'stage']
+  feature_branches = ['master', 'stage']
+
+  # @TODO temporary, this can go once nobody uses [Features] in config.ini any more
   # If a 'branches' option exists in the [Features] section in config.ini, proceed
   if config.has_option("Features", "branches"):
-    branches = []
+    print "############### ===> Fetching feature branches from 'branches' under [Features] in config.ini - DEPRECATED! Please use 'feature_branches' under [Build] instead"
+    feature_branches = []
     # Get the 'branches' option from under the [Features] section
     revert_features = config.get("Features", "branches")
     if revert_features == "*":
       #just append the current branch
-      branches.append(branch)
+      feature_branches.append(branch)
     else:
-      # Split the 'branches' option using a comma as a delimeter
+      # Split the 'branches' option using a comma as a delimiter
       revert_features = revert_features.split(',')
       # For each value, strip it and add it to the branches list, which will be searched later
       for each_branch in revert_features:
         each_branch = each_branch.strip()
-        branches.append(each_branch)
+        feature_branches.append(each_branch)
 
-  return branches
+  # If a 'feature_branches' option exists in the [Build] section in config.ini, proceed
+  elif config.has_option("Build", "feature_branches"):
+    feature_branches = []
+    # Get the 'feature_branches' option from under the [Features] section
+    revert_features = config.get("Build", "feature_branches")
+    if revert_features == "*":
+      #just append the current branch
+      feature_branches.append(branch)
+    else:
+      # Split the 'feature_branches' option using a comma as a delimiter
+      revert_features = revert_features.split(',')
+      # For each value, strip it and add it to the branches list, which will be searched later
+      for each_branch in revert_features:
+        each_branch = each_branch.strip()
+        feature_branches.append(each_branch)
+
+  return feature_branches
 
 
 # Set the default maintenance/readonly method
