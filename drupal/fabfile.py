@@ -110,6 +110,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     if config.has_option("Build", "notifications_email"):
       notifications_email = config.get("Build", "notifications_email")
       print "===> notifications email is %s" % notifications_email
+  # Set branches to be treated as feature branches
+  # Regardless of whether or not 'fra' is set, we need to set 'branches'
+  # our our existing_build_wrapper() function gets upset later.
+  feature_branches = Drupal.drush_fra_branches(config, branch)
 
   if config.has_section("Database"):
     print "=> We have some database options in config.ini"
@@ -156,6 +160,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     if config.has_option("Drupal", "import_config"):
       import_config = config.getboolean("Drupal", "import_config")
       print "===> the Drupal 8 config import flag is set to %s" % import_config
+    # Set whether we should revert Drupal Features or not
+    if config.has_option("Drupal", "fra"):
+      fra = config.getboolean("Drupal", "fra")
+      print "===> Drupal Feature reverting set to %s" % fra
 
   if config.has_section("Composer"):
     print "=> We have some composer options in config.ini"
@@ -195,16 +203,20 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       phpunit_path = config.get("Testing", "phpunit_path")
       print "===> phpunit should be found at %s" % phpunit_path
 
+  if config.has_section("Features"):
+    print "=> We have some Drupal Features options in config.ini"
+    # Set whether we should revert Drupal Features or not
+    if config.has_option("Features", "fra"):
+      fra = config.getboolean("Features", "fra")
+      print "############### ===> Fetching fra from [Features] in config.ini - DEPRECATED! Please use [Drupal] instead"
+      print "===> Drupal Feature reverting set to %s" % fra
+
   # Set SSH key if needed
   # @TODO: this needs to be moved to config.ini for Code Enigma GitHub projects
   if "git@github.com" in repourl:
     ssh_key = "/var/lib/jenkins/.ssh/id_rsa_github"
 
   # Prepare variables for various Drupal tasks
-  if config.has_section("Features"):
-    fra = config.getboolean("Features", "fra")
-    if fra == True:
-      branches = Drupal.drush_fra_branches(config, branch)
 
   # Check if readonlymode module is requested
   readonlymode = Drupal.configure_readonlymode(config)
@@ -265,7 +277,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale)
       else:
         # Otherwise it's an existing build
-        existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, branches)
+        existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches)
 
     # After any build we want to run all the available automated tests
     test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site)
@@ -384,7 +396,7 @@ def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_
     execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
     execute(Drupal.drush_updatedb, repo, branch, build, site, alias, drupal_version)            # This will revert the database if it fails
     if fra == True:
-      if branch in branches:
+      if branch in feature_branches:
         execute(Drupal.drush_fra, repo, branch, build, site, alias, drupal_version)
     if run_cron == True:
       execute(Drupal.drush_cron, repo, branch, build, site, drupal_version)
