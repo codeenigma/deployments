@@ -56,3 +56,18 @@ def read_config_file(config_filename='config.ini', abort_if_missing=True, fullpa
       else:
         print "===> No config file found, but we will carry on regardless"
 
+
+@task
+def return_config_string(config, section, item):
+    if config.has_option(section, item):
+      return config.get(section, item)
+    else:
+      return None
+
+
+@task
+def return_config_boolean(config, section, item):
+    if config.has_option(section, item):
+      return config.getboolean(section, item)
+    else:
+      return None
