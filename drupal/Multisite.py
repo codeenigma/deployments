@@ -12,7 +12,7 @@ def _revert_db(alias, branch, build):
 
 # Function to revert settings.php change for when a build fails and database is reverted
 @task
-def _revert_settings(alias, branch, build, buildtype, buildsite):
+def _revert_settings(repo, alias, branch, build, buildtype, buildsite):
   with settings(warn_only=True):
     settings_file = "/var/www/config/%s_%s.settings.inc" % (alias, branch)
     stable_build = run("readlink /var/www/live.%s.%s" % (repo, branch))
@@ -563,22 +563,22 @@ def drush_status(repo, branch, build, buildtype, mapping, sites, revert=False, r
           if run("drush status | egrep 'Connected|Successful'").failed:
             print "Could not bootstrap the database!"
             if revert == False and revert_settings == True:
-              _revert_settings(alias, branch, build, buildtype, buildsite)
+              _revert_settings(repo, alias, branch, build, buildtype, buildsite)
             else:
               if revert:
                 print "Reverting the database..."
                 _revert_db(alias, branch, build)
-                _revert_settings(alias, branch, build, buildtype, buildsite)
+                _revert_settings(repo, alias, branch, build, buildtype, buildsite)
             raise SystemExit("Could not bootstrap the database on this build! Aborting")
        
           if run("drush status").failed:
             if revert == False and revert_settings == True:
-              _revert_settings(alias, branch, build, buildtype, buildsite)
+              _revert_settings(repo, alias, branch, build, buildtype, buildsite)
             else:
               if revert:
                 print "Reverting the database..."
                 _revert_db(alias, branch, build)
-                _revert_settings(alias, branch, build, buildtype, buildsite)
+                _revert_settings(repo, alias, branch, build, buildtype, buildsite)
             raise SystemExit("Could not bootstrap the database on this build! Aborting")
     else:
       print "%s is a new site, so not running drush_status function on it." % buildsite
@@ -615,7 +615,7 @@ def drush_updatedb(repo, branch, build, buildtype, mapping, sites, drupal_versio
           if run("drush -y updatedb").failed:
             print "Could not apply database updates! Reverting this database."
             _revert_db(alias, branch, build)
-            _revert_settings(alias, branch, build, buildtype, buildsite)
+            _revert_settings(repo, alias, branch, build, buildtype, buildsite)
             raise SystemExit("Could not apply database updates! Reverted database. Site remains on previous build.")
           # Take site online
           print "===> Bring %s online again" % buildsite
@@ -623,13 +623,13 @@ def drush_updatedb(repo, branch, build, buildtype, mapping, sites, drupal_versio
             if run("drush -y state-set system.maintenancemode 0").failed:
               print "Could not set the site back online! Reverting database. We need to exit out of deployment so the live symlink isn't adjusted."
               _revert_db(alias, branch, build)
-              _revert_settings(alias, branch, build, buildtype, buildsite)
+              _revert_settings(repo, alias, branch, build, buildtype, buildsite)
               raise SystemExit("Could not set the site back online! Database was reverted and deployment aborted so live symlink was not adjusted.")
           else:
             if run("drush -y vset maintenance_mode 0").failed:
               print "Could not set the site back online! Reverting database. We need to exit out of deployment so the live symlink isn't adjusted."
               _revert_db(alias, branch, build)
-              _revert_settings(alias, branch, build, buildtype, buildsite)
+              _revert_settings(repo, alias, branch, build, buildtype, buildsite)
               raise SystemExit("Could not set the site back online! Database was reverted and deployment aborted so live symlink was not adjusted.")
       else:
         print "%s is a new site, so not running drush_updatedb function on it." % buildsite
@@ -694,7 +694,7 @@ def drush_fra(repo, branch, build, buildtype, mapping, sites, drupal_version):
         if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y fra --force'" % (repo, branch, build, buildsite)).failed:
           print "Could not revert features!"
           _revert_db(alias, branch, build)
-          _revert_settings(alias, branch, build, buildtype, buildsite)
+          _revert_settings(repo, alias, branch, build, buildtype, buildsite)
           raise SystemExit("Could not revert features! Site remains on previous build")
         else:
           drush_cache_clear(repo, branch, build, buildsite, drupal_version)
