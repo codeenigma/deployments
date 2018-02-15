@@ -58,16 +58,26 @@ def read_config_file(config_filename='config.ini', abort_if_missing=True, fullpa
 
 
 @task
-def return_config_string(config, section, item):
-    if config.has_option(section, item):
-      return config.get(section, item)
+def return_config_item(config, section, item, type="string", default_value=None, notify=True, deprecate=False, replacement_section=None):
+  # deprecate is a flag to say if this config option is obsolete and soon to be removed
+  if deprecate:
+    if replacement_section:
+      print "############### Fetching %s from [%s] in config.ini - DEPRECATED! Please use [%s] instead" % (item, section, replacement_section)
     else:
-      return None
-
-
-@task
-def return_config_boolean(config, section, item):
-    if config.has_option(section, item):
-      return config.getboolean(section, item)
+      print "############### Fetching %s from [%s] in config.ini - DEPRECATED! This option is being removed!" % (item, section, replacement_section)
+  # Load in our config if it exists
+  if config.has_option(section, item):
+    if type is "string":
+      if notify:
+        print "===> %s in [%s] being set to %s" % (item, section, config.get(section, item))
+      default_value = config.get(section, item)
+    elif type is "boolean":
+      if notify:
+        print "===> %s in [%s] being set to %s" % (item, section, config.getboolean(section, item))
+      default_value = config.getboolean(section, item)
     else:
-      return None
+      if notify:
+        print "===> tried to look up %s %s in [%s] but type not found" % (type, item, section)
+  # Either the default value remains unchanged, or we've modified it
+  # In either case, let's send it back
+  return default_value
