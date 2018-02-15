@@ -45,14 +45,15 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Check where we're deploying to - abort if nothing set in config.ini
   if env.host is None:
     raise ValueError("===> You wanted to deploy a build but we couldn't find a host in the map file for repo %s so we're aborting." % repo)
-  # Set our host_string based on user@host
-  env.host_string = '%s@%s' % (user, env.host)
 
   # Set some default config options and variables
   user = "jenkins"
   previous_build = ""
   previous_db = ""
   statuscake_paused = False
+
+  # Set our host_string based on user@host
+  env.host_string = '%s@%s' % (user, env.host)
 
   # Can be set in the config.ini [Build] section
   ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
@@ -209,7 +210,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 # Wrapper function for carrying out a first build of a site
 @task
 def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale):
-# Set a URL if one wasn't already provided and clean it up if it was
+  # Set a URL if one wasn't already provided and clean it up if it was
   url = common.Utils.generate_url(url, repo, branch)
   print "===> URL is http://%s" % url
 
