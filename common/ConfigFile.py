@@ -59,14 +59,15 @@ def read_config_file(config_filename='config.ini', abort_if_missing=True, fullpa
 
 @task
 def return_config_item(config, section, item, var_type="string", default_value=None, notify=True, deprecate=False, replacement_section=None):
-  # deprecate is a flag to say if this config option is obsolete and soon to be removed
-  if deprecate:
-    if replacement_section:
-      print "############### Fetching %s from [%s] in config.ini - DEPRECATED! Please use [%s] instead" % (item, section, replacement_section)
-    else:
-      print "############### Fetching %s from [%s] in config.ini - DEPRECATED! This option is being removed!" % (item, section, replacement_section)
   # Load in our config if it exists
   if config.has_option(section, item):
+    # deprecate is a flag to say if this config option is obsolete and soon to be removed
+    if deprecate:
+      if replacement_section:
+        print "############### Fetching %s from [%s] in config.ini - DEPRECATED! Please use [%s] instead" % (item, section, replacement_section)
+      else:
+        print "############### Fetching %s from [%s] in config.ini - DEPRECATED! This option is being removed!" % (item, section, replacement_section)
+    # Now let's set the actual value from config
     if var_type is "string":
       if notify:
         print "===> %s in [%s] being set to %s" % (item, section, config.get(section, item))
