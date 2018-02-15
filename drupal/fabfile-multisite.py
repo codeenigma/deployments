@@ -87,7 +87,8 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
     if fra:
       branches = Drupal.drush_fra_branches(config)
 
-  readonlymode = Drupal.configure_readonlymode(config)
+  readonlymode = common.ConfigFile.return_config_item(config, "Readonly", "readonly", "string", "maintenance", True, True, replacement_section="Drupal")
+  readonlymode = common.ConfigFile.return_config_item(config, "Drupal", "readonly", "string", readonlymode)
 
   # Compile a site mapping, which is needed if this is a multisite build
   mapping = Multisite.configure_site_mapping(repo, mapping, config)
@@ -99,7 +100,8 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
   # [Hooks]
   # config_export: True
   #
-  config_export = Drupal.configure_config_export(config)
+  config_export = common.ConfigFile.return_config_item(config, "Hooks", "config_export", "boolean", False, True, True, replacement_section="Drupal")
+  config_export = common.ConfigFile.return_config_item(config, "Drupal", "config_export", "boolean", config_export)
 
   # Prepare Behat variables
   if config.has_section("Behat"):

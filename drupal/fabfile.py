@@ -34,55 +34,8 @@ global config
 @task
 def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini'):
 
-  # Set some default config options
-  user = "jenkins"
-  # Can be set in the config.ini [Build] section
-  ssh_key = None
-  notifications_email = None
-  # Can be set in the config.ini [Database] section
-  db_name = None
-  db_username = None
-  db_password = None
-  dump_file = None
-  # Can be set in the config.ini [Drupal] section
-  drupal_version = None
-  profile = "minimal"
-  do_updates = True
-  run_cron = False
-  import_config = True
-  # Can be set in the config.ini [Composer] section
-  composer = True
-  composer_lock = True
-  no_dev = True
-  # Can be set in the config.ini [Testing] section
-  phpunit_run = False
-  phpunit_fail_build = False
-  phpunit_group = 'unit'
-  phpunit_test_directory = 'www/modules/custom'
-  phpunit_path='vendor/phpunit/phpunit/phpunit'
-
-  global varnish_restart
-  varnish_restart = restartvarnish
-  readonlymode = "maintenance"
-  fra = False
-  config_export = False
-  previous_build = ""
-  previous_db = ""
-  statuscake_paused = False
-  behat_config = None
-  behat_tests_failed = False
-
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
-
-  # Compile variables for feature branch builds (if applicable)
-  FeatureBranches.configure_feature_branch(buildtype, config, branch)
-  print "Feature branch debug information below:"
-  print "httpauth_pass: %s" % FeatureBranches.httpauth_pass
-  print "ssl_enabled: %s" % FeatureBranches.ssl_enabled
-  print "ssl_cert: %s" % FeatureBranches.ssl_cert
-  print "ssl_ip: %s" % FeatureBranches.ssl_ip
-  print "drupal_common_config: %s" % FeatureBranches.drupal_common_config
 
   # Now we need to figure out what server(s) we're working with
   # Define primary host
@@ -95,142 +48,66 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Set our host_string based on user@host
   env.host_string = '%s@%s' % (user, env.host)
 
-  # Now let's fetch alterations to those defaults from config.ini, if present
-  if config.has_section("Build"):
-    print "=> We have some build options in config.ini"
-    # Provide the path to an alternative deploy key for this project
-    if config.has_option("Build", "ssh_key"):
-      ssh_key = config.get("Build", "ssh_key")
-      print "===> path to SSH key is %s" % ssh_key
-    # Set site URL on initial build
-    if config.has_option("Build", "url"):
-      url = config.get("Build", "url")
-      print "===> site url will be %s" % url
-    # Set notifications email, if provided
-    if config.has_option("Build", "notifications_email"):
-      notifications_email = config.get("Build", "notifications_email")
-      print "===> notifications email is %s" % notifications_email
-  # Set branches to be treated as feature branches
-  # Regardless of whether or not 'fra' is set, we need to set 'branches'
-  # our our existing_build_wrapper() function gets upset later.
-  feature_branches = Drupal.drush_fra_branches(config, branch)
+  # Set some default config options and variables
+  user = "jenkins"
+  previous_build = ""
+  previous_db = ""
+  statuscake_paused = False
 
-  if config.has_section("Database"):
-    print "=> We have some database options in config.ini"
-    # Specify the database name for this build
-    if config.has_option("Database", "db_name"):
-      db_name = config.get("Database", "db_name")
-      print "===> database name is %s" % db_name
-    # Specify the database username for this build
-    if config.has_option("Database", "db_username"):
-      db_username = config.get("Database", "db_username")
-      print "===> database username is %s" % db_username
-    # Specify the database password for this build
-    if config.has_option("Database", "db_password"):
-      db_password = config.get("Database", "db_password")
-      print "===> database password is %s" % db_password
-    # Specify the target MySQL version
-    if config.has_option("Database", "mysql_version"):
-      mysql_version = config.get("Database", "mysql_version")
-      print "===> MySQL version is %s" % mysql_version
-    # Specify the path to the MySQL defaults file
-    if config.has_option("Database", "mysql_config"):
-      mysql_config = config.get("Database", "mysql_config")
-      print "===> MySQL config file is located at %s" % mysql_config
-    # Specify the filename of the dump file to see new databases with
-    if config.has_option("Database", "dump_file"):
-      dump_file = config.get("Database", "dump_file")
-      print "===> database dump file for seeding new databases is in db/%s" % dump_file
+  # Can be set in the config.ini [Build] section
+  ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
+  notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
+  # Need to keep potentially passed in 'url' value as default
+  url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
 
-  if config.has_section("Drupal"):
-    print "=> We have some Drupal options in config.ini"
-    # Choose an install profile for initial build
-    if config.has_option("Drupal", "profile"):
-      profile = config.get("Drupal", "profile")
-      print "===> Drupal install profile is %s" % profile
-    # Choose to suppress Drupal database updates
-    if config.has_option("Drupal", "do_updates"):
-      do_updates = config.getboolean("Drupal", "do_updates")
-      print "===> the Drupal update flag is set to %s" % do_updates
-    # Choose to run cron after Drupal updates
-    if config.has_option("Drupal", "run_cron"):
-      run_cron = config.getboolean("Drupal", "run_cron")
-      print "===> the Drupal cron flag is set to %s" % run_cron
-    # Choose whether or not to import config in Drupal 8 +
-    if config.has_option("Drupal", "import_config"):
-      import_config = config.getboolean("Drupal", "import_config")
-      print "===> the Drupal 8 config import flag is set to %s" % import_config
-    # Set whether we should revert Drupal Features or not
-    if config.has_option("Drupal", "fra"):
-      fra = config.getboolean("Drupal", "fra")
-      print "===> Drupal Feature reverting set to %s" % fra
+  # Can be set in the config.ini [Database] section
+  db_name = common.ConfigFile.return_config_item(config, "Database", "db_name")
+  db_username = common.ConfigFile.return_config_item(config, "Database", "db_username")
+  db_password = common.ConfigFile.return_config_item(config, "Database", "db_password")
+  # Need to keep potentially passed in MySQL version and config path as defaults
+  mysql_config = common.ConfigFile.return_config_item(config, "Database", "mysql_config", "string", mysql_config)
+  mysql_version = common.ConfigFile.return_config_item(config, "Database", "mysql_version", "string", mysql_version)
+  dump_file = common.ConfigFile.return_config_item(config, "Database", "dump_file")
 
-  if config.has_section("Composer"):
-    print "=> We have some composer options in config.ini"
-    # Choose whether or not to composer install
-    if config.has_option("Composer", "composer"):
-      composer = config.getboolean("Composer", "composer")
-      print "===> composer install execution is set to %s" % composer
-    # Choose to ignore composer.lock - sometimes necessary if there are platform problems
-    if config.has_option("Composer", "composer_lock"):
-      composer_lock = config.getboolean("Composer", "composer_lock")
-      print "===> use composer.lock file is set to %s" % composer_lock
-    # Choose to install dev components
-    if config.has_option("Composer", "no_dev"):
-      no_dev = config.getboolean("Composer", "no_dev")
-      print "===> install dev components is set to %s" % no_dev
+  # Can be set in the config.ini [Drupal] section
+  drupal_version = common.ConfigFile.return_config_item(config, "Drupal", "drupal_version")
+  profile = common.ConfigFile.return_config_item(config, "Drupal", "profile", "string", "minimal")
+  do_updates = common.ConfigFile.return_config_item(config, "Drupal", "do_updates", "boolean", True)
+  run_cron = common.ConfigFile.return_config_item(config, "Drupal", "run_cron", "boolean", False)
+  import_config = common.ConfigFile.return_config_item(config, "Drupal", "import_config", "boolean", True)
+  ### @TODO: deprecated, can be removed later
+  fra = common.ConfigFile.return_config_item(config, "Features", "fra", "boolean", False, True, True, replacement_section="Drupal")
+  # This is the correct location for 'fra' - note, respect the deprecated value as default
+  fra = common.ConfigFile.return_config_item(config, "Drupal", "fra", "boolean", fra)
+  ### @TODO: deprecated, can be removed later
+  readonlymode = common.ConfigFile.return_config_item(config, "Readonly", "readonly", "string", "maintenance", True, True, replacement_section="Drupal")
+  # This is the correct location for 'readonly' - note, respect the deprecated value as default
+  readonlymode = common.ConfigFile.return_config_item(config, "Drupal", "readonly", "string", readonlymode)
+  ### @TODO: deprecated, can be removed later
+  config_export = common.ConfigFile.return_config_item(config, "Hooks", "config_export", "boolean", False, True, True, replacement_section="Drupal")
+  # This is the correct location for 'config_export' - note, respect the deprecated value as default
+  config_export = common.ConfigFile.return_config_item(config, "Drupal", "config_export", "boolean", config_export)
 
-  if config.has_section("Testing"):
-    print "=> We have some automated testing options in config.ini"
-    # Choose whether to run phpunit unit tests or not
-    if config.has_option("Testing", "phpunit_run"):
-      phpunit_run = config.getboolean("Testing", "phpunit_run")
-      print "===> run phpunit tests is set to %s" % phpunit_run
-    # Choose whether phpunit test fails should fail the build
-    if config.has_option("Testing", "phpunit_fail_build"):
-      phpunit_fail_build = config.getboolean("Testing", "phpunit_fail_build")
-      print "===> fail builds if phpunit tests fail is set to %s" % phpunit_fail_build
-    # Set a group of phpunit tests to run
-    if config.has_option("Testing", "phpunit_group"):
-      phpunit_group = config.get("Testing", "phpunit_group")
-      print "===> phpunit test group is set to %s" % phpunit_group
-    # Set the directory phpunit tests will run in
-    if config.has_option("Testing", "phpunit_test_directory"):
-      phpunit_test_directory = config.get("Testing", "phpunit_test_directory")
-      print "===> phpunit test directory is set to %s" % phpunit_test_directory
-    # Set the path to phpunit itself
-    if config.has_option("Testing", "phpunit_path"):
-      phpunit_path = config.get("Testing", "phpunit_path")
-      print "===> phpunit should be found at %s" % phpunit_path
+  # Can be set in the config.ini [Composer] section
+  composer = common.ConfigFile.return_config_item(config, "Composer", "composer", "boolean", True)
+  composer_lock = common.ConfigFile.return_config_item(config, "Composer", "composer_lock", "boolean", True)
+  no_dev = common.ConfigFile.return_config_item(config, "Composer", "no_dev", "boolean", True)
 
-  if config.has_section("Features"):
-    print "=> We have some Drupal Features options in config.ini"
-    # Set whether we should revert Drupal Features or not
-    if config.has_option("Features", "fra"):
-      fra = config.getboolean("Features", "fra")
-      print "############### ===> Fetching fra from [Features] in config.ini - DEPRECATED! Please use [Drupal] instead"
-      print "===> Drupal Feature reverting set to %s" % fra
+  # Can be set in the config.ini [Testing] section
+  phpunit_run = common.ConfigFile.return_config_item(config, "Testing", "phpunit_run", "boolean", False)
+  phpunit_fail_build = common.ConfigFile.return_config_item(config, "Testing", "phpunit_fail_build", "boolean", False)
+  phpunit_group = common.ConfigFile.return_config_item(config, "Testing", "phpunit_group", "string", "unit")
+  phpunit_test_directory = common.ConfigFile.return_config_item(config, "Testing", "phpunit_test_directory", "string", "www/modules/custom")
+  phpunit_path = common.ConfigFile.return_config_item(config, "Testing", "phpunit_path", "string", "vendor/phpunit/phpunit/phpunit")
 
   # Set SSH key if needed
   # @TODO: this needs to be moved to config.ini for Code Enigma GitHub projects
   if "git@github.com" in repourl:
     ssh_key = "/var/lib/jenkins/.ssh/id_rsa_github"
 
-  # Prepare variables for various Drupal tasks
-
-  # Check if readonlymode module is requested
-  readonlymode = Drupal.configure_readonlymode(config)
-
-  # These are our standard deployment hooks, such as config_export
-  # All of the standard hooks are in hooks/StandardHooks.py
-  # First, declare the variables that relate to our hooks
-    # An example would be:
-  # [Hooks]
-  # config_export: True
-  #
-  config_export = Drupal.configure_config_export(config)
-
   # Prepare Behat variables
+  behat_config = None
+  behat_tests_failed = False
   if config.has_section("Behat"):
     behat_config = DrupalTests.prepare_behat_tests(config, buildtype)
 
@@ -244,6 +121,22 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Gitflow workflow means '/' in branch names, need to clean up.
   branch = common.Utils.generate_branch_name(branch)
   print "===> Branch is %s" % branch
+
+  # Some special feature branching setup to do here:
+
+  # Set branches to be treated as feature branches
+  # Regardless of whether or not 'fra' is set, we need to set 'branches'
+  # our our existing_build_wrapper() function gets upset later.
+  feature_branches = Drupal.drush_fra_branches(config, branch)
+
+  # Compile variables for feature branch builds (if applicable)
+  FeatureBranches.configure_feature_branch(buildtype, config, branch)
+  print "Feature branch debug information below:"
+  print "httpauth_pass: %s" % FeatureBranches.httpauth_pass
+  print "ssl_enabled: %s" % FeatureBranches.ssl_enabled
+  print "ssl_cert: %s" % FeatureBranches.ssl_cert
+  print "ssl_ip: %s" % FeatureBranches.ssl_ip
+  print "drupal_common_config: %s" % FeatureBranches.drupal_common_config
 
   # Now we have the codebase and a clean branch name we can figure out the Drupal version
   # Don't use execute() because it returns an array of values returned keyed by hostname

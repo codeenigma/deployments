@@ -87,24 +87,6 @@ def drush_fra_branches(config, branch):
   return feature_branches
 
 
-# Set the default maintenance/readonly method
-@task
-def configure_readonlymode(config):
-  # If config.ini has a [Readonly] section, proceed option
-  if config.has_section("Readonly"):
-    # Check that the [Readonly] section has a readonly option
-    if config.has_option("Readonly", "readonly"):
-      # Get the value of readonly in config.ini
-      return config.get("Readonly", "readonly")
-
-
-# Config the config_export hook
-def configure_config_export(config):
-  if config.has_section("Hooks"):
-    if config.has_option("Hooks", "config_export"):
-      return config.getboolean("Hooks", "config_export")
-
-
 # Take a database backup
 @task
 @roles('app_primary')
