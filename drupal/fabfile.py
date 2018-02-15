@@ -198,7 +198,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # If any of our tests failed, abort the job
   # r23697
   if behat_tests_failed:
-    print  "Some tests failed. Aborting the job."
+    print "Some tests failed. Aborting the job."
     sys.exit(3)
 
 
@@ -210,8 +210,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 # Wrapper function for carrying out a first build of a site
 @task
 def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale):
-  # Set a URL if one wasn't already provided and clean it up if it was
-  url = common.Utils.generate_url(url, repo, branch)
   print "===> URL is http://%s" % url
 
   print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
