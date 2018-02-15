@@ -17,8 +17,6 @@ def configure_site_mapping(repo, mapping, config):
     print "===> Found a Sites section. Determining which sites to deploy..."
     for option in config.options("Sites"):
       line = config.get("Sites", option)
-      if dontbuild:
-        print "line: %s" % line
       line = line.split(',')
       for sitename in line:
         sitename = sitename.strip()
