@@ -119,7 +119,7 @@ def initial_build(repo, url, branch, build, site, alias, profile, buildtype, san
     # Convert a list of apps back into a string, to pass to the MySQL new database function for setting appropriate GRANTs to the database
     list_of_app_servers = env.roledefs['app_all']
 
-  if config.has_section('AppIPs'):
+  if cluster and config.has_section('AppIPs'):
     list_of_app_servers = env.roledefs['app_ip_all']
 
   # Prepare the database
