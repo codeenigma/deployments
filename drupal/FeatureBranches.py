@@ -51,7 +51,7 @@ def configure_feature_branch(buildtype, config, branch):
   global ssl_cert
   global drupal_common_config
   global url
-  
+
 
   # If the buildtype is 'custombranch', which it will be when deploying a custom branch (i.e one
   # that isn't in the normal workflow), we need to make sure the chosen branch *isn't* one from
@@ -65,7 +65,7 @@ def configure_feature_branch(buildtype, config, branch):
     if config.has_section(branch):
       print "===> You cannot build the %s site using the custom branch job as this will cause the live symlink to be incorrect. Aborting." % branch
       raise ValueError("You cannot build the %s site using the custom branch job as this will cause the live symlink to be incorrect. Aborting." % (branch))
-      
+
     # There will be cases where there isn't a buildtype in config.ini for $branch. At CE, we use
     # master -> stage -> prod branch workflow, but use the [dev] buildtype in config.ini. So this
     # next check will check for the branch name provided in a small list of branch names. If found
@@ -132,25 +132,20 @@ def remove_site(repo, branch, alias):
   # Drop DB...
   with cd("/var/www/live.%s.%s/www/sites/default" % (repo, branch)):
     with settings(warn_only=True):
-      if run("drush status").failed:
+      dbname = sudo("drush status 2>&1 | grep \"Database name \" | cut -d \":\" -f 2")
+      print "DEBUG INFO: dbname = %s" % dbname
+
+      # If the dbname variable is empty for whatever reason, resort to grepping settings.php
+      if not dbname:
         dbname = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % alias)
         print "DEBUG INFO: dbname = %s" % dbname
         dbname = dbname.translate(None, "',")
         print "DEBUG INFO: dbname = %s" % dbname
-      else:
-        dbname = sudo("drush status | grep \"Database name \" | cut -d \":\" -f 2")
-
-        # If the dbname variable is empty for whatever reason, resort to grepping settings.php
-        if not dbname:
-          dbname = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % alias)
-          print "DEBUG INFO: dbname = %s" % dbname
-          dbname = dbname.translate(None, "',")
-          print "DEBUG INFO: dbname = %s" % dbname
 
   print "===> Dropping database and user: %s" % dbname
   sudo("mysql --defaults-file=/etc/mysql/debian.cnf -e 'DROP DATABASE IF EXISTS `%s`;'" % dbname)
   sudo("mysql --defaults-file=/etc/mysql/debian.cnf -e \"DROP USER \'%s\'@\'localhost\';\"" % dbname)
-  
+
   with settings(warn_only=True):
     # Remove site directories
     print "===> Unlinking live symlink and removing site directories..."
@@ -171,4 +166,3 @@ def remove_drush_alias(alias, branch):
   with settings(warn_only=True):
     print "===> Removing drush alias..."
     sudo("rm /etc/drush/%s_%s.alias.drushrc.php" % (alias, branch))
-
