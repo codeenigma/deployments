@@ -157,11 +157,15 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     print "ssl_cert: %s" % FeatureBranches.ssl_cert
     print "ssl_ip: %s" % FeatureBranches.ssl_ip
     print "drupal_common_config: %s" % FeatureBranches.drupal_common_config
-    print "url: %s" % FeatureBranches.url
+    print "featurebranch_url: %s" % FeatureBranches.featurebranch_url
 
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
       dump_file = Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
+
+    if FeatureBranches.featurebranch_url is not None:
+      url = FeatureBranches.featurebranch_url
+
     url = common.Utils.generate_url(url, alias, branch)
     # Now check if we have a Drush alias with that name. If not, run an install
     with settings(hide('warnings', 'stderr'), warn_only=True):

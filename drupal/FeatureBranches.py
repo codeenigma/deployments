@@ -50,7 +50,9 @@ def configure_feature_branch(buildtype, config, branch, alias):
   global ssl_ip
   global ssl_cert
   global drupal_common_config
-  global url
+  global featurebranch_url
+
+  featurebranch_url = None
 
 
   # If the buildtype is 'custombranch', which it will be when deploying a custom branch (i.e one
@@ -116,7 +118,7 @@ def configure_feature_branch(buildtype, config, branch, alias):
             urltemplate = urltemplate.replace("reponame", alias, 1)
             urltemplate = urltemplate.replace("branchname", branch, 1)
             print "urltemplate is now %s" % urltemplate
-            url = urltemplate
+            featurebranch_url = urltemplate
 
           if config.has_option("featurebranch", "drupalcommonconfig"):
             print "Feature Branch: Found a drupalcommonconfig option..."
