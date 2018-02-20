@@ -123,21 +123,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   branch = common.Utils.generate_branch_name(branch)
   print "===> Branch is %s" % branch
 
-  # Some special feature branching setup to do here:
-
   # Set branches to be treated as feature branches
   # Regardless of whether or not 'fra' is set, we need to set 'branches'
   # our our existing_build_wrapper() function gets upset later.
   feature_branches = Drupal.drush_fra_branches(config, branch)
-
-  # Compile variables for feature branch builds (if applicable)
-  FeatureBranches.configure_feature_branch(buildtype, config, branch)
-  print "Feature branch debug information below:"
-  print "httpauth_pass: %s" % FeatureBranches.httpauth_pass
-  print "ssl_enabled: %s" % FeatureBranches.ssl_enabled
-  print "ssl_cert: %s" % FeatureBranches.ssl_cert
-  print "ssl_ip: %s" % FeatureBranches.ssl_ip
-  print "drupal_common_config: %s" % FeatureBranches.drupal_common_config
 
   # Now we have the codebase and a clean branch name we can figure out the Drupal version
   # Don't use execute() because it returns an array of values returned keyed by hostname
@@ -160,6 +149,16 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   mapping = Drupal.configure_site_mapping(repo, mapping, config)
   # Run new installs
   for alias,site in mapping.iteritems():
+    # Compile variables for feature branch builds (if applicable)
+    FeatureBranches.configure_feature_branch(buildtype, config, branch, alias)
+    print "Feature branch debug information below:"
+    print "httpauth_pass: %s" % FeatureBranches.httpauth_pass
+    print "ssl_enabled: %s" % FeatureBranches.ssl_enabled
+    print "ssl_cert: %s" % FeatureBranches.ssl_cert
+    print "ssl_ip: %s" % FeatureBranches.ssl_ip
+    print "drupal_common_config: %s" % FeatureBranches.drupal_common_config
+    print "url: %s" % FeatureBranches.url
+
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
       dump_file = Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)

@@ -43,7 +43,7 @@ def initial_db_and_config(repo, branch, build, import_config, drupal_version):
 
 # Sets all the variables for a feature branch InitialBuild
 @task
-def configure_feature_branch(buildtype, config, branch):
+def configure_feature_branch(buildtype, config, branch, alias):
   # Set up global variables required in main()
   global httpauth_pass
   global ssl_enabled
@@ -113,7 +113,7 @@ def configure_feature_branch(buildtype, config, branch):
           if config.has_option("featurebranch", "urltemplate"):
             print "Feature Branch: Found a urltemplate option..."
             urltemplate = config.get("featurebranch", "urltemplate")
-            urltemplate = urltemplate.replace("reponame", repo, 1)
+            urltemplate = urltemplate.replace("reponame", alias, 1)
             urltemplate = urltemplate.replace("branchname", branch, 1)
             print "urltemplate is now %s" % urltemplate
             url = urltemplate
