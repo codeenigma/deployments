@@ -119,12 +119,22 @@ def initial_build(repo, url, branch, build, site, alias, profile, buildtype, san
     # Convert a list of apps back into a string, to pass to the MySQL new database function for setting appropriate GRANTs to the database
     list_of_app_servers = env.roledefs['app_all']
 
-  if config.has_section('AppIPs'):
+  if cluster and config.has_section('AppIPs'):
     list_of_app_servers = env.roledefs['app_ip_all']
+
+  # If this is a feature branch build, we want to pass in the branch name as buildtype, when
+  # create a new database. This is so there is some difference in db name between feature branch
+  # builds.
+  preserve_buildtype = buildtype
+  if buildtype == "custombranch":
+    buildtype = branch
 
   # Prepare the database
   # We'll get back db_name, db_username, db_password and db_host from this call as a list in new_database
-  new_database = common.MySQL.mysql_new_database(repo, buildtype, rds, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
+  new_database = common.MySQL.mysql_new_database(alias, buildtype, rds, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
+
+  # Set the buildtype back to the original buildtype
+  buildtype = preserve_buildtype
 
   # Now install Drupal
   site_root = "/var/www/%s_%s_%s/www" % (repo, branch, build)
