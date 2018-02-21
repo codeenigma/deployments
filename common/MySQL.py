@@ -33,6 +33,8 @@ def mysql_new_database(repo, buildtype, rds=False, db_name=None, db_host=None, d
   # Set safe defaults for MySQL 5.5 or lower
   db_name_length = 16
   db_username_length = 16
+  # Make sure mysql_version is a float
+  mysql_version = float(mysql_version)
   # If MySQL version is 5.6 or higher, allow longer names
   if mysql_version > 5.6:
     db_name_length = 64
