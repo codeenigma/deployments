@@ -102,8 +102,8 @@ if (file_exists($file)) {
         print "There's a settings.inc file, but no main settings.php file. We'll symlink in our settings.inc file."
         run("ln -s /var/www/config/%s_%s.settings.inc /var/www/%s_%s_%s/www/sites/%s/settings.php" % (alias, branch, repo, branch, build, site))
       else:
-        print "We found a settings.inc file AND a main settings.php file. We'll move settings.php to settings.php.bak and symlink in the settings.inc file."
-        sudo("mv /var/www/%s_%s_%s/www/sites/%s/settings.php /var/www/%s_%s_%s/www/sites/%s/settings.php.bak" % (repo, branch, build, site, repo, branch, build, site))
+        print "We found a settings.inc file AND a main settings.php file. We'll move settings.php to backup.settings.php and symlink in the settings.inc file."
+        sudo("mv /var/www/%s_%s_%s/www/sites/%s/settings.php /var/www/%s_%s_%s/www/sites/%s/backup.settings.php" % (repo, branch, build, site, repo, branch, build, site))
         run("ln -s /var/www/config/%s_%s.settings.inc /var/www/%s_%s_%s/www/sites/%s/settings.php" % (alias, branch, repo, branch, build, site))
 
 
