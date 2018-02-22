@@ -73,7 +73,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
   execute(Multisite.create_config_dir)
 
   # Compile variables for feature branch builds (if applicable)
-  FeatureBranches.configure_feature_branch(buildtype, config, branch)
+  FeatureBranches.configure_feature_branch(buildtype, config, branch, alias)
   print "Feature branch debug information below:"
   print "httpauth_pass: %s" % FeatureBranches.httpauth_pass
   print "ssl_enabled: %s" % FeatureBranches.ssl_enabled
