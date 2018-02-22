@@ -28,7 +28,7 @@ def put_files(orig_host, source_dir, dest_dir, dest_user, dest_group, copy_user,
 
   with settings(warn_only=True):
     if sudo("chown -R %s:%s %s" % (dest_user, dest_group, dest_dir)).failed:
-      print "Could not set ownership to %s on %s on %s. Marking the build as unstable." % (dest_user, dest_dir, env.host)
+      print "Could not set ownership to %s on %s on destination server. Marking the build as unstable." % (dest_user, dest_dir)
       sys.exit(3)
 
 
