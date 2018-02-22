@@ -73,13 +73,13 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
   execute(Multisite.create_config_dir)
 
   # Compile variables for feature branch builds (if applicable)
-  FeatureBranches.configure_feature_branch(buildtype, config, branch, alias)
-  print "Feature branch debug information below:"
-  print "httpauth_pass: %s" % FeatureBranches.httpauth_pass
-  print "ssl_enabled: %s" % FeatureBranches.ssl_enabled
-  print "ssl_cert: %s" % FeatureBranches.ssl_cert
-  print "ssl_ip: %s" % FeatureBranches.ssl_ip
-  print "drupal_common_config: %s" % FeatureBranches.drupal_common_config
+  #FeatureBranches.configure_feature_branch(buildtype, config, branch, alias)
+  #print "Feature branch debug information below:"
+  #print "httpauth_pass: %s" % FeatureBranches.httpauth_pass
+  #print "ssl_enabled: %s" % FeatureBranches.ssl_enabled
+  #print "ssl_cert: %s" % FeatureBranches.ssl_cert
+  #print "ssl_ip: %s" % FeatureBranches.ssl_ip
+  #print "drupal_common_config: %s" % FeatureBranches.drupal_common_config
 
   # Prepare variables for various Drupal tasks
   if config.has_section("Features"):
