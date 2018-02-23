@@ -18,8 +18,6 @@ def pull_files(source_dir, source_addr, copy_user, copy_dir, now):
 def put_files(orig_host, source_dir, dest_dir, dest_user, dest_group, copy_user, copy_dir, now):
   env.host_string = orig_host
 
-  return_response = None
-
   print "===> Now copy files to destination, so switch back to original host..."
 
   with settings(warn_only=True):
@@ -35,7 +33,7 @@ def put_files(orig_host, source_dir, dest_dir, dest_user, dest_group, copy_user,
       print "Could not set ownership to %s on %s on destination server. Marking the build as unstable." % (dest_user, dest_dir)
       return "unstable"
 
-  return return_response
+  return None
 
 def cleanup_files(copy_dir, now):
   print "===> Cleaning up files on Jenkins server..."
@@ -68,7 +66,6 @@ def main(source_dir, source_addr, dest_user, dest_group=None, copy_user="jenkins
   pull_files(source_dir, source_addr, copy_user, copy_dir, now)
   put_response = put_files(orig_host, source_dir, dest_dir, dest_user, dest_group, copy_user, copy_dir, now)
   cleanup_files(copy_dir, now)
-
 
   if put_response == "unstable":
     sys.exit(3)
