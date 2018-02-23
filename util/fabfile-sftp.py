@@ -18,18 +18,31 @@ def pull_files(source_dir, source_addr, copy_user, copy_dir, now):
 def put_files(orig_host, source_dir, dest_dir, dest_user, dest_group, copy_user, copy_dir, now):
   env.host_string = orig_host
 
+  return_response = None
+
   print "===> Now copy files to destination, so switch back to original host..."
 
-  if sudo("chown -R %s %s" % (copy_user, dest_dir)).failed:
-    SystemExit("Could not set ownership to %s on destination directory %s correctly." % (copy_user, dest_dir))
-
-  if local("rsync -aHPv %s/copy_%s/ %s:%s/" % (copy_dir, now, env.host_string, dest_dir)).failed:
-    SystemExit("Could not copy %s files to destination %s. Aborting." % (source_dir, dest_dir))
-
   with settings(warn_only=True):
+    if sudo("chown -R %s %s" % (copy_user, dest_dir)).failed:
+      print "Could not set ownership to %s on destination directory %s correctly." % (copy_user, dest_dir)
+      return "fail"
+
+    if local("rsync -aHPv %s/copy_%s/ %s:%s/" % (copy_dir, now, env.host_string, dest_dir)).failed:
+      print "Could not copy %s files to destination %s. Aborting." % (source_dir, dest_dir)
+      return "fail"
+
     if sudo("chown -R %s:%s %s" % (dest_user, dest_group, dest_dir)).failed:
       print "Could not set ownership to %s on %s on destination server. Marking the build as unstable." % (dest_user, dest_dir)
-      sys.exit(3)
+      return "unstable"
+
+  return return_response
+
+def cleanup_files(copy_dir, now):
+  print "===> Cleaning up files on Jenkins server..."
+
+  with settings(warn_only=True):
+    if sudo("rm -r %s/copy_%s" % (copy_dir, now)).failed:
+      print "Could not remove %s/copy_%s on Jenkins server. It'll need manual removal." % (copy_dir, now)
 
 
 def main(source_dir, source_addr, dest_user, dest_group=None, copy_user="jenkins", copy_dir="/tmp", dest_dir=None):
@@ -53,6 +66,14 @@ def main(source_dir, source_addr, dest_user, dest_group=None, copy_user="jenkins
   source_dir = source_dir.rstrip('/')
 
   pull_files(source_dir, source_addr, copy_user, copy_dir, now)
-  put_files(orig_host, source_dir, dest_dir, dest_user, dest_group, copy_user, copy_dir, now)
+  put_response = put_files(orig_host, source_dir, dest_dir, dest_user, dest_group, copy_user, copy_dir, now)
+  cleanup_files(copy_dir, now)
+
+
+  if put_response == "unstable":
+    sys.exit(3)
+
+  if put_response == "fail":
+    SystemExit("Fail response received. Failing build.")
 
   print "SUCCESS! Files copied."
