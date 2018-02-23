@@ -41,7 +41,7 @@ def cleanup_files(copy_dir, now):
   print "===> Cleaning up files on Jenkins server..."
 
   with settings(warn_only=True):
-    if sudo("rm -r %s/copy_%s" % (copy_dir, now)).failed:
+    if local("rm -r %s/copy_%s" % (copy_dir, now)).failed:
       print "Could not remove %s/copy_%s on Jenkins server. It'll need manual removal." % (copy_dir, now)
 
 
