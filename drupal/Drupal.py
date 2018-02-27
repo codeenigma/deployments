@@ -269,8 +269,8 @@ def run_composer_install(repo, branch, build, composer_lock, no_dev):
 
   # Sometimes we will want to remove composer.lock prior to installing
   with settings(warn_only=True):
-    print "===> Removing composer.lock prior to attempting an install"
-    if composer_lock == False:
+    if not composer_lock:
+      print "===> Removing composer.lock prior to attempting an install"
       run ("rm %s/composer.lock" % path)
       run ("rm -R %s/vendor" % path)
 
