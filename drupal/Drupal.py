@@ -68,9 +68,26 @@ def drush_fra_branches(config, branch):
 
   # If a 'feature_branches' option exists in the [Build] section in config.ini, proceed
   elif config.has_option("Build", "feature_branches"):
+    print "############### ===> Fetching feature branches from 'feature_branches' under [Build] in config.ini - DEPRECATED! Please use 'feature_branches' under [Drupal] instead"
     feature_branches = []
     # Get the 'feature_branches' option from under the [Features] section
     revert_features = config.get("Build", "feature_branches")
+    if revert_features == "*":
+      #just append the current branch
+      feature_branches.append(branch)
+    else:
+      # Split the 'feature_branches' option using a comma as a delimiter
+      revert_features = revert_features.split(',')
+      # For each value, strip it and add it to the branches list, which will be searched later
+      for each_branch in revert_features:
+        each_branch = each_branch.strip()
+        feature_branches.append(each_branch)
+
+  # If a 'feature_branches' option exists in the [Drupal] section in config.ini, proceed
+  elif config.has_option("Drupal", "feature_branches"):
+    feature_branches = []
+    # Get the 'feature_branches' option from under the [Features] section
+    revert_features = config.get("Drupal", "feature_branches")
     if revert_features == "*":
       #just append the current branch
       feature_branches.append(branch)
