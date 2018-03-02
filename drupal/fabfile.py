@@ -32,7 +32,7 @@ global config
 
 # Main build script
 @task
-def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini'):
+def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", import_config=False, statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini'):
 
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
@@ -75,7 +75,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   profile = common.ConfigFile.return_config_item(config, "Drupal", "profile", "string", "minimal")
   do_updates = common.ConfigFile.return_config_item(config, "Drupal", "do_updates", "boolean", True)
   run_cron = common.ConfigFile.return_config_item(config, "Drupal", "run_cron", "boolean", False)
-  import_config = common.ConfigFile.return_config_item(config, "Drupal", "import_config", "boolean", False)
+  import_config = common.ConfigFile.return_config_item(config, "Drupal", "import_config", "boolean", import_config)
   ### @TODO: deprecated, can be removed later
   fra = common.ConfigFile.return_config_item(config, "Features", "fra", "boolean", False, True, True, replacement_section="Drupal")
   # This is the correct location for 'fra' - note, respect the deprecated value as default
