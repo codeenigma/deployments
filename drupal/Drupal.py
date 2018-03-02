@@ -345,7 +345,7 @@ def drush_updatedb(repo, branch, build, site, alias, drupal_version):
 @roles('app_primary')
 def drush_fra(repo, branch, build, site, alias, drupal_version):
   with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
-    if run("drush pm-list --pipe --type=module --status=enabled --no-core | grep -q ^features$"):
+    if run("drush pm-list --pipe --type=module --status=enabled --no-core | grep -q ^features$").return_code != 0:
       print "===> Features module not installed, skipping feature revert"
     else:
       print "===> Reverting all features..."
