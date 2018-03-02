@@ -134,7 +134,7 @@ def remove_site(repo, branch, alias):
   # Drop DB...
   with cd("/var/www/live.%s.%s/www/sites/default" % (repo, branch)):
     with settings(warn_only=True):
-      dbname = sudo("drush status 2>&1 | grep \"Database name \" | cut -d \":\" -f 2")
+      dbname = sudo("drush status 2>&1 | grep \"Database name \|DB name \" | cut -d \":\" -f 2")
       print "DEBUG INFO: dbname = %s" % dbname
 
       # If the dbname variable is empty for whatever reason, resort to grepping settings.php
