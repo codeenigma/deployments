@@ -257,7 +257,7 @@ def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildt
     execute(InitialBuild.initial_build_updatedb, repo, branch, build, site, drupal_version)
     execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
     if import_config:
-      execute(InitialBuild.initial_build_config_import, repo, branch, build, site, drupal_version)
+      execute(InitialBuild.initial_build_config_import, repo, branch, build, site, drupal_version, import_method)
       execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
 
   # Let's allow developers to perform some post-build actions if they need to
