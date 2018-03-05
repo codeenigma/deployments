@@ -76,6 +76,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   do_updates = common.ConfigFile.return_config_item(config, "Drupal", "do_updates", "boolean", True)
   run_cron = common.ConfigFile.return_config_item(config, "Drupal", "run_cron", "boolean", False)
   import_config = common.ConfigFile.return_config_item(config, "Drupal", "import_config", "boolean", import_config)
+  import_method = common.ConfigFile.return_config_item(config, "Drupal", "import_method", "string", "cim")
   ### @TODO: deprecated, can be removed later
   fra = common.ConfigFile.return_config_item(config, "Features", "fra", "boolean", False, True, True, replacement_section="Drupal")
   # This is the correct location for 'fra' - note, respect the deprecated value as default
@@ -171,10 +172,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     with settings(hide('warnings', 'stderr'), warn_only=True):
       if run("drush sa | grep ^@%s_%s$ > /dev/null" % (alias, branch)).failed:
         print "Didn't find a Drush alias %s_%s so we'll install this new site %s" % (alias, branch, url)
-        initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale)
+        initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_method, webserverport, behat_config, autoscale)
       else:
         # Otherwise it's an existing build
-        existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches)
+        existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_method, fra, run_cron, feature_branches)
 
     # After any build we want to run all the available automated tests
     test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site)
@@ -216,7 +217,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
 # Wrapper function for carrying out a first build of a site
 @task
-def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale):
+def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_method, webserverport, behat_config, autoscale):
   print "===> URL is http://%s" % url
 
   print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
@@ -251,7 +252,7 @@ def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildt
   # any manual clean-up first. Everything else will have run, such as generate drush alias and
   # webserver vhost, so the issue can be fixed and the job re-run.
   if buildtype == "custombranch":
-    FeatureBranches.initial_db_and_config(repo, branch, build, import_config, drupal_version)
+    FeatureBranches.initial_db_and_config(repo, branch, build, import_config, drupal_version, import_method)
   else:
     execute(InitialBuild.initial_build_updatedb, repo, branch, build, site, drupal_version)
     execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
@@ -266,7 +267,7 @@ def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildt
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches):
+def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_method, fra, run_cron, feature_branches):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   # Grab some information about the current build
   previous_build = common.Utils.get_previous_build(repo, branch, build)
@@ -312,8 +313,12 @@ def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_
       Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
-    if import_config == True:
-      execute(Drupal.config_import, repo, branch, build, site, alias, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
+    if import_config:
+      execute(Drupal.config_import, repo, branch, build, site, alias, drupal_version, previous_build, import_method) # This will revert database, settings and live symlink if it fails.
+
+      # Let's allow developers to use other config management for imports, such as CMI
+      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', hosts=env.roledefs['app_primary'])
+
     execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
     execute(Drupal.go_online, repo, branch, build, alias, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
     execute(Drupal.check_node_access, alias, branch, notifications_email)
@@ -333,8 +338,12 @@ def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_
       Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
-    if import_config == True:
-      execute(Drupal.config_import, repo, branch, build, site, alias, drupal_version) # This will revert database, settings and live symlink if it fails.
+    if import_config:
+      execute(Drupal.config_import, repo, branch, build, site, alias, drupal_version, previous_build, import_method) # This will revert database, settings and live symlink if it fails.
+
+      # Let's allow developers to use other config management for imports, such as CMI
+      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', hosts=env.roledefs['app_primary'])
+
     execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
 
   # Final clean up and run tests, if applicable
