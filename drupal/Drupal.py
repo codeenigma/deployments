@@ -462,24 +462,21 @@ def environment_indicator(repo, branch, build, buildtype, alias, site, drupal_ve
 # Function used by Drupal 8 builds to import site config
 @task
 @roles('app_primary')
-def config_import(repo, branch, build, site, alias, drupal_version, previous_build, import_method):
+def config_import(repo, branch, build, site, alias, drupal_version, previous_build):
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version == '8':
-      if import_method == "cim":
-        print "===> Importing configuration for Drupal 8 site..."
-        if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cim'" % (repo, branch, build, site)).failed:
-          print "Could not import configuration! Reverting this database and settings"
-          sudo("unlink /var/www/live.%s.%s" % (repo, branch))
-          sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-          Revert._revert_db(alias, branch, build)
-          Revert._revert_settings(repo, branch, build, site, alias)
-          raise SystemExit("Could not import configuration! Reverted database and settings. Site remains on previous build")
-        else:
-          print "===> Configuration imported. Running a cache rebuild..."
-          drush_clear_cache(repo, branch, build, site, drupal_version)
+      print "===> Importing configuration for Drupal 8 site..."
+      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cim'" % (repo, branch, build, site)).failed:
+        print "Could not import configuration! Reverting this database and settings"
+        sudo("unlink /var/www/live.%s.%s" % (repo, branch))
+        sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
+        Revert._revert_db(alias, branch, build)
+        Revert._revert_settings(repo, branch, build, site, alias)
+        raise SystemExit("Could not import configuration! Reverted database and settings. Site remains on previous build")
       else:
-        print "Import method is not cim, so it can be reasonably assumed there's a config build hook to run."
+        print "===> Configuration imported. Running a cache rebuild..."
+        drush_clear_cache(repo, branch, build, site, drupal_version)
 
 
 # Take the site offline (prior to drush updatedb)

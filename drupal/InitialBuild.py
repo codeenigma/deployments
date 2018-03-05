@@ -70,18 +70,15 @@ def initial_build_updatedb(repo, branch, build, site, drupal_version):
 # Function used by Drupal 8 builds to import site config
 @task
 @roles('app_primary')
-def initial_build_config_import(repo, branch, build, site, drupal_version, import_method):
+def initial_build_config_import(repo, branch, build, site, drupal_version):
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version == '8':
-      if import_method == "cim":
-        print "===> Importing configuration for Drupal 8 site..."
-        if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cim'" % (repo, branch, build, site)).failed:
-          raise SystemExit("Could not import configuration! Failing the initial build.")
-        else:
-          print "===> Configuration imported."
+      print "===> Importing configuration for Drupal 8 site..."
+      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cim'" % (repo, branch, build, site)).failed:
+        raise SystemExit("Could not import configuration! Failing the initial build.")
       else:
-        print "Import method is not cim, so we can reasonably assume there's a post-initial build hook that should run."
+        print "===> Configuration imported."
 
 
 # Stuff to do when this is the initial build

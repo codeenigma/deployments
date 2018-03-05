@@ -13,7 +13,7 @@ drupal_common_config = None
 # Feature branches only, preparing database
 # Assumes single server, cannot work on a cluster
 @task
-def initial_db_and_config(repo, branch, build, import_config, drupal_version, import_method):
+def initial_db_and_config(repo, branch, build, import_config, drupal_version):
   with settings(warn_only=True):
     # Run database updates
     if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y updatedb'" % (repo, branch, build)).failed:
@@ -32,16 +32,13 @@ def initial_db_and_config(repo, branch, build, import_config, drupal_version, im
 
     # Import config
     if drupal_version == '8' and import_config:
-      if import_method == "cim":
-        print "===> Importing configuration for Drupal 8 site..."
-        if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cim'" % (repo, branch, build)).failed:
-          print "Could not import configuration! Failing build."
-          raise SystemExit("Could not import configuration! Failing build.")
-        else:
-          print "===> Configuration imported. Running a cache rebuild..."
-          sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cr'" % (repo, branch, build))
+      print "===> Importing configuration for Drupal 8 site..."
+      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cim'" % (repo, branch, build)).failed:
+        print "Could not import configuration! Failing build."
+        raise SystemExit("Could not import configuration! Failing build.")
       else:
-        print "Import method is not cim, so we can reasonably assume there's a post-initial build hook that should run."
+        print "===> Configuration imported. Running a cache rebuild..."
+        sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cr'" % (repo, branch, build))
 
 
 # Sets all the variables for a feature branch InitialBuild
