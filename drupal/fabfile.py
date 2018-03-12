@@ -17,7 +17,6 @@ import DrupalUtils
 import FeatureBranches
 import InitialBuild
 import Revert
-import StandardHooks
 import Autoscale
 # Needed to get variables set in modules back into the main script
 from DrupalTests import *
@@ -71,7 +70,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   dump_file = common.ConfigFile.return_config_item(config, "Database", "dump_file")
 
   # Can be set in the config.ini [Drupal] section
-  drupal_version = common.ConfigFile.return_config_item(config, "Drupal", "drupal_version")
+  ### @TODO: deprecated, can be removed later
+  drupal_version = common.ConfigFile.return_config_item(config, "Version", "drupal_version", "string", None, True, True, replacement_section="Drupal")
+  # This is the correct location for 'drupal_version' - note, respect the deprecated value as default
+  drupal_version = common.ConfigFile.return_config_item(config, "Drupal", "drupal_version", "string", drupal_version)
   profile = common.ConfigFile.return_config_item(config, "Drupal", "profile", "string", "minimal")
   do_updates = common.ConfigFile.return_config_item(config, "Drupal", "do_updates", "boolean", True)
   run_cron = common.ConfigFile.return_config_item(config, "Drupal", "run_cron", "boolean", False)
@@ -130,7 +132,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
   # Now we have the codebase and a clean branch name we can figure out the Drupal version
   # Don't use execute() because it returns an array of values returned keyed by hostname
-  drupal_version = DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config)
+  drupal_version = int(DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config))
   print "===> the drupal_version variable is set to %s" % drupal_version
 
   # Let's allow developers to perform some early actions if they need to
@@ -138,9 +140,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
   # @TODO: This will be a bug when Drupal 9 comes out!
   # We need to cast version as an integer and use < 8
-  if drupal_version != '8':
+  if drupal_version < 8:
     import_config = False
-  if drupal_version == '8' and composer is True:
+  if drupal_version > 7 and composer is True:
     execute(Drupal.run_composer_install, repo, branch, build, composer_lock, no_dev)
 
   # Compile a site mapping, which is needed if this is a multisite build
@@ -161,7 +163,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
-      dump_file = Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
+      dump_file = Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, sanitised_password, sanitised_email)
 
     if FeatureBranches.featurebranch_url is not None:
       url = FeatureBranches.featurebranch_url
@@ -286,7 +288,7 @@ def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_
 
   # Export the config if we need to (Drupal 8+)
   if config_export:
-    execute(StandardHooks.config_export, repo, branch, build, drupal_version)
+    execute(Drupal.config_export, repo, branch, build, drupal_version)
   execute(Drupal.drush_status, repo, branch, build, site, alias, revert_settings=True)
 
   # Time to update the database!

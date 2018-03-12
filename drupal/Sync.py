@@ -204,7 +204,7 @@ def drush_updatedb(orig_host, shortname, staging_branch):
 def clear_caches(orig_host, shortname, staging_branch, drupal_version):
   env.host_string = orig_host
   print "===> Clearing caches"
-  if drupal_version == '8':
+  if drupal_version > 7:
     run("drush @%s_%s -y cr" % (shortname, staging_branch))
   else:
     run("drush -y @%s_%s cc all" % (shortname, staging_branch))

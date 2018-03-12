@@ -90,7 +90,7 @@ def run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, jun
     while continue_tests:
       # Disable modules that enable HTTP auth.
       if disable_modules:
-        if drupal_version == '8':
+        if drupal_version > 7:
           for module in disable_modules:
             if run("drush @%s_%s -y pm-uninstall %s" % (alias, branch, module)).failed:
               print "Cannot disable %s. Stopping tests early..." % module
@@ -189,7 +189,7 @@ def run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, jun
 @task
 def reenable_modules(alias, branch, buildtype, drupal_version, enable_modules = []):
   with settings(warn_only=True):
-    if drupal_version == '8':
+    if drupal_version > 7:
       if run("drush @%s_%s -y cim" % (alias, branch)).failed:
         print "Cannot import config to enable modules. Manual investigation is required."
       else:
