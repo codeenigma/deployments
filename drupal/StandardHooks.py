@@ -7,7 +7,7 @@ from Drupal import *
 @task
 @roles('app_primary')
 def config_export(repo, branch, build, drupal_version):
-  if drupal_version == '8':
+  if drupal_version > 7:
     print "===> Executing hook: config_export"
     print "===> Exporting site config, which will be downloadable"
     with settings(warn_only=True):

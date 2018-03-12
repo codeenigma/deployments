@@ -61,7 +61,7 @@ def initial_build_updatedb(repo, branch, build, site, drupal_version):
   with settings(warn_only=True):
     if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
       raise SystemExit("Could not apply database updates! Everything else has been done, but failing the build to alert to the fact database updates could not be run.")
-    if drupal_version == '8':
+    if drupal_version > 7:
       if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y entity-updates'" % (repo, branch, build, site)).failed:
         print "Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
   print "===> Database updates applied"
@@ -73,7 +73,7 @@ def initial_build_updatedb(repo, branch, build, site, drupal_version):
 def initial_build_config_import(repo, branch, build, site, drupal_version):
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
-    if drupal_version == '8':
+    if drupal_version > 7:
       print "===> Importing configuration for Drupal 8 site..."
       if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cim'" % (repo, branch, build, site)).failed:
         raise SystemExit("Could not import configuration! Failing the initial build.")
