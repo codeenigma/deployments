@@ -51,7 +51,7 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
       drupal_version = common.ConfigFile.return_config_item(config, "Version", "drupal_version", "string", None, True, True, replacement_section="Drupal")
       # This is the correct location for 'drupal_version' - note, respect the deprecated value as default
       drupal_version = common.ConfigFile.return_config_item(config, "Drupal", "drupal_version", "string", drupal_version)
-      drupal_version = DrupalUtils.determine_drupal_version(drupal_version, shortname, staging_branch, 0, drupal_config, 'sync')
+      drupal_version = int(DrupalUtils.determine_drupal_version(drupal_version, shortname, staging_branch, 0, drupal_config, 'sync'))
 
       # Allow developer to run a script prior to a sync
       common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'pre')
