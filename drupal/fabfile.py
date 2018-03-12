@@ -70,7 +70,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   dump_file = common.ConfigFile.return_config_item(config, "Database", "dump_file")
 
   # Can be set in the config.ini [Drupal] section
-  drupal_version = common.ConfigFile.return_config_item(config, "Drupal", "drupal_version")
+  ### @TODO: deprecated, can be removed later
+  drupal_version = common.ConfigFile.return_config_item(config, "Version", "drupal_version", "string", None, True, True, replacement_section="Drupal")
+  # This is the correct location for 'drupal_version' - note, respect the deprecated value as default
+  drupal_version = common.ConfigFile.return_config_item(config, "Drupal", "drupal_version", "string", drupal_version)
   profile = common.ConfigFile.return_config_item(config, "Drupal", "profile", "string", "minimal")
   do_updates = common.ConfigFile.return_config_item(config, "Drupal", "do_updates", "boolean", True)
   run_cron = common.ConfigFile.return_config_item(config, "Drupal", "run_cron", "boolean", False)
