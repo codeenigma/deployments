@@ -312,8 +312,12 @@ def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_
       Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
-    if import_config == True:
+    if import_config:
       execute(Drupal.config_import, repo, branch, build, site, alias, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
+
+    # Let's allow developers to use other config management for imports, such as CMI
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', hosts=env.roledefs['app_primary'])
+
     execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
     execute(Drupal.go_online, repo, branch, build, alias, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
     execute(Drupal.check_node_access, alias, branch, notifications_email)
@@ -333,8 +337,12 @@ def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_
       Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
-    if import_config == True:
-      execute(Drupal.config_import, repo, branch, build, site, alias, drupal_version) # This will revert database, settings and live symlink if it fails.
+    if import_config:
+      execute(Drupal.config_import, repo, branch, build, site, alias, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
+
+    # Let's allow developers to use other config management for imports, such as CMI
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', hosts=env.roledefs['app_primary'])
+
     execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
 
   # Final clean up and run tests, if applicable

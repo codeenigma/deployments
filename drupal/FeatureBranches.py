@@ -31,7 +31,7 @@ def initial_db_and_config(repo, branch, build, import_config, drupal_version):
         print "Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
 
     # Import config
-    if drupal_version == '8' and import_config == True:
+    if drupal_version == '8' and import_config:
       print "===> Importing configuration for Drupal 8 site..."
       if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cim'" % (repo, branch, build)).failed:
         print "Could not import configuration! Failing build."
