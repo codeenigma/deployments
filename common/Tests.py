@@ -9,7 +9,7 @@ import time
 # Run phpunit tests
 @task
 @roles('app_primary')
-def run_phpunit_tests(repo, branch, build, group='unit', path='www', phpunit_path='vendor/phpunit/phpunit/phpunit'):
+def run_phpunit_tests(path_to_app, group='unit', path='www', phpunit_path='vendor/phpunit/phpunit/phpunit'):
   phpunit_tests_failed=True
   # We cannot make phpunit work with PHP 5.x, too many problems
   # Detect PHP version
@@ -18,7 +18,7 @@ def run_phpunit_tests(repo, branch, build, group='unit', path='www', phpunit_pat
     # Sorry, PHP too old!
     print "##### Sorry, this version of PHP is too old for current phpunit builds, we cannot run the tests."
     return phpunit_tests_failed
-  with cd("/var/www/%s_%s_%s" % (repo, branch, build)):
+  with cd("%s" % path_to_app):
     # Make sure phpunit is available to use
     # We don't want to fail if it's already there
     with settings(warn_only=True):
@@ -28,21 +28,21 @@ def run_phpunit_tests(repo, branch, build, group='unit', path='www', phpunit_pat
     phpunit_xml = False
     with settings(warn_only=True):
       # Usual place to expect phpunit.xml
-      if run("find /var/www/%s_%s_%s/phpunit.xml" % (repo, branch, build)).return_code == 0:
+      if run("find %s/phpunit.xml" % path_to_app).return_code == 0:
         phpunit_xml = "phpunit.xml"
       # For Drupal it might be here
-      elif run("find /var/www/%s_%s_%s/www/core/phpunit.xml" % (repo, branch, build)).return_code == 0:
+      elif run("find %s/www/core/phpunit.xml" % path_to_app).return_code == 0:
         phpunit_xml = "www/core/phpunit.xml"
       # Doesn't look like there is one, let's look for phpunit's default file
-      elif run("find /var/www/%s_%s_%s/phpunit.xml.dist" % (repo, branch, build)).return_code == 0:
+      elif run("find %s/phpunit.xml.dist" % path_to_app).return_code == 0:
         phpunit_xml = "phpunit.xml.dist"
       # Nope, last chance, is there a default one in Drupal?
-      elif run("find /var/www/%s_%s_%s/www/core/phpunit.xml.dist" % (repo, branch, build)).return_code == 0:
+      elif run("find %s/www/core/phpunit.xml.dist" % path_to_app).return_code == 0:
         phpunit_xml = "www/core/phpunit.xml.dist"
 
     # Not let's run tests
     if phpunit_xml:
-      with cd("/var/www/%s_%s_%s" % (repo, branch, build)):
+      with cd("%s" % path_to_app):
         with settings(warn_only=True):
           if group == '' and path == '':
             if run('%s --configuration=%s' % (phpunit_path, phpunit_xml)).failed:
@@ -60,3 +60,29 @@ def run_phpunit_tests(repo, branch, build, group='unit', path='www', phpunit_pat
       print "===> PHPUNIT FAILED! No phpunit.xml was found so we could not run tests"
       
     return phpunit_tests_failed
+
+
+# Run CodeSniffer reviews
+@task
+@roles('app_primary')
+def run_codesniffer(path_to_app, extensions="php,inc,txt,md", install=True, standard=None, ignore=None, paths_to_test=None, config_path=None):
+  print "===> Running CodeSniffer"
+  # Install CodeSniffer for the Jenkins user
+  if install:
+    run("composer global require squizlabs/php_codesniffer")
+  # Load in custom config, if provided
+  if config_path:
+    run("/home/jenkins/.composer/vendor/bin/phpcs --config-set installed_paths %s" % config_path)
+  # Set up string of directories to ignore
+  if ignore:
+    ignore = " --ignore=%s" % ignore
+  else:
+    ignore = ""
+  # Set up 'standard' to use, if provided
+  if standard:
+    standard = " --standard=%s" % standard
+  else:
+    standard = ""
+  # Run CodeSniffer itself
+  with cd("%s" % path_to_app):
+    run("/home/jenkins/.composer/vendor/bin/phpcs %s --extensions=%s %s %s" % (standard, extensions, ignore, paths_to_test))

@@ -50,6 +50,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   previous_build = ""
   previous_db = ""
   statuscake_paused = False
+  www_root = "/var/www"
 
   # Set our host_string based on user@host
   env.host_string = '%s@%s' % (user, env.host)
@@ -97,11 +98,17 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   no_dev = common.ConfigFile.return_config_item(config, "Composer", "no_dev", "boolean", True)
 
   # Can be set in the config.ini [Testing] section
+  # PHPUnit is in common/Tests because it can be used for any PHP application
   phpunit_run = common.ConfigFile.return_config_item(config, "Testing", "phpunit_run", "boolean", False)
   phpunit_fail_build = common.ConfigFile.return_config_item(config, "Testing", "phpunit_fail_build", "boolean", False)
   phpunit_group = common.ConfigFile.return_config_item(config, "Testing", "phpunit_group", "string", "unit")
   phpunit_test_directory = common.ConfigFile.return_config_item(config, "Testing", "phpunit_test_directory", "string", "www/modules/custom")
   phpunit_path = common.ConfigFile.return_config_item(config, "Testing", "phpunit_path", "string", "vendor/phpunit/phpunit/phpunit")
+  # CodeSniffer itself is in common/Tests, but standards used here are Drupal specific, see drupal/DrupalTests.py for the wrapper to apply them
+  codesniffer = common.ConfigFile.return_config_item(config, "Testing", "codesniffer", "boolean")
+  codesniffer_extensions = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_extensions", "string", "php,module,inc,install,test,profile,theme,info,txt,md")
+  codesniffer_ignore = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_ignore", "string", "node_modules,bower_components,vendor")
+  codesniffer_paths = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_paths", "string", "www/modules/custom www/modules/theme")
 
   # Set SSH key if needed
   # @TODO: this needs to be moved to config.ini for Code Enigma GitHub projects
@@ -360,7 +367,7 @@ def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_
 @task
 def test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site):
   # Run simpletest tests
-  execute(DrupalTests.run_tests, repo, branch, build, config)
+  execute(DrupalTests.run_tests, repo, branch, build, config, drupal_version, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths)
 
   # Run behat tests
   if behat_config:
@@ -372,7 +379,8 @@ def test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config,
   # Run phpunit tests
   if phpunit_run:
     # @TODO: We really need to figure out how to use execute() and fish returned variables from the response
-    phpunit_tests_failed = common.Tests.run_phpunit_tests(repo, branch, build, phpunit_group, phpunit_test_directory, phpunit_path)
+    path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
+    phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path)
     if phpunit_fail_build and phpunit_tests_failed:
       Revert._revert_db(alias, branch, build)
       Revert._revert_settings(repo, branch, build, site, alias)
