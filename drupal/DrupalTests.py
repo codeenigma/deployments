@@ -1,8 +1,6 @@
 from fabric.api import *
 from fabric.contrib.files import sed
 import os
-# Custom Code Enigma modules
-import common.ConfigFile
 
 
 # Builds the variables needed to carry out Behat testing later
