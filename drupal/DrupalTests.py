@@ -74,7 +74,7 @@ def run_tests(repo, branch, build, config, drupal_version, codesniffer=False, ex
       common.Tests.run_codesniffer(path_to_app, extensions, install=False, standard="DrupalPractice", ignore=ignore, paths_to_test=paths_to_test, config_path="/home/jenkins/.composer/vendor/drupal/coder/coder_sniffer")
 
   # Obsolete really, but no harm in leaving Simpletest / Coder support for Drupal 7 for now
-  else:
+  elif drupal_version < 8:
     print "===> Drupal 7 or lower, looking for old simpletest / coder module tests"
     test_types = [ 'simpletest', 'coder' ]
     for test_type in test_types:
