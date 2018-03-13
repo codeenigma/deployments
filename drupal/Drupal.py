@@ -389,10 +389,10 @@ def drush_clear_cache(repo, branch, build, site, drupal_version):
 # See RS11494
 @task
 @roles('app_primary')
-def environment_indicator(repo, branch, build, buildtype, alias, site, drupal_version):
+def environment_indicator(www_root, repo, branch, build, buildtype, alias, site, drupal_version):
   # Check if the module exists in the build
   with settings(warn_only=True):
-    if run("find /var/www/%s_%s_%s/www -type d -name environment_indicator | egrep '.*'" % (repo, branch, build)).return_code == 0:
+    if run("find %s/%s_%s_%s/www -type d -name environment_indicator | egrep '.*'" % (www_root, repo, branch, build)).return_code == 0:
       environment_indicator_module = True
       print "===> environment_indicator module exists"
     else:
@@ -418,41 +418,41 @@ def environment_indicator(repo, branch, build, buildtype, alias, site, drupal_ve
 
       # Unfortunately this can't check inside the $buildtype.settings.php include, if there is one, so we still need to
       # check for that.
-      print "===> Drupal 7 site, checking in /var/www/%s_%s_%s/www/sites/%s/%s.settings.php for $conf['environment_indicator_overwritten_name']" % (repo, branch, build, site, buildtype)
+      print "===> Drupal 7 site, checking in %s/%s_%s_%s/www/sites/%s/%s.settings.php for $conf['environment_indicator_overwritten_name']" % (www_root, repo, branch, build, site, buildtype)
       contain_string = "$conf['environment_indicator_overwritten_name']"
-      settings_file = "/var/www/%s_%s_%s/www/sites/%s/%s.settings.php" % (repo, branch, build, site, buildtype)
+      settings_file = "%s/%s_%s_%s/www/sites/%s/%s.settings.php" % (www_root, repo, branch, build, site, buildtype)
       does_contain = contains(settings_file, contain_string, exact=False, use_sudo=True)
 
       if does_contain:
-        print "===> Settings already exist in %s.settings.php, we will not write anything to /var/www/config/%s_%s.settings.inc" % (buildtype, alias, branch)
+        print "===> Settings already exist in %s.settings.php, we will not write anything to %s/config/%s_%s.settings.inc" % (buildtype, www_root, alias, branch)
 
       else:
-        print "===> Checking for and appending environment_indicator settings to /var/www/config/%s_%s.settings.inc" % (alias, branch)
-        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$conf['environment_indicator_overwrite'] = 'TRUE';", True)
-        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$conf['environment_indicator_overwritten_name'] = '%s';" % buildtype, True)
-        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$conf['environment_indicator_overwritten_color'] = '%s';" % environment_indicator_color, True)
-        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$conf['environment_indicator_overwritten_text_color'] = '#ffffff';", True)
+        print "===> Checking for and appending environment_indicator settings to %s/config/%s_%s.settings.inc" % (www_root, alias, branch)
+        append("%s/config/%s_%s.settings.inc" % (www_root, alias, branch), "$conf['environment_indicator_overwrite'] = 'TRUE';", True)
+        append("%s/config/%s_%s.settings.inc" % (www_root, alias, branch), "$conf['environment_indicator_overwritten_name'] = '%s';" % buildtype, True)
+        append("%s/config/%s_%s.settings.inc" % (www_root, alias, branch), "$conf['environment_indicator_overwritten_color'] = '%s';" % environment_indicator_color, True)
+        append("%s/config/%s_%s.settings.inc" % (www_root, alias, branch), "$conf['environment_indicator_overwritten_text_color'] = '#ffffff';", True)
 
     if drupal_version > 7:
 
       # Unfortunately this can't check inside the $buildtype.settings.php include, if there is one, so we still need to
       # check for that.
-      print "===> Drupal 8+ site, checking in /var/www/%s_%s_%s/www/sites/%s/%s.settings.php for $config['environment_indicator.indicator']['name']" % (repo, branch, build, site, buildtype)
+      print "===> Drupal 8+ site, checking in %s/%s_%s_%s/www/sites/%s/%s.settings.php for $config['environment_indicator.indicator']['name']" % (www_root, repo, branch, build, site, buildtype)
       contain_string = "$config['environment_indicator.indicator']['name']"
-      settings_file = "/var/www/%s_%s_%s/www/sites/%s/%s.settings.php" % (repo, branch, build, site, buildtype)
+      settings_file = "%s/%s_%s_%s/www/sites/%s/%s.settings.php" % (www_root, repo, branch, build, site, buildtype)
       does_contain = contains(settings_file, contain_string, exact=False, use_sudo=True)
 
       if does_contain:
-        print "===> Settings already exist in %s.settings.php, we will not write anything to /var/www/config/%s_%s.settings.inc" % (buildtype, alias, branch)
+        print "===> Settings already exist in %s.settings.php, we will not write anything to %s/config/%s_%s.settings.inc" % (buildtype, www_root, alias, branch)
 
       else:
-        print "===> Checking for and appending environment_indicator settings to /var/www/config/%s_%s.settings.inc" % (alias, branch)
-        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$config['environment_indicator.indicator']['name'] = '%s';" % buildtype, True)
-        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$config['environment_indicator.indicator']['bg_color'] = '%s';" % environment_indicator_color, True)
-        append("/var/www/config/%s_%s.settings.inc" % (alias, branch), "$config['environment_indicator.indicator']['fg_color'] = '#ffffff';", True)
+        print "===> Checking for and appending environment_indicator settings to %s/config/%s_%s.settings.inc" % (www_root, alias, branch)
+        append("%s/config/%s_%s.settings.inc" % (www_root, alias, branch), "$config['environment_indicator.indicator']['name'] = '%s';" % buildtype, True)
+        append("%s/config/%s_%s.settings.inc" % (www_root, alias, branch), "$config['environment_indicator.indicator']['bg_color'] = '%s';" % environment_indicator_color, True)
+        append("%s/config/%s_%s.settings.inc" % (www_root, alias, branch), "$config['environment_indicator.indicator']['fg_color'] = '#ffffff';", True)
 
     if drupal_version > 6:
-      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y en environment_indicator'" % (repo, branch, build, site))
+      sudo("su -s /bin/bash www-data -c 'cd %s/%s_%s_%s/www/sites/%s && drush -y en environment_indicator'" % (www_root, repo, branch, build, site))
     if drupal_version == 6:
       print "Drupal 6 site. Not setting up environment_indicator at this time.."
   else:
