@@ -65,10 +65,11 @@ def run_phpunit_tests(path_to_app, group='unit', path='www', phpunit_path='vendo
 # Run CodeSniffer reviews
 @task
 @roles('app_primary')
-def run_codesniffer(path_to_app, extensions="php,inc,txt,md", standard=None, ignore=None, paths_to_test=None, config_path=None):
+def run_codesniffer(path_to_app, extensions="php,inc,txt,md", install=True, standard=None, ignore=None, paths_to_test=None, config_path=None):
   print "===> Running CodeSniffer"
   # Install CodeSniffer for the Jenkins user
-  run("composer global require squizlabs/php_codesniffer")
+  if install:
+    run("composer global require squizlabs/php_codesniffer")
   # Load in custom config, if provided
   if config_path:
     run("/home/jenkins/.composer/vendor/bin/phpcs --config-set installed_paths %s" % config_path)

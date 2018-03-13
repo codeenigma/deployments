@@ -68,10 +68,10 @@ def run_tests(repo, branch, build, config, drupal_version, codesniffer=False, ex
     with settings(warn_only=True):
       # Install Drupal CodeSniffer standards
       run("composer global require drupal/coder")
-      # Run CodeSniffer
       path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
-      common.Tests.run_codesniffer(path_to_app, extensions, standard="Drupal", ignore, paths_to_test, config_path="/home/jenkins/.composer/vendor/drupal/coder/coder_sniffer")
-      common.Tests.run_codesniffer(path_to_app, extensions, standard="DrupalPractice", ignore, paths_to_test, config_path="/home/jenkins/.composer/vendor/drupal/coder/coder_sniffer")
+      # Run CodeSniffer, note install=False, suppresses trying to reinstall CodeSniffer, which will fail
+      common.Tests.run_codesniffer(path_to_app, extensions, install=False, standard="Drupal", ignore, paths_to_test, config_path="/home/jenkins/.composer/vendor/drupal/coder/coder_sniffer")
+      common.Tests.run_codesniffer(path_to_app, extensions, install=False, standard="DrupalPractice", ignore, paths_to_test, config_path="/home/jenkins/.composer/vendor/drupal/coder/coder_sniffer")
 
   # Obsolete really, but no harm in leaving Simpletest / Coder support for Drupal 7 for now
   else:
