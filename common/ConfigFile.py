@@ -76,6 +76,10 @@ def return_config_item(config, section, item, var_type="string", default_value=N
       if notify:
         print "===> %s in [%s] being set to %s" % (item, section, config.getboolean(section, item))
       default_value = config.getboolean(section, item)
+    elif var_type is "int":
+      if notify:
+        print "===> %s in [%s] being set to %s" % (item, section, config.getint(section, item))
+      default_value = config.getint(section, item)
     else:
       if notify:
         print "===> tried to look up %s %s in [%s] but type not found" % (var_type, item, section)
