@@ -97,11 +97,17 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   no_dev = common.ConfigFile.return_config_item(config, "Composer", "no_dev", "boolean", True)
 
   # Can be set in the config.ini [Testing] section
+  # PHPUnit is in 'common' because it can be used for any PHP application
   phpunit_run = common.ConfigFile.return_config_item(config, "Testing", "phpunit_run", "boolean", False)
   phpunit_fail_build = common.ConfigFile.return_config_item(config, "Testing", "phpunit_fail_build", "boolean", False)
   phpunit_group = common.ConfigFile.return_config_item(config, "Testing", "phpunit_group", "string", "unit")
   phpunit_test_directory = common.ConfigFile.return_config_item(config, "Testing", "phpunit_test_directory", "string", "www/modules/custom")
   phpunit_path = common.ConfigFile.return_config_item(config, "Testing", "phpunit_path", "string", "vendor/phpunit/phpunit/phpunit")
+  # CodeSniffer is Drupal specific, see drupal/DrupalTests.py
+  codesniffer = common.ConfigFile.return_config_item(config, "Testing", "codesniffer", "boolean")
+  codesniffer_extensions = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_extensions", "string", "php,module,inc,install,test,profile,theme,info,txt,md")
+  codesniffer_ignore = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_ignore", "string", "node_modules,bower_components,vendor")
+  codesniffer_paths = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_paths", "string", "www/modules/custom www/modules/theme")
 
   # Set SSH key if needed
   # @TODO: this needs to be moved to config.ini for Code Enigma GitHub projects
@@ -360,7 +366,7 @@ def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_
 @task
 def test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site):
   # Run simpletest tests
-  execute(DrupalTests.run_tests, repo, branch, build, config)
+  execute(DrupalTests.run_tests, repo, branch, build, config, drupal_version, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths)
 
   # Run behat tests
   if behat_config:

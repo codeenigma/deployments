@@ -1,6 +1,8 @@
 from fabric.api import *
 from fabric.contrib.files import sed
 import os
+# Custom Code Enigma modules
+import common.ConfigFile
 
 
 # Builds the variables needed to carry out Behat testing later
@@ -59,23 +61,38 @@ def prepare_behat_tests(config, buildtype):
 # Run tests that were enabled in the config file, if any
 @task
 @roles('app_primary')
-def run_tests(repo, branch, build, config):
+def run_tests(repo, branch, build, config, drupal_version, codesniffer=False, extensions=None, ignore=None, paths_to_test=None, www_root="/var/www"):
   print "===> Running tests..."
-  test_types = [ 'simpletest', 'coder' ]
-  for test_type in test_types:
-    if config.has_section(test_type):
-      for option in config.options(test_type):
-        if config.getint(test_type, option) == 1:
-          script_dir = os.path.dirname(os.path.realpath(__file__))
-          if put(script_dir + '/../util/run-tests', '/home/jenkins', mode=0755).failed:
-            print "===> Could not copy the test runner script to the application server, tests will not be run"
-          else:
-            print "===> Test runner script copied to %s:/home/jenkins/run-tests" % env.host
-            print "===> We will attempt to run %s against %s" % (test_type, option)
-            run("/home/jenkins/run-tests /var/www/%s_%s_%s/www %s %s | tee /tmp/%s.%s.review" % (repo, branch, build, test_type, option, repo, option))
-            run('egrep -q "\[normal\]|\[major\]|\[critical\]" /tmp/%s.%s.review && echo "Found errors running test %s!" && exit 1 || exit 0' % (repo, option, option))
-    else:
-      print "===> Didn't find any tests to run for %s" % test_type
+  if drupal_version > 7 and codesniffer:
+    print "===> Drupal 8 or higher, running CodeSniffer"
+    with settings(warn_only=True):
+      # Install CodeSniffer
+      run("composer global require drupal/coder")
+      # Configure CodeSniffer for Drupal
+      run("/home/jenkins/.composer/vendor/bin/phpcs --config-set installed_paths /home/jenkins/.composer/vendor/drupal/coder/coder_sniffer")
+      # Run the actual tests
+      with cd("%s/%s_%s_%s" % (www_root, repo, branch, build)):
+        run("/home/jenkins/.composer/vendor/bin/phpcs --standard=Drupal --extensions=%s --ignore=%s %s" % (extensions, ignore, paths_to_test))
+        run("/home/jenkins/.composer/vendor/bin/phpcs --standard=DrupalPractice --extensions=%s --ignore=%s %s" % (extensions, ignore, paths_to_test))
+
+  # Obsolete really, but no harm in leaving Simpletest / Coder support for Drupal 7 for now
+  else:
+    print "===> Drupal 7 or lower, looking for old simpletest / coder module tests"
+    test_types = [ 'simpletest', 'coder' ]
+    for test_type in test_types:
+      if config.has_section(test_type):
+        for option in config.options(test_type):
+          if config.getint(test_type, option) == 1:
+            script_dir = os.path.dirname(os.path.realpath(__file__))
+            if put(script_dir + '/../util/run-tests', '/home/jenkins', mode=0755).failed:
+              print "===> Could not copy the test runner script to the application server, tests will not be run"
+            else:
+              print "===> Test runner script copied to %s:/home/jenkins/run-tests" % env.host
+              print "===> We will attempt to run %s against %s" % (test_type, option)
+              run("/home/jenkins/run-tests %s/%s_%s_%s/www %s %s | tee /tmp/%s.%s.review" % (www_root, repo, branch, build, test_type, option, repo, option))
+              run('egrep -q "\[normal\]|\[major\]|\[critical\]" /tmp/%s.%s.review && echo "Found errors running test %s!" && exit 1 || exit 0' % (repo, option, option))
+      else:
+        print "===> Didn't find any tests to run for %s" % test_type
 
 
 # Run behat tests, if present
