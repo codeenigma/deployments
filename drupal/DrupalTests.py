@@ -1,6 +1,8 @@
 from fabric.api import *
 from fabric.contrib.files import sed
 import os
+# Custom Code Enigma modules
+import common.Tests
 
 
 # Builds the variables needed to carry out Behat testing later
@@ -64,14 +66,12 @@ def run_tests(repo, branch, build, config, drupal_version, codesniffer=False, ex
   if drupal_version > 7 and codesniffer:
     print "===> Drupal 8 or higher, running CodeSniffer"
     with settings(warn_only=True):
-      # Install CodeSniffer
+      # Install Drupal CodeSniffer standards
       run("composer global require drupal/coder")
-      # Configure CodeSniffer for Drupal
-      run("/home/jenkins/.composer/vendor/bin/phpcs --config-set installed_paths /home/jenkins/.composer/vendor/drupal/coder/coder_sniffer")
-      # Run the actual tests
-      with cd("%s/%s_%s_%s" % (www_root, repo, branch, build)):
-        run("/home/jenkins/.composer/vendor/bin/phpcs --standard=Drupal --extensions=%s --ignore=%s %s" % (extensions, ignore, paths_to_test))
-        run("/home/jenkins/.composer/vendor/bin/phpcs --standard=DrupalPractice --extensions=%s --ignore=%s %s" % (extensions, ignore, paths_to_test))
+      # Run CodeSniffer
+      path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
+      common.Tests.run_codesniffer(path_to_app, extensions, standard="Drupal", ignore, paths_to_test, config_path="/home/jenkins/.composer/vendor/drupal/coder/coder_sniffer")
+      common.Tests.run_codesniffer(path_to_app, extensions, standard="DrupalPractice", ignore, paths_to_test, config_path="/home/jenkins/.composer/vendor/drupal/coder/coder_sniffer")
 
   # Obsolete really, but no harm in leaving Simpletest / Coder support for Drupal 7 for now
   else:
