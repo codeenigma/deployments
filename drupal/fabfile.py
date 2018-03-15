@@ -17,7 +17,6 @@ import DrupalUtils
 import FeatureBranches
 import InitialBuild
 import Revert
-import StandardHooks
 import Autoscale
 # Needed to get variables set in modules back into the main script
 from DrupalTests import *
@@ -51,6 +50,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   previous_build = ""
   previous_db = ""
   statuscake_paused = False
+  www_root = "/var/www"
 
   # Set our host_string based on user@host
   env.host_string = '%s@%s' % (user, env.host)
@@ -71,7 +71,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   dump_file = common.ConfigFile.return_config_item(config, "Database", "dump_file")
 
   # Can be set in the config.ini [Drupal] section
-  drupal_version = common.ConfigFile.return_config_item(config, "Drupal", "drupal_version")
+  ### @TODO: deprecated, can be removed later
+  drupal_version = common.ConfigFile.return_config_item(config, "Version", "drupal_version", "string", None, True, True, replacement_section="Drupal")
+  # This is the correct location for 'drupal_version' - note, respect the deprecated value as default
+  drupal_version = common.ConfigFile.return_config_item(config, "Drupal", "drupal_version", "string", drupal_version)
   profile = common.ConfigFile.return_config_item(config, "Drupal", "profile", "string", "minimal")
   do_updates = common.ConfigFile.return_config_item(config, "Drupal", "do_updates", "boolean", True)
   run_cron = common.ConfigFile.return_config_item(config, "Drupal", "run_cron", "boolean", False)
@@ -95,11 +98,17 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   no_dev = common.ConfigFile.return_config_item(config, "Composer", "no_dev", "boolean", True)
 
   # Can be set in the config.ini [Testing] section
+  # PHPUnit is in common/Tests because it can be used for any PHP application
   phpunit_run = common.ConfigFile.return_config_item(config, "Testing", "phpunit_run", "boolean", False)
   phpunit_fail_build = common.ConfigFile.return_config_item(config, "Testing", "phpunit_fail_build", "boolean", False)
   phpunit_group = common.ConfigFile.return_config_item(config, "Testing", "phpunit_group", "string", "unit")
   phpunit_test_directory = common.ConfigFile.return_config_item(config, "Testing", "phpunit_test_directory", "string", "www/modules/custom")
   phpunit_path = common.ConfigFile.return_config_item(config, "Testing", "phpunit_path", "string", "vendor/phpunit/phpunit/phpunit")
+  # CodeSniffer itself is in common/Tests, but standards used here are Drupal specific, see drupal/DrupalTests.py for the wrapper to apply them
+  codesniffer = common.ConfigFile.return_config_item(config, "Testing", "codesniffer", "boolean")
+  codesniffer_extensions = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_extensions", "string", "php,module,inc,install,test,profile,theme,info,txt,md")
+  codesniffer_ignore = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_ignore", "string", "node_modules,bower_components,vendor")
+  codesniffer_paths = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_paths", "string", "www/modules/custom www/themes/custom")
 
   # Set SSH key if needed
   # @TODO: this needs to be moved to config.ini for Code Enigma GitHub projects
@@ -130,7 +139,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
   # Now we have the codebase and a clean branch name we can figure out the Drupal version
   # Don't use execute() because it returns an array of values returned keyed by hostname
-  drupal_version = DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config)
+  drupal_version = int(DrupalUtils.determine_drupal_version(drupal_version, repo, branch, build, config))
   print "===> the drupal_version variable is set to %s" % drupal_version
 
   # Let's allow developers to perform some early actions if they need to
@@ -138,9 +147,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
   # @TODO: This will be a bug when Drupal 9 comes out!
   # We need to cast version as an integer and use < 8
-  if drupal_version != '8':
+  if drupal_version < 8:
     import_config = False
-  if drupal_version == '8' and composer is True:
+  if drupal_version > 7 and composer is True:
     execute(Drupal.run_composer_install, repo, branch, build, composer_lock, no_dev)
 
   # Compile a site mapping, which is needed if this is a multisite build
@@ -161,7 +170,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
-      dump_file = Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, drupal_version, sanitised_password, sanitised_email)
+      dump_file = Drupal.prepare_database(repo, branch, build, alias, syncbranch, env.host_string, sanitise, sanitised_password, sanitised_email)
 
     if FeatureBranches.featurebranch_url is not None:
       url = FeatureBranches.featurebranch_url
@@ -171,16 +180,16 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     with settings(hide('warnings', 'stderr'), warn_only=True):
       if run("drush sa | grep ^@%s_%s$ > /dev/null" % (alias, branch)).failed:
         print "Didn't find a Drush alias %s_%s so we'll install this new site %s" % (alias, branch, url)
-        initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale)
+        initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale)
       else:
         # Otherwise it's an existing build
-        existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches)
+        existing_build_wrapper(url, www_root, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches)
 
     # After any build we want to run all the available automated tests
-    test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site)
+    test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths)
 
     # Now everything should be in a good state, let's enable environment indicator for this site, if present
-    execute(Drupal.environment_indicator, repo, branch, build, buildtype, alias, site, drupal_version)
+    execute(Drupal.environment_indicator, www_root, repo, branch, build, buildtype, alias, site, drupal_version)
 
     # If this is a single site, we're done with the 'url' variable anyway
     # If this is a multisite, we have to set it to None so a new 'url' gets generated on the next pass
@@ -192,7 +201,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
   # If this is autoscale at AWS, let's update the tarball in S3
   if autoscale:
-    execute(common.Utils.tarball_up_to_s3, repo, buildtype, build, autoscale)
+    execute(common.Utils.tarball_up_to_s3, www_root, repo, buildtype, build, autoscale)
 
   #commit_new_db(repo, repourl, url, build, branch)
   execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, hosts=env.roledefs['app_all'])
@@ -216,7 +225,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
 # Wrapper function for carrying out a first build of a site
 @task
-def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale):
+def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale):
   print "===> URL is http://%s" % url
 
   print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
@@ -266,7 +275,7 @@ def initial_build_wrapper(url, repo, branch, build, site, alias, profile, buildt
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches):
+def existing_build_wrapper(url, www_root, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   # Grab some information about the current build
   previous_build = common.Utils.get_previous_build(repo, branch, build)
@@ -286,7 +295,7 @@ def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_
 
   # Export the config if we need to (Drupal 8+)
   if config_export:
-    execute(StandardHooks.config_export, repo, branch, build, drupal_version)
+    execute(Drupal.config_export, repo, branch, build, drupal_version)
   execute(Drupal.drush_status, repo, branch, build, site, alias, revert_settings=True)
 
   # Time to update the database!
@@ -356,9 +365,9 @@ def existing_build_wrapper(url, repo, branch, build, buildtype, alias, site, no_
 
 # Wrapper function for runnning automated tests on a site
 @task
-def test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site):
+def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths):
   # Run simpletest tests
-  execute(DrupalTests.run_tests, repo, branch, build, config)
+  execute(DrupalTests.run_tests, repo, branch, build, config, drupal_version, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths)
 
   # Run behat tests
   if behat_config:
@@ -370,7 +379,8 @@ def test_runner(repo, branch, build, alias, buildtype, url, ssl_enabled, config,
   # Run phpunit tests
   if phpunit_run:
     # @TODO: We really need to figure out how to use execute() and fish returned variables from the response
-    phpunit_tests_failed = common.Tests.run_phpunit_tests(repo, branch, build, phpunit_group, phpunit_test_directory, phpunit_path)
+    path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
+    phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path)
     if phpunit_fail_build and phpunit_tests_failed:
       Revert._revert_db(alias, branch, build)
       Revert._revert_settings(repo, branch, build, site, alias)
