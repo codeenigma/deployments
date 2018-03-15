@@ -114,6 +114,23 @@ def backup_db(alias, branch, build):
     raise SystemExit("Could not take database backup prior to launching new build! Aborting early")
 
 
+# Get the database name of an existing Drupal website
+@task
+@roles('app_primary')
+def get_db_name(repo, branch, alias):
+  db_name = None
+  with cd("/var/www/live.%s.%s/www/sites/default" % (repo, branch)):
+    with settings(warn_only=True):
+      db_name = sudo("drush status --format=yaml 2>&1 | grep \"db-name: \" | cut -d \":\" -f 2")
+
+      # If the dbname variable is empty for whatever reason, resort to grepping settings.php
+      if not db_name:
+        db_name = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % alias)
+        db_name = db_name.translate(None, "',")
+  print "===> Database name determined to be %s" % db_name
+  return db_name
+
+
 # Generate a crontab for running drush cron on this site
 @task
 @roles('app_all')

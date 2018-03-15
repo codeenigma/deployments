@@ -280,7 +280,8 @@ def existing_build_wrapper(url, www_root, repo, branch, build, buildtype, alias,
   # Grab some information about the current build
   previous_build = common.Utils.get_previous_build(repo, branch, build)
   previous_db = common.Utils.get_previous_db(repo, branch, build)
-  execute(Drupal.backup_db, alias, branch, build)
+  db_name = Drupal.get_db_name(repo, branch, alias)
+  execute(common.MySQL.mysql_backup_db, db_name, build, True)
 
   execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
   execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
