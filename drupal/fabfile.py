@@ -313,8 +313,8 @@ def existing_build_wrapper(url, www_root, repo, branch, build, buildtype, alias,
     # Cannot use try: because execute() return not compatible.
     execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
     # This will revert the database if fails
-    live_build = run("readlink /var/www/live.%s.%s" % (repo, branch))
-    this_build = "/var/www/%s_%s_%s" % (repo, branch, build)
+    live_build = run("readlink %s/live.%s.%s" % (www_root, repo, branch))
+    this_build = "%s/%s_%s_%s" % (www_root, repo, branch, build)
     # The above paths should match - something is wrong if they don't!
     if not this_build == live_build:
       Revert._revert_db(alias, branch, build)
@@ -338,8 +338,8 @@ def existing_build_wrapper(url, www_root, repo, branch, build, buildtype, alias,
     # Cannot use try: because execute() return not compatible.
     execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
     # This will revert the database if fails
-    live_build = run("readlink /var/www/live.%s.%s" % (repo, branch))
-    this_build = "/var/www/%s_%s_%s" % (repo, branch, build)
+    live_build = run("readlink %s/live.%s.%s" % (www_root, repo, branch))
+    this_build = "%s/%s_%s_%s" % (www_root, repo, branch, build)
     # The above paths should match - something is wrong if they don't!
     if not this_build == live_build:
       Revert._revert_db(alias, branch, build)
