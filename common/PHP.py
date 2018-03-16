@@ -3,12 +3,23 @@ from fabric.operations import put
 from fabric.contrib.files import *
 import random
 import string
+# Custom Code Enigma modules
+import common.Utils
 
 
 # Run a composer command
 @task
 @roles('app_all')
 def composer_command(site_root, composer_command="install", package_to_install=False, install_no_dev=True, composer_lock=True, composer_global=False, composer_sudo=False):
+  # Make sure no one passed anything nasty from a build hook
+  malicious_code = False
+  malicious_code = common.Utils.detect_malicious_strings([';', '&&'], composer_command)
+  if malicious_code:
+    SystemExit("###### Found possible malicious code in the composer_command variable, aborting!")
+  malicious_code = common.Utils.detect_malicious_strings([';', '&&'], package_to_install)
+  if malicious_code:
+    SystemExit("###### Found possible malicious code in the package_to_install variable, aborting!")
+
   this_command = ""
   if composer_sudo:
     this_command = "sudo composer "
@@ -29,8 +40,8 @@ def composer_command(site_root, composer_command="install", package_to_install=F
     this_command = this_command + " " + package_to_install
 
   # Sometimes we will want to remove composer.lock prior to installing
-  with settings(warn_only=True):
-    if not composer_lock:
+  if not composer_lock:
+    with settings(warn_only=True):
       print "===> Removing composer.lock prior to attempting an install"
       sudo("rm %s/composer.lock" % site_root)
       sudo("rm -R %s/vendor" % site_root)
