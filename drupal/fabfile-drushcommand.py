@@ -20,7 +20,8 @@ def main(shortname, branch, command, backup=True):
 
   # Take a database backup first if told to.  
   if backup:
-    Drupal.backup_db(shortname, branch, 'drush_command')
+    db_name = Drupal.get_db_name(shortname, branch, shortname)
+    execute(common.MySQL.mysql_backup_db, db_name, 'drush_command', True)
 
   # Strip nastiness from the command
   command = command.replace(";", "")

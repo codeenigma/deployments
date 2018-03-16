@@ -90,7 +90,9 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", r
     previous_build = common.Utils.get_previous_build(repo, cleanbranch, build)
     previous_db = common.Utils.get_previous_db(repo, cleanbranch, build)
 
-    Drupal.backup_db(repo, branch, build)
+    db_name = Drupal.get_db_name(repo, branch, alias)
+    execute(common.MySQL.mysql_backup_db, db_name, build, True)
+
     common.Utils.clone_repo(repo, repourl, branch, build, None, ssh_key)
     Updates.merge_prod(repo, branch, build)
     AdjustConfiguration.adjust_settings_php(repo, branch, build, previous_build, buildtype)

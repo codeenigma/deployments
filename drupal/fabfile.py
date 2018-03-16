@@ -280,7 +280,8 @@ def existing_build_wrapper(url, www_root, repo, branch, build, buildtype, alias,
   # Grab some information about the current build
   previous_build = common.Utils.get_previous_build(repo, branch, build)
   previous_db = common.Utils.get_previous_db(repo, branch, build)
-  execute(Drupal.backup_db, alias, branch, build)
+  db_name = Drupal.get_db_name(repo, branch, alias)
+  execute(common.MySQL.mysql_backup_db, db_name, build, True)
 
   execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
   execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
@@ -313,11 +314,11 @@ def existing_build_wrapper(url, www_root, repo, branch, build, buildtype, alias,
     # Cannot use try: because execute() return not compatible.
     execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
     # This will revert the database if fails
-    live_build = run("readlink /var/www/live.%s.%s" % (repo, branch))
-    this_build = "/var/www/%s_%s_%s" % (repo, branch, build)
+    live_build = run("readlink %s/live.%s.%s" % (www_root, repo, branch))
+    this_build = "%s/%s_%s_%s" % (www_root, repo, branch, build)
     # The above paths should match - something is wrong if they don't!
     if not this_build == live_build:
-      Revert._revert_db(alias, branch, build)
+      common.MySQL.mysql_revert_db(db_name, build)
       Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
@@ -338,11 +339,11 @@ def existing_build_wrapper(url, www_root, repo, branch, build, buildtype, alias,
     # Cannot use try: because execute() return not compatible.
     execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
     # This will revert the database if fails
-    live_build = run("readlink /var/www/live.%s.%s" % (repo, branch))
-    this_build = "/var/www/%s_%s_%s" % (repo, branch, build)
+    live_build = run("readlink %s/live.%s.%s" % (www_root, repo, branch))
+    this_build = "%s/%s_%s_%s" % (www_root, repo, branch, build)
     # The above paths should match - something is wrong if they don't!
     if not this_build == live_build:
-      Revert._revert_db(alias, branch, build)
+      common.MySQL.mysql_revert_db(db_name, build)
       Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
@@ -367,7 +368,7 @@ def existing_build_wrapper(url, www_root, repo, branch, build, buildtype, alias,
 @task
 def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths):
   # Run simpletest tests
-  execute(DrupalTests.run_tests, repo, branch, build, config, drupal_version, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths)
+  execute(DrupalTests.run_tests, repo, branch, build, config, drupal_version, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, www_root)
 
   # Run behat tests
   if behat_config:
@@ -382,7 +383,8 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
     path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
     phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path)
     if phpunit_fail_build and phpunit_tests_failed:
-      Revert._revert_db(alias, branch, build)
+      db_name = get_db_name(repo, branch, alias)
+      common.MySQL.mysql_revert_db(db_name, build)
       Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("####### phpunit tests failed and you have specified you want to fail and roll back when this happens. Reverting database")
     elif phpunit_tests_failed:
