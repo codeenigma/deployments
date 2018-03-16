@@ -139,3 +139,15 @@ def mysql_backup_db(db_name, build, fail_build=False, mysql_config='/etc/mysql/d
     raise SystemExit("######### Could not take database backup prior to launching new build! Aborting early")
   if failed_backup:
     print "######### Backup failed, but build set to continue regardless"
+
+
+# Revert a MySQL database to a previously taken backup
+@task
+def mysql_revert_db(db_name, build, mysql_config='/etc/mysql/debian.cnf'):
+  print "===> Dropping all tables"
+  sudo("if [ -f ~jenkins/dbbackups/%s_prior_to_%s.sql.gz ]; then mysql --defaults-file=%s -e 'drop database %s'; fi" % (db_name, build, mysql_config, db_name))
+  sudo("mysql --defaults-file=%s -e 'create database %s'" % (mysql_config, db_name))
+  print "===> Waiting 5 seconds to let MySQL internals catch up"
+  time.sleep(5)
+  print "===> Restoring the database from backup"
+  sudo("if [ -f ~jenkins/dbbackups/%s_prior_to_%s.sql.gz ]; then zcat ~jenkins/dbbackups/%s_prior_to_%s.sql.gz | mysql --defaults-file=%s -D %s; fi" % (db_name, build, db_name, build, mysql_config, db_name))
