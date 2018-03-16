@@ -2,9 +2,11 @@ from fabric.api import *
 from fabric.contrib.files import *
 import random
 import string
+# Custom Code Enigma modules
 import common.ConfigFile
 import common.Services
 import common.Utils
+import common.MySQL
 import Revert
 
 
@@ -157,6 +159,7 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
     raise SystemError("######## Sync branch cannot be empty when wanting a fresh database when deploying a custom branch for the first time. Aborting early.")
 
   current_env = env.host
+  db_name = get_db_name(repo, branch, alias)
 
   # If freshinstall is True, this occurs during an initial build, so we need to check if there's
   # a db/ directory, remove all .sql.bz2 files. If a db/ directory doesn't exist create one. If
@@ -198,7 +201,7 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
       print "===> Database to sync to site is on the same server. Syncing %s database now..." % syncbranch
       run("drush @%s_%s -y sql-drop" % (alias, branch))
       if run("drush sql-sync -y @%s_%s @%s_%s" % (alias, syncbranch, alias, branch)).failed:
-        Revert._revert_db(alias, branch, build)
+        common.MySQL.mysql_revert_db(db_name, build)
         raise SystemError("######## Could not sync %s database. Reverting the %s database and aborting." % (syncbranch, branch))
       else:
         print "===> %s database synced successfully." % syncbranch
@@ -253,7 +256,7 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
       run("drush @%s_%s -y sql-drop" % (alias, branch))
       with settings(warn_only=True):
         if run("bzcat ~/dbbackups/%s | drush @%s_%s sql-cli" % (dump_file, alias, branch)).failed:
-          Revert._revert_db(alias, branch, build)
+          common.MySQL.mysql_revert_db(db_name, build)
           raise SystemError("######## Cannot import %s database into %s. Reverting database and aborting." % (syncbranch, alias))
         else:
           if sanitise == "yes":
@@ -311,6 +314,7 @@ def run_composer_install(repo, branch, build, composer_lock, no_dev):
 @task
 @roles('app_primary')
 def drush_status(repo, branch, build, site, alias, revert=False, revert_settings=False):
+  db_name = get_db_name(repo, branch, alias)
   print "===> Running a drush status test"
   with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
     with settings(warn_only=True):
@@ -321,7 +325,7 @@ def drush_status(repo, branch, build, site, alias, revert=False, revert_settings
         else:
           if revert == True:
             print "Reverting the database..."
-            Revert._revert_db(alias, branch, build)
+            common.MySQL.mysql_revert_db(db_name, build)
             Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("Could not bootstrap the database on this build! Aborting")
 
@@ -331,7 +335,7 @@ def drush_status(repo, branch, build, site, alias, revert=False, revert_settings
         else:
           if revert == True:
             print "Reverting the database..."
-            Revert._revert_db(alias, branch, build)
+            common.MySQL.mysql_revert_db(db_name, build)
             Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("Could not bootstrap the database on this build! Aborting")
 
@@ -340,6 +344,7 @@ def drush_status(repo, branch, build, site, alias, revert=False, revert_settings
 @task
 @roles('app_primary')
 def drush_updatedb(repo, branch, build, site, alias, drupal_version):
+  db_name = get_db_name(repo, branch, alias)
   print "===> Running any database hook updates"
   with settings(warn_only=True):
     # Apparently APC cache can interfere with drush updatedb expected results here. Clear any chance of caches
@@ -347,7 +352,7 @@ def drush_updatedb(repo, branch, build, site, alias, drupal_version):
     common.Services.clear_varnish_cache()
     if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
       print "Could not apply database updates! Reverting this database"
-      Revert._revert_db(alias, branch, build)
+      common.MySQL.mysql_revert_db(db_name, build)
       Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("Could not apply database updates! Reverted database. Site remains on previous build")
     if drupal_version > 7:
@@ -361,6 +366,7 @@ def drush_updatedb(repo, branch, build, site, alias, drupal_version):
 @task
 @roles('app_primary')
 def drush_fra(repo, branch, build, site, alias, drupal_version):
+  db_name = get_db_name(repo, branch, alias)
   with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
     if run("drush pm-list --pipe --type=module --status=enabled --no-core | grep -q ^features$").return_code != 0:
       print "===> Features module not installed, skipping feature revert"
@@ -369,7 +375,7 @@ def drush_fra(repo, branch, build, site, alias, drupal_version):
       with settings(warn_only=True):
         if sudo("su -s /bin/bash www-data -c 'drush -y fra'").failed:
           print "Could not revert features! Reverting database and settings..."
-          Revert._revert_db(alias, branch, build)
+          common.MySQL.mysql_revert_db(db_name, build)
           Revert._revert_settings(repo, branch, build, site, alias)
           raise SystemExit("Could not revert features! Site remains on previous build")
         else:
@@ -480,6 +486,7 @@ def environment_indicator(www_root, repo, branch, build, buildtype, alias, site,
 @task
 @roles('app_primary')
 def config_import(repo, branch, build, site, alias, drupal_version, previous_build):
+  db_name = get_db_name(repo, branch, alias)
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version > 7:
@@ -488,7 +495,7 @@ def config_import(repo, branch, build, site, alias, drupal_version, previous_bui
         print "Could not import configuration! Reverting this database and settings"
         sudo("unlink /var/www/live.%s.%s" % (repo, branch))
         sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-        Revert._revert_db(alias, branch, build)
+        common.MySQL.mysql_revert_db(db_name, build)
         Revert._revert_settings(repo, branch, build, site, alias)
         raise SystemExit("Could not import configuration! Reverted database and settings. Site remains on previous build")
       else:
@@ -554,8 +561,9 @@ def go_offline(repo, branch, build, alias, readonlymode, drupal_version):
 @task
 @roles('app_primary')
 def go_online(repo, branch, build, alias, previous_build, readonlymode, drupal_version):
-  # readonlymode can either be 'maintenance' (the default) or 'readonlymode', which uses the readonlymode module
+  db_name = get_db_name(repo, branch, alias)
 
+  # readonlymode can either be 'maintenance' (the default) or 'readonlymode', which uses the readonlymode module
   # If readonlymode is 'readonlymode', check that it exists
   if readonlymode == "readonlymode":
     print "===> First checking that the readonlymode module exists..."
@@ -570,7 +578,7 @@ def go_online(repo, branch, build, alias, previous_build, readonlymode, drupal_v
           print "Could not set the site out of read only mode! Reverting this build and database."
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-          Revert._revert_db(alias, branch, build)
+          common.MySQL.mysql_revert_db(db_name, build)
           Revert._revert_settings(repo, branch, build, site, alias)
       else:
         print "Hm, the readonly flag in config.ini was set to readonly, yet the readonlymode module does not exist. We'll revert to normal maintenance mode..."
@@ -584,14 +592,14 @@ def go_online(repo, branch, build, alias, previous_build, readonlymode, drupal_v
           print "Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-          Revert._revert_db(alias, branch, build)
+          common.MySQL.mysql_revert_db(db_name, build)
           Revert._revert_settings(repo, branch, build, site, alias)
       else:
         if run("drush @%s_%s -y vset site_offline 0" % (alias, branch)).failed:
           print "Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-          Revert._revert_db(alias, branch, build)
+          common.MySQL.mysql_revert_db(db_name, build)
           Revert._revert_settings(repo, branch, build, site, alias)
 
         else:

@@ -318,7 +318,7 @@ def existing_build_wrapper(url, www_root, repo, branch, build, buildtype, alias,
     this_build = "%s/%s_%s_%s" % (www_root, repo, branch, build)
     # The above paths should match - something is wrong if they don't!
     if not this_build == live_build:
-      Revert._revert_db(alias, branch, build)
+      common.MySQL.mysql_revert_db(db_name, build)
       Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
@@ -343,7 +343,7 @@ def existing_build_wrapper(url, www_root, repo, branch, build, buildtype, alias,
     this_build = "%s/%s_%s_%s" % (www_root, repo, branch, build)
     # The above paths should match - something is wrong if they don't!
     if not this_build == live_build:
-      Revert._revert_db(alias, branch, build)
+      common.MySQL.mysql_revert_db(db_name, build)
       Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
@@ -383,7 +383,8 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
     path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
     phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path)
     if phpunit_fail_build and phpunit_tests_failed:
-      Revert._revert_db(alias, branch, build)
+      db_name = get_db_name(repo, branch, alias)
+      common.MySQL.mysql_revert_db(db_name, build)
       Revert._revert_settings(repo, branch, build, site, alias)
       raise SystemExit("####### phpunit tests failed and you have specified you want to fail and roll back when this happens. Reverting database")
     elif phpunit_tests_failed:
