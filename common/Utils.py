@@ -320,7 +320,7 @@ def detect_malicious_strings(malicious_strings, input_string=False, check_locati
           malicious_strings_found = True
       if input_string:
         print "===> Checking %s for malicious strings" % input_string
-        if run("echo %s | grep '%s'" % (input_string, disallowed)).return_code == 0:
+        if run("echo '%s' | grep '%s'" % (input_string, disallowed)).return_code == 0:
           print "###### We found %s in the provided string" % (disallowed)
           malicious_strings_found = True
   return malicious_strings_found
