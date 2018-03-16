@@ -97,25 +97,6 @@ def drush_fra_branches(config, branch):
   return revert_branches
 
 
-# Take a database backup
-@task
-@roles('app_primary')
-def backup_db(alias, branch, build):
-  print "===> Ensuring backup directory exists"
-  with settings(warn_only=True):
-    if run("mkdir -p ~jenkins/dbbackups").failed:
-      raise SystemExit("Could not create directory ~jenkins/dbbackups! Aborting early")
-  print "===> Taking a database backup..."
-  with settings(warn_only=True):
-    if run("drush @%s_%s sql-dump --skip-tables-key=common | gzip > ~jenkins/dbbackups/%s_%s_prior_to_%s.sql.gz; if [ ${PIPESTATUS[0]} -ne 0 ]; then exit 1; else exit 0; fi" % (alias, branch, alias, branch, build)).failed:
-      failed_backup = True
-    else:
-      failed_backup = False
-
-  if failed_backup:
-    raise SystemExit("Could not take database backup prior to launching new build! Aborting early")
-
-
 # Get the database name of an existing Drupal website
 @task
 @roles('app_primary')
