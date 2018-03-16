@@ -309,7 +309,7 @@ def create_shared_directory():
 
 # Function returning True if a bad string is found
 @task
-def detect_malicious_strings(malicious_strings, input_string=False, check_location=False):
+def detect_malicious_strings(malicious_strings, input_string=None, check_location=None):
   malicious_strings_found = False
   with settings(warn_only=True):
     for disallowed in malicious_strings:
