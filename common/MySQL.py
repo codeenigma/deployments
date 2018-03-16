@@ -145,8 +145,8 @@ def mysql_backup_db(db_name, build, fail_build=False, mysql_config='/etc/mysql/d
 @task
 def mysql_revert_db(db_name, build, mysql_config='/etc/mysql/debian.cnf'):
   print "===> Dropping all tables"
-  sudo("if [ -f ~jenkins/dbbackups/%s_prior_to_%s.sql.gz ]; then mysql --defaults-file=%s -e 'drop database %s'; fi" % (db_name, build, mysql_config, db_name))
-  sudo("mysql --defaults-file=%s -e 'create database %s'" % (mysql_config, db_name))
+  sudo("if [ -f ~jenkins/dbbackups/%s_prior_to_%s.sql.gz ]; then mysql --defaults-file=%s -e 'drop database `%s`'; fi" % (db_name, build, mysql_config, db_name))
+  sudo("mysql --defaults-file=%s -e 'create database `%s`'" % (mysql_config, db_name))
   print "===> Waiting 5 seconds to let MySQL internals catch up"
   time.sleep(5)
   print "===> Restoring the database from backup"
