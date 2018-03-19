@@ -52,7 +52,7 @@ fi
 
 # The magic to remove the old builds
 PATTERN=$REPO'_'$BRANCH'_build_*'
-REMAINING=`find $WWWDIR -maxdepth 1 -type d -name "$PATTERN" | wc -l`
+REMAINING=`find -L $WWWDIR -maxdepth 1 -type d -name "$PATTERN" | wc -l`
 if [ $REMAINING -eq 0 ]; then
   echo "Didn't find any builds. Exiting"
   exit

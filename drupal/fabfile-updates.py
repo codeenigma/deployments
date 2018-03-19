@@ -90,7 +90,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", r
     previous_build = common.Utils.get_previous_build(repo, cleanbranch, build)
     previous_db = common.Utils.get_previous_db(repo, cleanbranch, build)
 
-    db_name = Drupal.get_db_name(repo, branch, alias)
+    db_name = Drupal.get_db_name(repo, branch, "default")
     execute(common.MySQL.mysql_backup_db, db_name, build, True)
 
     common.Utils.clone_repo(repo, repourl, branch, build, None, ssh_key)
