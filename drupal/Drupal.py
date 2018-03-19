@@ -108,7 +108,7 @@ def get_db_name(repo, branch, alias):
 
       # If the dbname variable is empty for whatever reason, resort to grepping settings.php
       if not db_name:
-        db_name = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % repo)
+        db_name = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % alias)
         db_name = db_name.translate(None, "',")
   print "===> Database name determined to be %s" % db_name
   return db_name
