@@ -71,7 +71,7 @@ def run_codesniffer(path_to_app, extensions="php,inc,txt,md", install=True, stan
   print "===> Running CodeSniffer"
   # Install CodeSniffer for the Jenkins user
   if install:
-    common.PHP.composer_command(path_to_app, "install", "squizlabs/php_codesniffer", True, True, True)
+    common.PHP.composer_command(path_to_app, "require", "squizlabs/php_codesniffer", True, True, True)
   # Load in custom config, if provided
   if config_path:
     run("/home/jenkins/.composer/vendor/bin/phpcs --config-set installed_paths %s" % config_path)
