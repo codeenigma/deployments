@@ -10,7 +10,7 @@ import common.Utils
 # Run a composer command
 @task
 @roles('app_all')
-def composer_command(site_root, composer_command="install", package_to_install=False, install_no_dev=True, composer_lock=True, composer_global=False, composer_sudo=False):
+def composer_command(site_root, composer_command="install", package_to_install=None, install_no_dev=True, composer_lock=True, composer_global=False, composer_sudo=False):
   # Make sure no one passed anything nasty from a build hook
   malicious_code = False
   malicious_code = common.Utils.detect_malicious_strings([';', '&&'], composer_command)

@@ -10,6 +10,7 @@ import common.ConfigFile
 import common.Services
 import common.Utils
 import common.Tests
+import common.PHP
 import AdjustConfiguration
 import Drupal
 import DrupalTests
@@ -51,6 +52,8 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   previous_db = ""
   statuscake_paused = False
   www_root = "/var/www"
+  site_root = www_root + '/%s_%s_%s' % (repo, branch, build)
+  site_link = www_root + '/live.%s.%s' % (repo, branch)
 
   # Set our host_string based on user@host
   env.host_string = '%s@%s' % (user, env.host)
@@ -150,7 +153,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   if drupal_version < 8:
     import_config = False
   if drupal_version > 7 and composer is True:
-    execute(Drupal.run_composer_install, repo, branch, build, composer_lock, no_dev)
+    execute(common.PHP.composer_command, site_root, "install", None, no_dev, composer_lock)
 
   # Compile a site mapping, which is needed if this is a multisite build
   # Just sets to 'default' if it is not
@@ -183,7 +186,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale)
       else:
         # Otherwise it's an existing build
-        existing_build_wrapper(url, www_root, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches)
+        existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches)
 
     # After any build we want to run all the available automated tests
     test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths)
@@ -275,7 +278,7 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, www_root, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches):
+def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   # Grab some information about the current build
   previous_build = common.Utils.get_previous_build(repo, branch, build)
