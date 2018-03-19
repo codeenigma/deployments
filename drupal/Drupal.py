@@ -139,7 +139,9 @@ def prepare_database(repo, branch, build, alias, site, syncbranch, orig_host, sa
     raise SystemError("######## Sync branch cannot be empty when wanting a fresh database when deploying a custom branch for the first time. Aborting early.")
 
   current_env = env.host
-  db_name = get_db_name(repo, branch, site)
+
+  if not freshinstall:
+    db_name = get_db_name(repo, branch, site)
 
   # If freshinstall is True, this occurs during an initial build, so we need to check if there's
   # a db/ directory, remove all .sql.bz2 files. If a db/ directory doesn't exist create one. If
