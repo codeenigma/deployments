@@ -100,16 +100,15 @@ def drush_fra_branches(config, branch):
 # Get the database name of an existing Drupal website
 @task
 @roles('app_primary')
-def get_db_name(repo, branch, alias):
+def get_db_name(repo, branch, site):
   db_name = None
-  with cd("/var/www/live.%s.%s/www/sites/%s" % (repo, branch, alias)):
-    with settings(warn_only=True):
-      db_name = sudo("drush status --format=yaml 2>&1 | grep \"db-name: \" | cut -d \":\" -f 2")
+  with cd("/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)):
+    db_name = sudo("drush status --format=yaml 2>&1 | grep \"db-name: \" | cut -d \":\" -f 2")
 
-      # If the dbname variable is empty for whatever reason, resort to grepping settings.php
-      if not db_name:
-        db_name = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % repo)
-        db_name = db_name.translate(None, "',")
+    # If the dbname variable is empty for whatever reason, resort to grepping settings.php
+    if not db_name:
+      db_name = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % repo)
+      db_name = db_name.translate(None, "',")
   print "===> Database name determined to be %s" % db_name
   return db_name
 
@@ -130,7 +129,7 @@ def generate_drush_cron(repo, branch):
 # This function is used to get a fresh database of the site to import into the custom
 # branch site during the initial_build() step
 @task
-def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise, sanitised_password, sanitised_email, freshinstall=True):
+def prepare_database(repo, branch, build, alias, site, syncbranch, orig_host, sanitise, sanitised_password, sanitised_email, freshinstall=True):
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.read_config_file()
   now = common.Utils._gen_datetime()
@@ -140,7 +139,7 @@ def prepare_database(repo, branch, build, alias, syncbranch, orig_host, sanitise
     raise SystemError("######## Sync branch cannot be empty when wanting a fresh database when deploying a custom branch for the first time. Aborting early.")
 
   current_env = env.host
-  db_name = get_db_name(repo, branch, alias)
+  db_name = get_db_name(repo, branch, site)
 
   # If freshinstall is True, this occurs during an initial build, so we need to check if there's
   # a db/ directory, remove all .sql.bz2 files. If a db/ directory doesn't exist create one. If
@@ -295,7 +294,7 @@ def run_composer_install(repo, branch, build, composer_lock, no_dev):
 @task
 @roles('app_primary')
 def drush_status(repo, branch, build, site, alias, revert=False, revert_settings=False):
-  db_name = get_db_name(repo, branch, alias)
+  db_name = get_db_name(repo, branch, site)
   print "===> Running a drush status test"
   with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
     with settings(warn_only=True):
@@ -325,7 +324,7 @@ def drush_status(repo, branch, build, site, alias, revert=False, revert_settings
 @task
 @roles('app_primary')
 def drush_updatedb(repo, branch, build, site, alias, drupal_version):
-  db_name = get_db_name(repo, branch, alias)
+  db_name = get_db_name(repo, branch, site)
   print "===> Running any database hook updates"
   with settings(warn_only=True):
     # Apparently APC cache can interfere with drush updatedb expected results here. Clear any chance of caches
@@ -347,7 +346,7 @@ def drush_updatedb(repo, branch, build, site, alias, drupal_version):
 @task
 @roles('app_primary')
 def drush_fra(repo, branch, build, site, alias, drupal_version):
-  db_name = get_db_name(repo, branch, alias)
+  db_name = get_db_name(repo, branch, site)
   with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
     if run("drush pm-list --pipe --type=module --status=enabled --no-core | grep -q ^features$").return_code != 0:
       print "===> Features module not installed, skipping feature revert"
@@ -467,7 +466,7 @@ def environment_indicator(www_root, repo, branch, build, buildtype, alias, site,
 @task
 @roles('app_primary')
 def config_import(repo, branch, build, site, alias, drupal_version, previous_build):
-  db_name = get_db_name(repo, branch, alias)
+  db_name = get_db_name(repo, branch, site)
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version > 7:
@@ -541,8 +540,8 @@ def go_offline(repo, branch, build, alias, readonlymode, drupal_version):
 # Take the site online (after drush updatedb)
 @task
 @roles('app_primary')
-def go_online(repo, branch, build, alias, previous_build, readonlymode, drupal_version):
-  db_name = get_db_name(repo, branch, alias)
+def go_online(repo, branch, build, alias, site, previous_build, readonlymode, drupal_version):
+  db_name = get_db_name(repo, branch, site)
 
   # readonlymode can either be 'maintenance' (the default) or 'readonlymode', which uses the readonlymode module
   # If readonlymode is 'readonlymode', check that it exists
