@@ -102,13 +102,13 @@ def drush_fra_branches(config, branch):
 @roles('app_primary')
 def get_db_name(repo, branch, alias):
   db_name = None
-  with cd("/var/www/live.%s.%s/www/sites/default" % (repo, branch)):
+  with cd("/var/www/live.%s.%s/www/sites/%s" % (repo, branch, alias)):
     with settings(warn_only=True):
       db_name = sudo("drush status --format=yaml 2>&1 | grep \"db-name: \" | cut -d \":\" -f 2")
 
       # If the dbname variable is empty for whatever reason, resort to grepping settings.php
       if not db_name:
-        db_name = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % alias)
+        db_name = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % repo)
         db_name = db_name.translate(None, "',")
   print "===> Database name determined to be %s" % db_name
   return db_name
