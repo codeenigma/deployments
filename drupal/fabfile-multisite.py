@@ -9,6 +9,7 @@ import ConfigParser
 import common.ConfigFile
 import common.Services
 import common.Utils
+import common.PHP
 import Drupal
 import DrupalTests
 import DrupalUtils
@@ -140,7 +141,13 @@ def main(repo, repourl, build, branch, buildtype, url=None, profile="minimal", k
       importconfig = "no"
 
     if drupal_version == '8' and composer is True:
-      execute(Drupal.run_composer_install, repo, branch, build, composer_lock, no_dev)
+      # Sometimes people use the Drupal Composer project which puts Drupal 8's composer.json file in repo root.
+      with settings(warn_only=True):
+        if run("find /var/www/%s_%s_%s/composer.json" % (repo, branch, build)).return_code == 0:
+          path = "/var/www/%s_%s_%s" % (repo, branch, build)
+        else:
+          path = "/var/www/%s_%s_%s/www" % (repo, branch, build)
+      execute(common.PHP.composer_command, path, "install", None, no_dev, composer_lock)
 
     new_sites = Multisite.check_for_new_installs(repo, branch, build, mapping)
     if new_sites is not None:
