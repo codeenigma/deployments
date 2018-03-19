@@ -153,7 +153,13 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   if drupal_version < 8:
     import_config = False
   if drupal_version > 7 and composer is True:
-    execute(common.PHP.composer_command, site_root, "install", None, no_dev, composer_lock)
+    # Sometimes people use the Drupal Composer project which puts Drupal 8's composer.json file in repo root.
+    with settings(warn_only=True):
+      if run("find %s/composer.json" % site_root).return_code == 0:
+        path = site_root
+      else:
+        path = site_root + "/www"
+    execute(common.PHP.composer_command, path, "install", None, no_dev, composer_lock)
 
   # Compile a site mapping, which is needed if this is a multisite build
   # Just sets to 'default' if it is not
