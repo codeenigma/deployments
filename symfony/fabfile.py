@@ -9,6 +9,7 @@ import ConfigParser
 import common.ConfigFile
 import common.Services
 import common.Utils
+import common.PHP
 import AdjustConfiguration
 import Symfony
 import InitialBuild
@@ -29,7 +30,14 @@ config = common.ConfigFile.read_config_file()
 @task
 def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, buildtype_override=False, ckfinder=False, keepbackup=False, migrations=False, cluster=False, with_no_dev=True):
 
-  user = 'jenkins'
+  # Set some default config options and variables
+  user = "jenkins"
+  previous_build = ""
+  previous_db = ""
+  statuscake_paused = False
+  www_root = "/var/www"
+  site_root = www_root + '/%s_%s_%s' % (repo, buildtype, build)
+  site_link = www_root + '/live.%s.%s' % (repo, buildtype)
 
   # Set SSH key if needed
   ssh_key = None
@@ -86,10 +94,10 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
 
   # Only run composer if there is no vendor directory
   with settings(warn_only=True):
-    if run("stat /var/www/%s_%s_%s/vendor" % (repo, buildtype, build)).failed:
+    if run("stat %s/vendor" % site_root).failed:
       # Generally we want to run as prod because dev just enables developer tools
       # If someone wants to override this, we can pass "dev" as buildtype_override above
-      execute(Symfony.composer_install, repo, buildtype, build, console_buildtype, with_no_dev)
+      execute(common.PHP.composer_command, site_root, "install", None, with_no_dev)
   if migrations:
     execute(Symfony.run_migrations, repo, buildtype, build, console_buildtype)
 
