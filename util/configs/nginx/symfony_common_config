@@ -24,7 +24,7 @@ proxy_buffer_size       512k;
 proxy_buffers           8 256k;
 client_body_buffer_size 512k;
 fastcgi_buffer_size     512k;
-fastcgi_buffers         512k;
+fastcgi_buffers         8 256k;
 client_max_body_size    200M;
 gzip                    on;
 gzip_vary               on;
