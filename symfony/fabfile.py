@@ -39,6 +39,11 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
   site_root = www_root + '/%s_%s_%s' % (repo, buildtype, build)
   site_link = www_root + '/live.%s.%s' % (repo, buildtype)
 
+  # Can be set in the config.ini [Composer] section
+  composer = common.ConfigFile.return_config_item(config, "Composer", "composer", "boolean", True)
+  composer_lock = common.ConfigFile.return_config_item(config, "Composer", "composer_lock", "boolean", True)
+  no_dev = common.ConfigFile.return_config_item(config, "Composer", "no_dev", "boolean", with_no_dev)
+
   # Set SSH key if needed
   ssh_key = None
   if "git@github.com" in repourl:
@@ -94,10 +99,10 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
 
   # Only run composer if there is no vendor directory
   with settings(warn_only=True):
-    if run("stat %s/vendor" % site_root).failed:
-      # Generally we want to run as prod because dev just enables developer tools
+    if composer:
+      # Generally we want to run with SYMFONY_ENV=prod because dev just enables developer tools
       # If someone wants to override this, we can pass "dev" as buildtype_override above
-      execute(common.PHP.composer_command, site_root, "install", None, with_no_dev)
+      execute(common.PHP.composer_command, site_root, "install", None, no_dev, composer_lock, False, False, console_buildtype)
   if migrations:
     execute(Symfony.run_migrations, repo, buildtype, build, console_buildtype)
 
