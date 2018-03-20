@@ -20,11 +20,11 @@ include fastcgi_params;
         fastcgi_param HTTPS off;
 }
 
-proxy_buffer_size       <%= scope.lookupvar('nginx::buffer_size') %>;
-proxy_buffers           <%= scope.lookupvar('nginx::buffers') %>;
-client_body_buffer_size <%= scope.lookupvar('nginx::buffer_size') %>;
-fastcgi_buffer_size     <%= scope.lookupvar('nginx::buffer_size') %> ;
-fastcgi_buffers         <%= scope.lookupvar('nginx::buffers') %> ;
-client_max_body_size    <%= scope.lookupvar('nginx::client_max_body_size') %>;
-gzip                    <%= scope.lookupvar('nginx::gzip') %>;
-gzip_vary               <%= scope.lookupvar('nginx::gzip_vary') %>;
+proxy_buffer_size       512k;
+proxy_buffers           8 256k;
+client_body_buffer_size 512k;
+fastcgi_buffer_size     512k;
+fastcgi_buffers         512k;
+client_max_body_size    200M;
+gzip                    on;
+gzip_vary               on;
