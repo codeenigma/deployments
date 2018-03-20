@@ -39,6 +39,10 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
   site_root = www_root + '/%s_%s_%s' % (repo, buildtype, build)
   site_link = www_root + '/live.%s.%s' % (repo, buildtype)
 
+  # For reasons known only to Python, it evaluates with_no_dev=False as the string "False"
+  if with_no_dev == "False":
+    with_no_dev = False
+
   # Can be set in the config.ini [Composer] section
   composer = common.ConfigFile.return_config_item(config, "Composer", "composer", "boolean", True)
   composer_lock = common.ConfigFile.return_config_item(config, "Composer", "composer_lock", "boolean", True)
