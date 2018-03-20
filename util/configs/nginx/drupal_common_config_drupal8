@@ -40,7 +40,6 @@ location ~* ^/.well-known/ {
 # Very rarely should these ever be accessed outside of your lan
 location ~* \.(txt|log)$ {
   allow 127.0.0.1;
-  allow 52.56.36.187;
   deny  all;
 }
 
