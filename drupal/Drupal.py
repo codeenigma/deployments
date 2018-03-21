@@ -573,6 +573,7 @@ def secure_admin_password(repo, branch, build, site, drupal_version):
         run('drush sqlq "UPDATE users_field_data SET name = \'%s\' WHERE uid = 1"' % u1name)
       else:
         run('drush sqlq "UPDATE users SET name = \'%s\' WHERE uid = 1"' % u1name)
+      drush_clear_cache(repo, branch, build, site, drupal_version)
       run("drush upwd %s --password='%s'" % (u1name, u1pass))
 
 
