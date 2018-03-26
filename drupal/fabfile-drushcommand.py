@@ -20,7 +20,8 @@ def main(shortname, branch, command, backup=True):
 
   # Take a database backup first if told to.  
   if backup:
-    Drupal.backup_db(shortname, branch, 'drush_command')
+    db_name = Drupal.get_db_name(shortname, branch, "default")
+    execute(common.MySQL.mysql_backup_db, db_name, 'drush_command', True)
 
   # Strip nastiness from the command
   command = command.replace(";", "")
@@ -35,9 +36,9 @@ def main(shortname, branch, command, backup=True):
   print "Command is drush @%s_%s %s" % (shortname, branch, command)
 
   BLACKLISTED_CMDS = ['sql-drop', 'site-install', 'si', 'sudo', 'rm', 'shutdown', 'reboot', 'halt', 'chown', 'chmod', 'cp', 'mv', 'nohup', 'echo', 'cat', 'tee', 'php-eval', 'variable-set', 'vset']
-
-  for cmd in BLACKLISTED_CMDS:
-    if command.startswith(cmd):
-      raise SystemError("Surely you jest... I won't run drush @%s_%s %s. Ask a sysadmin instead." % (shortname, branch, command))
+  blacklisted = False
+  blacklisted = common.Utils.detect_malicious_strings(BLACKLISTED_CMDS, cmd)
+  if blacklisted:
+    raise SystemError("Surely you jest... I won't run drush @%s_%s %s. Ask a sysadmin instead." % (shortname, branch, command))
 
   run("drush -y @%s_%s %s" % (shortname, branch, command) )

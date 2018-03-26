@@ -307,6 +307,25 @@ def create_shared_directory():
       print "===> Shared directory already exists"
 
 
+# Function returning True if a bad string is found
+@task
+def detect_malicious_strings(malicious_strings, input_string=None, check_location=None):
+  malicious_strings_found = False
+  with settings(warn_only=True):
+    for disallowed in malicious_strings:
+      if check_location:
+        print "===> Checking %s for malicious strings" % check_location
+        if run("grep -r '%s' %s" % (disallowed, check_location)).return_code == 0:
+          print "###### We found %s in the location %s" % (disallowed, check_location)
+          malicious_strings_found = True
+      if input_string:
+        print "===> Checking %s for malicious strings" % input_string
+        if run("echo '%s' | grep '%s'" % (input_string, disallowed)).return_code == 0:
+          print "###### We found %s in the provided string" % (disallowed)
+          malicious_strings_found = True
+  return malicious_strings_found
+
+
 # @TODO build_path is temporary, it's currently branch from Drupal
 # Ultimately we can remove entirely and just use buildtype, once
 # Drupal scripts are repaired.
@@ -324,12 +343,10 @@ def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage
         print "Skipping %s hook file because it is not set to 1 in config.ini." % option
       else:
         malicious_code = False
-        with settings(warn_only=True):
-          for disallowed in malicious_commands:
-            if run("grep '%s' /var/www/%s_%s_%s/build-hooks/%s" % (disallowed, repo, build_path, build, option)).return_code == 0:
-              print "We found %s in the %s file, so as a result, we are not running that hook file." % (disallowed, option)
-              malicious_code = True
-              break
+        this_hook = "/var/www/%s_%s_%s/build-hooks/%s" % (repo, build_path, build, option)
+        malicious_code = detect_malicious_strings(malicious_commands, False, this_hook)
+        if malicious_code:
+          break
 
         if not malicious_code:
           if option[-2:] == 'sh':
@@ -384,12 +401,10 @@ def perform_client_sync_hook(path_to_application, buildtype, stage):
           print "Skipping %s hook file because it is not set to 1 in config.ini." % option
         else:
           malicious_code = False
-          with settings(warn_only=True):
-            for disallowed in malicious_commands:
-              if run("grep '%s' %s/build-hooks/%s" % (disallowed, path_to_application, option)).return_code == 0:
-                print "We found %s in the %s file, so as a result, we are not running that hook file." % (disallowed, option)
-                malicious_code = True
-                break
+          this_hook = "%s/build-hooks/%s" % (path_to_application, option)
+          malicious_code = detect_malicious_strings(malicious_commands, False, this_hook)
+          if malicious_code:
+            break
   
           if not malicious_code:
             if option[-2:] == 'sh':

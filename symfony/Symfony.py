@@ -168,23 +168,6 @@ def set_symfony_env(repo, buildtype, build, console_buildtype):
 
 
 @task
-@roles('app_all')
-def composer_install(repo, buildtype, build, console_buildtype, with_no_dev):
-  if with_no_dev is True:
-    print "===> Running composer install with --no-dev option"
-    if run("cd /var/www/%s_%s_%s; SYMFONY_ENV=%s composer install --no-dev --no-interaction" % (repo, buildtype, build, console_buildtype)).failed:
-      print "Could not run composer install."
-      raise SystemExit("Could not run composer install.")
-  else:
-    print "===> Running composer install without --no-dev option"
-    if run("cd /var/www/%s_%s_%s; SYMFONY_ENV=%s composer install --no-interaction" % (repo, buildtype, build, console_buildtype)).failed:
-      print "Could not run composer install."
-      raise SystemExit("Could not run composer install.")
-  print "===> Fixing up perms and ownership..."
-  fix_perms_ownership(repo, buildtype, build)
-
-
-@task
 @roles('app_primary')
 def run_migrations(repo, buildtype, build, console_buildtype):
   with settings(warn_only=True):

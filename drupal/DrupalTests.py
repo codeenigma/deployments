@@ -3,6 +3,7 @@ from fabric.contrib.files import sed
 import os
 # Custom Code Enigma modules
 import common.Tests
+import common.PHP
 
 
 # Builds the variables needed to carry out Behat testing later
@@ -66,9 +67,9 @@ def run_tests(repo, branch, build, config, drupal_version, codesniffer=False, ex
   if drupal_version > 7 and codesniffer:
     print "===> Drupal 8 or higher, running CodeSniffer"
     with settings(warn_only=True):
-      # Install Drupal CodeSniffer standards
-      run("composer global require drupal/coder")
       path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
+      # Install Drupal CodeSniffer standards
+      common.PHP.composer_command(path_to_app, "install", "drupal/coder", True, True, True)
       # Run CodeSniffer, note install=False, suppresses trying to reinstall CodeSniffer, which will fail
       common.Tests.run_codesniffer(path_to_app, extensions, install=False, standard="Drupal", ignore=ignore, paths_to_test=paths_to_test, config_path="/home/jenkins/.composer/vendor/drupal/coder/coder_sniffer")
       common.Tests.run_codesniffer(path_to_app, extensions, install=False, standard="DrupalPractice", ignore=ignore, paths_to_test=paths_to_test, config_path="/home/jenkins/.composer/vendor/drupal/coder/coder_sniffer")
@@ -119,7 +120,7 @@ def run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, jun
               break
 
       with cd("/var/www/%s_%s_%s/tests/behat" % (repo, branch, build)):
-        run("composer install")
+        common.PHP.composer_command("/var/www/%s_%s_%s/tests/behat" % (repo, branch, build))
 
         if run("stat behat.yml").failed:
           # No behat.yml file, so let's move our buildtype specific behat file into place, if it exists.
