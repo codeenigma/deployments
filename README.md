@@ -6,6 +6,7 @@ These deployment scripts currently support:
 
 * [Drupal](https://www.drupal.org)
 * [WordPress](https://wordpress.com/)
+* [Magento](https://magento.com/)
 * [Symfony](https://symfony.com/)
 * Flat HTML
 
@@ -76,6 +77,17 @@ If you use a MySQL (or similar) database (so clearly Drupal, WordPress and some 
 
 * mysql client on the target app server(s)
 * mysql 'defaults' file we can pass to prepare scripts (default location `/etc/mysql/debian.cnf`)
+
+Example 'defaults' file:
+
+```
+[client]
+host     = 127.0.0.1
+user     = root
+password = MYSQL_PASSWORD
+```
+
+`host` can be an IP address or a hostname/fully qualified domain name. `user` does not have to be root, but the username selected must be able to manipulate the necessary databases and create new databases and grants.
 
 # Quickstart
 
