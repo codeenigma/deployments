@@ -118,6 +118,14 @@ def remove_old_builds(repo, branch, keepbuilds, buildtype=None):
   sudo("/var/www/live.%s.%s/remove_old_builds.sh -d /var/www -r %s -b %s -k %s" % (repo, put_location, repo, put_location, keepbuilds))
 
 
+# Create a link to the application location on initial build
+@task
+def initial_build_create_live_symlink(repo, buildtype, build):
+  print "===> Setting the live document root symlink"
+  # We need to force this to avoid a repeat of https://redmine.codeenigma.net/issues/20779
+  sudo("ln -nsf /var/www/%s_%s_%s /var/www/live.%s.%s" % (repo, branch, build, repo, branch))
+
+
 # Adjust symlink in /var/www/project to point to the new build
 @task
 def adjust_live_symlink(repo, branch, build, buildtype=None):
