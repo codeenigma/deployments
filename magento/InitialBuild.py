@@ -15,14 +15,14 @@ def initial_magento_build(repo, url, buildtype, build, shared_static_dir, config
   print "===> This looks like the first build! We have some things to do.."
 
   print "===> Making the Magento shared files dir and setting symlink"
-  #pub
+  # pub/media and pub/static
   sudo("mkdir -p /var/www/shared/%s_magento_%s_pub/{media,static}" % (repo, buildtype))
   sudo("chown -R jenkins.www-data /var/www/shared/%s_magento_%s_pub" % (repo, buildtype))
   sudo("chmod -R 2770 /var/www/shared/%s_magento_%s_pub" % (repo, buildtype))
-  # var
-  sudo("mkdir -p /var/www/shared/%s_magento_%s_var" % (repo, buildtype))
+  # var/log and var/session
+  sudo("mkdir -p /var/www/shared/%s_magento_%s_var/{log,report,session}" % (repo, buildtype))
   sudo("chown jenkins.www-data /var/www/shared/%s_magento_%s_var" % (repo, buildtype))
-  sudo("chmod 2770 /var/www/shared/%s_magento_%s_var" % (repo, buildtype))
+  sudo("chmod 2775 /var/www/shared/%s_magento_%s_var" % (repo, buildtype))
   # local.xml dir
   sudo("mkdir -p /var/www/shared/%s_magento_%s_etc" % (repo, buildtype))
   sudo("chown jenkins.www-data /var/www/shared/%s_magento_%s_etc" % (repo, buildtype))

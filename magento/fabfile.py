@@ -132,10 +132,14 @@ def main(repo, repourl, branch, build, buildtype, shared_static_dir=False, db_na
       print "===> Taking a database backup of the Magento database..."
       # Get the credentials for Magento in order to be able to dump the database
       with settings(hide('stdout', 'running')):
-        mage_db = run("grep dbname /var/www/live.%s.%s/www/app/etc/env.php | awk {'print $3'} | head -1 | cut -d\\' -f2" % (repo, buildtype))
+        db_name = run("grep dbname /var/www/live.%s.%s/www/app/etc/env.php | awk {'print $3'} | head -1 | cut -d\\' -f2" % (repo, buildtype))
       execute(common.MySQL.mysql_backup_db, db_name, build, True)      
       execute(Magento.adjust_files_symlink, repo, buildtype, build, url, shared_static_dir)
+      execute(Magento.magento_compilation_steps, repo, buildtype, build)
+      execute(Magento.magento_maintenance_mode, repo, buildtype, build, 'enable')
       execute(common.adjust_live_symlink, repo, branch, build, buildtype)
+      execute(Magento.magento_database_updates, repo, buildtype, build)
+      execute(Magento.magento_maintenance_mode, repo, buildtype, build, 'disable')
       # Restart services
       execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
       execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
