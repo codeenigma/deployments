@@ -3,8 +3,6 @@ import os
 import sys
 import random
 import string
-# Custom Code Enigma modules
-import common.MySQL
 
 # Generate a crontab for running magento2's cron on this site
 @task

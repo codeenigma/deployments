@@ -85,14 +85,12 @@ def main(repo, repourl, branch, build, buildtype, shared_static_dir=False, db_na
   phpunit_group = common.ConfigFile.return_config_item(config, "Testing", "phpunit_group", "string", "unit")
   phpunit_test_directory = common.ConfigFile.return_config_item(config, "Testing", "phpunit_test_directory")
   phpunit_path = common.ConfigFile.return_config_item(config, "Testing", "phpunit_path", "string", "vendor/phpunit/phpunit/phpunit")
-  # CodeSniffer itself is in common/Tests, but standards used here are Drupal specific, see drupal/DrupalTests.py for the wrapper to apply them
-  codesniffer = common.ConfigFile.return_config_item(config, "Testing", "codesniffer", "boolean")
-  codesniffer_extensions = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_extensions", "string", "php,module,inc,install,test,profile,theme,info,txt,md")
-  codesniffer_ignore = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_ignore", "string", "node_modules,bower_components,vendor")
-  codesniffer_paths = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_paths")
 
   # Run the tasks.
   execute(common.Utils.clone_repo, repo, repourl, branch, build, None, ssh_key, hosts=env.roledefs['app_all'])
+
+  # Let's allow developers to perform some early actions if they need to
+  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
 
   # If this is the first build, attempt to install the site for the first time.
   with settings(hide('warnings', 'stderr'), warn_only=True):
@@ -120,6 +118,10 @@ def main(repo, repourl, branch, build, buildtype, shared_static_dir=False, db_na
       execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
 
       # @TODO: what about cron??
+
+      # Let's allow developers to perform some post-build actions if they need to
+      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
+      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-initial', hosts=env.roledefs['app_all'])
     except:
       e = sys.exc_info()[1]
       raise SystemError(e)
@@ -138,6 +140,9 @@ def main(repo, repourl, branch, build, buildtype, shared_static_dir=False, db_na
       execute(Magento.magento_compilation_steps, repo, buildtype, build)
       execute(Magento.magento_maintenance_mode, repo, buildtype, build, 'enable')
       execute(common.adjust_live_symlink, repo, branch, build, buildtype)
+      # Let's allow developers to perform some actions right after Magento is built
+      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
+      # Then carry on with db updates
       execute(Magento.magento_database_updates, repo, buildtype, build)
       execute(Magento.magento_maintenance_mode, repo, buildtype, build, 'disable')
       # Restart services
@@ -147,6 +152,20 @@ def main(repo, repourl, branch, build, buildtype, shared_static_dir=False, db_na
       # @TODO: Why is this not an initial build task?
       # @TODO: function needs work too in Magento.py!
       execute(Magento.generate_magento_cron, repo, environment)
+      # Let's allow developers to perform some post-build actions if they need to
+      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
+      # Run phpunit tests
+      if phpunit_run:
+        path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
+        phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path)
+        if phpunit_tests_failed:
+          print "####### phpunit tests failed but the build is set to disregard... continuing, but you should review your test output"
+        else:
+          print "===> phpunit tests ran successfully."
+      else:
+        print "===> No phpunit tests."
+
+      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', hosts=env.roledefs['app_all'])
       execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, hosts=env.roledefs['app_all'])
     except:
       e = sys.exc_info()[1]
