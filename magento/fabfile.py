@@ -13,7 +13,6 @@ import common.PHP
 import common.MySQL
 import Magento
 import InitialBuild
-import AdjustConfiguration
 
 # Override the shell env variable in Fabric, so that we don't see 
 # pesky 'stdin is not a tty' messages when using sudo
