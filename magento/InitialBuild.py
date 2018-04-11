@@ -49,23 +49,8 @@ def initial_magento_build(repo, url, buildtype, build, shared_static_dir, config
   print "===> Preparing the new database"
   new_database = common.MySQL.mysql_new_database(repo, buildtype, rds, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers, dump_file)
 
-  # If we have imported a real database dump, then use the local.xml
-  # template for Magento that presumes the Magento site has been 'installed'
-  if dump_file:
-    # @TODO this template needs adding to the repo and 'putting' in place prior to copy
-    run("cp /usr/local/etc/local.xml.template /var/www/%s_%s_%s/www/app/etc/local.xml" % (repo, buildtype, build))
-  else:
-    # Otherwise, use a slightly different local.xml template which contains
-    # the <install> tags commented out. Assume the user will run through
-    # the Magento install themselves.
-    # @TODO: note, if someone does a 'sync' from prod here, the database will be populated,
-    # but the local.xml will still be read as 'uninstalled'. Will need a manual modification
-    # of the local.xml to uncomment the <install> tags.
-    #
-    # @TODO this template needs adding to the repo and 'putting' in place prior to copy
-    run("cp /usr/local/etc/local.xml.template.uninstalled /var/www/%s_%s_%s/www/app/etc/local.xml" % (repo, buildtype, build))
-
   # Replace the dummy database credentials with real ones 
+  # @TODO: apparently this is obsolete and should be env.php now
   run("sed -i s/EXAMPLE_USER/%s/g /var/www/%s_%s_%s/www/app/etc/local.xml" % (new_database[1], repo, buildtype, build))
   run("sed -i s/EXAMPLE_PASS/%s/g /var/www/%s_%s_%s/www/app/etc/local.xml" % (new_database[2], repo, buildtype, build))
   run("sed -i s/EXAMPLE_DB/%s/g /var/www/%s_%s_%s/www/app/etc/local.xml" % (new_database[0], repo, buildtype, build))
