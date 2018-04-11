@@ -117,13 +117,15 @@ def get_db_name(repo, branch, site):
 @task
 @roles('app_all')
 def generate_drush_cron(repo, branch):
-  print "===> Generating Drush cron for this site if it isn't there already"
-  script_dir = os.path.dirname(os.path.realpath(__file__))
-  if put(script_dir + '/../util/drush_cron', '/home/jenkins', mode=0755).failed:
-    print "===> Could not copy the drush_cron script to the application server, cron will not be generated for this site"
+  if exists("/etc/cron.d/%s_%s_cron" % (repo, branch)):
+    print "===> Cron already exists, moving along"
   else:
-    print "===> drush_cron copied to %s:/home/jenkins/drush_cron, making cron now" % env.host
-    sudo("/home/jenkins/drush_cron %s %s" % (repo, branch))
+    print "===> No cron job, creating one now"
+    now = datetime.datetime.now()
+    sudo("touch /etc/cron.d/%s_%s_cron" % (repo, branch))
+    append_string = """%s * * * *       www-data  /usr/local/bin/drush @%s_%s cron > /dev/null 2>&1""" % (now.minute, repo, branch)
+    append("/etc/cron.d/%s_%s_cron" % (repo, branch), append_string, use_sudo=True)
+    print "===> New Drupal cron job created at /etc/cron.d/%s_%s_magento_cron" % (repo, branch)
 
 
 # This function is used to get a fresh database of the site to import into the custom
