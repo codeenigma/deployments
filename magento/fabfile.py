@@ -116,7 +116,7 @@ def main(repo, repourl, branch, build, buildtype, shared_static_dir=False, db_na
       execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
       execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
 
-      # @TODO: what about cron??
+      execute(Magento.generate_magento_cron, repo, environment)
 
       # Let's allow developers to perform some post-build actions if they need to
       execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
@@ -134,25 +134,31 @@ def main(repo, repourl, branch, build, buildtype, shared_static_dir=False, db_na
       # Get the credentials for Magento in order to be able to dump the database
       with settings(hide('stdout', 'running')):
         db_name = run("grep dbname /var/www/live.%s.%s/www/app/etc/env.php | awk {'print $3'} | head -1 | cut -d\\' -f2" % (repo, buildtype))
-      execute(common.MySQL.mysql_backup_db, db_name, build, True)      
+      execute(common.MySQL.mysql_backup_db, db_name, build, True)
+
+      # Start Magento tasks
       execute(Magento.adjust_files_symlink, repo, buildtype, build, url, shared_static_dir)
       execute(Magento.magento_compilation_steps, repo, buildtype, build)
       execute(Magento.magento_maintenance_mode, repo, buildtype, build, 'enable')
       execute(common.adjust_live_symlink, repo, branch, build, buildtype)
+
       # Let's allow developers to perform some actions right after Magento is built
       execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
+
       # Then carry on with db updates
       execute(Magento.magento_database_updates, repo, buildtype, build)
       execute(Magento.magento_maintenance_mode, repo, buildtype, build, 'disable')
+
       # Restart services
       execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
       execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
       execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
-      # @TODO: Why is this not an initial build task?
-      # @TODO: function needs work too in Magento.py!
+
       execute(Magento.generate_magento_cron, repo, environment)
+
       # Let's allow developers to perform some post-build actions if they need to
       execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
+
       # Run phpunit tests
       if phpunit_run:
         path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)

@@ -3,14 +3,23 @@ import os
 import sys
 import random
 import string
+import datetime
 
 # Generate a crontab for running magento2's cron on this site
 @task
 @roles('app_all')
 def generate_magento_cron(repo, buildtype):
-  print "===> Generating Magento cron for this site if it isn't there already"
-  # TODO this script needs handling
-  sudo("/usr/local/bin/magento2_cron %s %s" % (repo, buildtype))
+  if exists("/etc/cron.d/%s_%s_magento_cron" % (repo, buildtype)):
+    print "===> Cron already exists, moving along"
+  else:
+    print "===> No cron job, creating one now"
+    now = datetime.datetime.now()
+    sudo("touch /etc/cron.d/%s_%s_magento_cron" % (repo, buildtype))
+    append_string = """*/%s * * * * www-data   php /var/www/live.%s.%s/www/bin/magento cron:run
+*/%s * * * * www-data   php /var/www/live.%s.%s/update/cron.php
+*/%s * * * * www-data   php /var/www/live.%s.%s/www/bin/magento setup:cron:run""" % (now.minute, repo, buildtype, now.minute, repo, buildtype, now.minute, repo, buildtype)
+    append("/etc/cron.d/%s_%s_magento_cron" % (repo, buildtype), append_string, use_sudo=True)
+    print "===> New Magento cron job created at /etc/cron.d/%s_%s_magento_cron" % (repo, buildtype)
 
 
 # Adjust shared files symlink
