@@ -21,7 +21,7 @@ env.shell = '/bin/bash -c'
 
 # Main build script
 @task
-def main(repo, repourl, branch, build, buildtype, magento_email=None, db_name=None, db_username=None, db_password=None, dump_file=None, keepbuilds=10, buildtype_override=False, httpauth_pass=None, cluster=False, with_no_dev=True, statuscakeuser=None, statuscakekey=None, statuscakeid=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', www_root='/var/www'):
+def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, db_name=None, db_username=None, db_password=None, dump_file=None, keepbuilds=10, buildtype_override=False, httpauth_pass=None, cluster=False, with_no_dev=True, statuscakeuser=None, statuscakekey=None, statuscakeid=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', www_root='/var/www'):
   
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
@@ -59,6 +59,8 @@ def main(repo, repourl, branch, build, buildtype, magento_email=None, db_name=No
   notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
   # Need to keep potentially passed in 'url' value as default
   url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
+  # This cleans a provided URL and will generate one if none has been provided
+  url = common.Utils.generate_url(url, alias, branch)
 
   # Can be set in the config.ini [Magento] section
   magento_password = common.ConfigFile.return_config_item(config, "Magento", "magento_username", "string", common.Utils._gen_passwd())
