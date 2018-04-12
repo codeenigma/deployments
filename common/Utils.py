@@ -123,7 +123,7 @@ def remove_old_builds(repo, branch, keepbuilds, buildtype=None):
 def initial_build_create_live_symlink(repo, buildtype, build):
   print "===> Setting the live document root symlink"
   # We need to force this to avoid a repeat of https://redmine.codeenigma.net/issues/20779
-  sudo("ln -nsf /var/www/%s_%s_%s /var/www/live.%s.%s" % (repo, branch, build, repo, branch))
+  sudo("ln -nsf /var/www/%s_%s_%s /var/www/live.%s.%s" % (repo, buildtype, build, repo, buildtype))
 
 
 # Adjust symlink in /var/www/project to point to the new build
