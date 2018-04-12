@@ -20,11 +20,7 @@ env.shell = '/bin/bash -c'
 
 
 ######
-def main(repo, repourl, branch, build, buildtype, shared_static_dir=False, db_name=None, db_username=None, db_password=None, dump_file=None, keepbuilds=10, buildtype_override=False, httpauth_pass=None, cluster=False, with_no_dev=True, statuscakeuser=None, statuscakekey=None, statuscakeid=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', www_root='/var/www'):
-
-  # shared_static_dir:
-  #   on dev this is dynamically generated and stored in /var/www/shared
-  #   on prod it's generated on build and kept in the build folder
+def main(repo, repourl, branch, build, buildtype, magento_email=None, db_name=None, db_username=None, db_password=None, dump_file=None, keepbuilds=10, buildtype_override=False, httpauth_pass=None, cluster=False, with_no_dev=True, statuscakeuser=None, statuscakekey=None, statuscakeid=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', www_root='/var/www'):
   
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
@@ -63,6 +59,15 @@ def main(repo, repourl, branch, build, buildtype, shared_static_dir=False, db_na
   # Need to keep potentially passed in 'url' value as default
   url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
 
+  # Can be set in the config.ini [Magento] section
+  magento_password = common.ConfigFile.return_config_item(config, "Magento", "magento_username", "string", common.Utils._gen_passwd())
+  magento_username = common.ConfigFile.return_config_item(config, "Magento", "magento_username", "string", "admin")
+  magento_email = common.ConfigFile.return_config_item(config, "Magento", "magento_email", "string", magento_email)
+  magento_firstname = common.ConfigFile.return_config_item(config, "Magento", "magento_firstname", "string", "Some")
+  magento_lastname = common.ConfigFile.return_config_item(config, "Magento", "magento_lastname", "string", "User")
+  magento_admin_path = common.ConfigFile.return_config_item(config, "Magento", "magento_admin_path", "string", "admin")
+  magento_mode = common.ConfigFile.return_config_item(config, "Magento", "magento_mode", "string", "production")
+  magento_sample_data = common.ConfigFile.return_config_item(config, "Magento", "magento_sample_data", "boolean", False)
   # Can be set in the config.ini [Database] section
   db_name = common.ConfigFile.return_config_item(config, "Database", "db_name")
   db_username = common.ConfigFile.return_config_item(config, "Database", "db_username")
@@ -102,12 +107,15 @@ def main(repo, repourl, branch, build, buildtype, shared_static_dir=False, db_na
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
 
     # Check for expected shared directories
-    execute(common.Utils.create_config_directory, hosts=env.roledefs['app_all'])
     execute(common.Utils.create_shared_directory, hosts=env.roledefs['app_all'])
     execute(common.Utils.initial_build_create_live_symlink, repo, buildtype, build, hosts=env.roledefs['app_all'])
 
     try:
-      execute(InitialBuild.initial_magento_build, repo, url, buildtype, build, shared_static_dir, config, rds, db_name, db_username, mysql_version, db_password, mysql_config, dump_file)
+      execute(InitialBuild.initial_magento_folders, repo, buildtype, www_root, site_root, user)
+      execute(InitialBuild.initial_magento_build, repo, repourl, branch, url, www_root, site_root, buildtype, build, config, rds, db_name, db_username, mysql_version, db_password, mysql_config, dump_file, magento_password, magento_username, magento_email, magento_firstname, magento_lastname, magento_admin_path, magento_mode)
+      execute(Magento.adjust_files_symlink, repo, buildtype, www_root, site_root, user)
+      if magento_sample_data:
+        execute(InitialBuild.initial_build_sample_data, site_root)
       execute(InitialBuild.initial_build_vhost, webserver, repo, buildtype, url)
       if httpauth_pass:
         common.Utils.create_httpauth(webserver, repo, buildtype, url, httpauth_pass)
@@ -116,7 +124,7 @@ def main(repo, repourl, branch, build, buildtype, shared_static_dir=False, db_na
       execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
       execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
 
-      execute(Magento.generate_magento_cron, repo, environment)
+      execute(Magento.generate_magento_cron, repo, buildtype, site_link)
 
       # Let's allow developers to perform some post-build actions if they need to
       execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
@@ -133,45 +141,55 @@ def main(repo, repourl, branch, build, buildtype, shared_static_dir=False, db_na
       print "===> Taking a database backup of the Magento database..."
       # Get the credentials for Magento in order to be able to dump the database
       with settings(hide('stdout', 'running')):
-        db_name = run("grep dbname /var/www/live.%s.%s/www/app/etc/env.php | awk {'print $3'} | head -1 | cut -d\\' -f2" % (repo, buildtype))
+        db_name = run("grep dbname %s/www/app/etc/env.php | awk {'print $3'} | head -1 | cut -d\\' -f2" % site_link)
       execute(common.MySQL.mysql_backup_db, db_name, build, True)
 
       # Start Magento tasks
-      execute(Magento.adjust_files_symlink, repo, buildtype, build, url, shared_static_dir)
-      execute(Magento.magento_compilation_steps, repo, buildtype, build)
-      execute(Magento.magento_maintenance_mode, repo, buildtype, build, 'enable')
+      execute(Magento.adjust_files_symlink, repo, buildtype, www_root, site_root, user)
+      execute(Magento.magento_compilation_steps, site_root, user)
+      execute(Magento.magento_maintenance_mode, site_root, 'enable')
       execute(common.adjust_live_symlink, repo, branch, build, buildtype)
 
       # Let's allow developers to perform some actions right after Magento is built
       execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
 
       # Then carry on with db updates
-      execute(Magento.magento_database_updates, repo, buildtype, build)
-      execute(Magento.magento_maintenance_mode, repo, buildtype, build, 'disable')
+      execute(Magento.magento_database_updates, site_root)
+      execute(Magento.magento_maintenance_mode, site_root, 'disable')
 
       # Restart services
       execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
       execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
       execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
 
-      execute(Magento.generate_magento_cron, repo, environment)
+      execute(Magento.generate_magento_cron, repo, buildtype, site_link)
 
       # Let's allow developers to perform some post-build actions if they need to
       execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
 
-      # Run phpunit tests
-      if phpunit_run:
-        path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
-        phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path)
-        if phpunit_tests_failed:
-          print "####### phpunit tests failed but the build is set to disregard... continuing, but you should review your test output"
-        else:
-          print "===> phpunit tests ran successfully."
-      else:
-        print "===> No phpunit tests."
-
-      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', hosts=env.roledefs['app_all'])
       execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, hosts=env.roledefs['app_all'])
     except:
       e = sys.exc_info()[1]
       raise SystemError(e)
+
+  # Now let's do some post-build stuff
+
+  # Run phpunit tests
+  if phpunit_run:
+    path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
+    phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path)
+    if phpunit_tests_failed:
+      print "####### phpunit tests failed but the build is set to disregard... continuing, but you should review your test output"
+    else:
+      print "===> phpunit tests ran successfully."
+  else:
+    print "===> No phpunit tests."
+
+  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', hosts=env.roledefs['app_all'])
+
+  # If this is autoscale at AWS, let's update the tarball in S3
+  if autoscale:
+    execute(common.Utils.tarball_up_to_s3, www_root, repo, buildtype, build, autoscale)
+
+  print "####### BUILD COMPLETE."
+  # @TODO: No revert behaviour as yet
