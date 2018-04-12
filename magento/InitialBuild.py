@@ -26,9 +26,11 @@ def initial_magento_folders(repo, buildtype, www_root, site_root, user):
 
   print "===> Setting up links to first build"
   # pub/media
+  run("mkdir -p %s/www/pub" % site_root)
   sudo("ln -s %s/shared/%s_magento_%s_pub/media %s/www/pub/media" % (www_root, repo, buildtype, site_root))
   # The 'var' directory is not 'shared' due to strange cache behaviour when the 'cache' dir is persistent across builds
   # Instead, only var/log, var/report and var/session are 'shared', but the rest of 'var' is build-specific.
+  run("mkdir -p %s/www/var" % site_root)
   sudo("ln -s %s/shared/%s_magento_%s_var/log %s/www/var/log" % (www_root, repo, buildtype, site_root))
   sudo("ln -s %s/shared/%s_magento_%s_var/session %s/www/var/session" % (www_root, repo, buildtype, site_root))
   sudo("ln -s %s/shared/%s_magento_%s_var/report %s/www/var/report" % (www_root, repo, buildtype, site_root))
