@@ -19,7 +19,7 @@ import InitialBuild
 env.shell = '/bin/bash -c'
 
 
-######
+# Main build script
 @task
 def main(repo, repourl, branch, build, buildtype, magento_email=None, db_name=None, db_username=None, db_password=None, dump_file=None, keepbuilds=10, buildtype_override=False, httpauth_pass=None, cluster=False, with_no_dev=True, statuscakeuser=None, statuscakekey=None, statuscakeid=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', www_root='/var/www'):
   
@@ -43,6 +43,9 @@ def main(repo, repourl, branch, build, buildtype, magento_email=None, db_name=No
   site_root = www_root + '/%s_%s_%s' % (repo, buildtype, build)
   site_link = www_root + '/live.%s.%s' % (repo, buildtype)
 
+  # Set our host_string based on user@host
+  env.host_string = '%s@%s' % (user, env.host)
+
   # Determine web server
   webserver = "nginx"
   with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
@@ -50,9 +53,6 @@ def main(repo, repourl, branch, build, buildtype, magento_email=None, db_name=No
     for service in services:
       if run('pgrep -lf %s | egrep -v "bash|grep" > /dev/null' % service).return_code == 0:
         webserver = service
-
-  # Set our host_string based on user@host
-  env.host_string = '%s@%s' % (user, env.host)
 
   # Can be set in the config.ini [Build] section
   ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
