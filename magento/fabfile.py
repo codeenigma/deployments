@@ -60,7 +60,7 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
   # Need to keep potentially passed in 'url' value as default
   url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
   # This cleans a provided URL and will generate one if none has been provided
-  url = common.Utils.generate_url(url, alias, branch)
+  url = common.Utils.generate_url(url, repo, buildtype)
 
   # Can be set in the config.ini [Magento] section
   magento_password = common.ConfigFile.return_config_item(config, "Magento", "magento_username", "string", common.Utils._gen_passwd())
