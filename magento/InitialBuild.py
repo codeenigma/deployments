@@ -67,13 +67,14 @@ def initial_magento_build(repo, repourl, branch, url, www_root, site_root, build
   with cd("%s/www" % site_root):
     if not magento_email:
       magento_email = "example@example.com"
+    magento_url = 'https://' + url
     if run("php bin/magento setup:install --admin-firstname=%s --admin-lastname=%s --admin-email=%s --admin-user=%s --admin-password=%s --base-url=%s --backend-frontname=%s --db-host=%s --db-name=%s --db-user=%s --db-password=%s --use-rewrites=1 --use-secure=1 --use-secure-admin=1 --cleanup-database"
-        % (magento_firstname, magento_lastname, magento_email, magento_username, magento_password, url, magento_admin_path, new_database[3], new_database[0], new_database[1], new_database[2])
+        % (magento_firstname, magento_lastname, magento_email, magento_username, magento_password, magento_url, magento_admin_path, new_database[3], new_database[0], new_database[1], new_database[2])
         ).failed:
       print "########### Magento install went wrong, aborting!"
     else:
       print "########### Your Magento site is ready!"
-      print "===> The admin area URL is %s" % (url + '/' + magento_admin_path)
+      print "===> The admin area URL is %s" % (magento_url + '/' + magento_admin_path)
       print "            username: %s" % (magento_username)
       print "            password: %s" % (magento_password)
 
