@@ -50,7 +50,7 @@ def initial_magento_folders(repo, buildtype, www_root, site_root, user):
 # Actually install Magento
 @task
 @roles('app_primary')
-def initial_magento_build(repo, repourl, branch, url, www_root, site_root, buildtype, build, config, rds, db_name, db_username, mysql_version, db_password, mysql_config, dump_file, magento_password, magento_username, magento_email, magento_firstname, magento_lastname, magento_admin_path, magento_mode, cluster):
+def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root, buildtype, build, config, rds, db_name, db_username, mysql_version, db_password, mysql_config, dump_file, magento_password, magento_username, magento_email, magento_firstname, magento_lastname, magento_admin_path, magento_mode, cluster):
   # We can default these to None, mysql_new_database() will sort itself out
   list_of_app_servers = None
   db_host = None
@@ -70,6 +70,8 @@ def initial_magento_build(repo, repourl, branch, url, www_root, site_root, build
 
   # Install Magento
   with cd("%s/www" % site_root):
+    # We need Jenkins to own the directories for the installation
+    sudo("chown -R %s:%s *" % (user, user))
     if not magento_email:
       magento_email = "example@example.com"
     magento_url = 'https://' + url
@@ -99,6 +101,8 @@ def initial_magento_build(repo, repourl, branch, url, www_root, site_root, build
     # And move it to shared so it is available to potential other app servers
     sudo("mv app/etc/config.php %s/shared/%s_magento_%s_etc/" % (www_root, repo, buildtype))
     sudo("ln -s %s/shared/%s_magento_%s_etc/config.php app/etc/config.php" % (www_root, repo, buildtype))
+    # Set perms back to www user
+    sudo("chown -R www-data:www-data *")
 
 
 # Install sample data.
