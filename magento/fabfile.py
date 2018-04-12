@@ -20,6 +20,7 @@ env.shell = '/bin/bash -c'
 
 
 ######
+@task
 def main(repo, repourl, branch, build, buildtype, magento_email=None, db_name=None, db_username=None, db_password=None, dump_file=None, keepbuilds=10, buildtype_override=False, httpauth_pass=None, cluster=False, with_no_dev=True, statuscakeuser=None, statuscakekey=None, statuscakeid=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', www_root='/var/www'):
   
   # Read the config.ini file from repo, if it exists
