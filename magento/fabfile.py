@@ -115,7 +115,7 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
 
     try:
       execute(InitialBuild.initial_magento_folders, repo, buildtype, www_root, site_root, user)
-      execute(InitialBuild.initial_magento_build, repo, repourl, branch, url, www_root, site_root, buildtype, build, config, rds, db_name, db_username, mysql_version, db_password, mysql_config, dump_file, magento_password, magento_username, magento_email, magento_firstname, magento_lastname, magento_admin_path, magento_mode)
+      execute(InitialBuild.initial_magento_build, repo, repourl, branch, url, www_root, site_root, buildtype, build, config, rds, db_name, db_username, mysql_version, db_password, mysql_config, dump_file, magento_password, magento_username, magento_email, magento_firstname, magento_lastname, magento_admin_path, magento_mode, cluster)
       execute(Magento.adjust_files_symlink, repo, buildtype, www_root, site_root, user)
       if magento_sample_data:
         execute(InitialBuild.initial_build_sample_data, site_root)

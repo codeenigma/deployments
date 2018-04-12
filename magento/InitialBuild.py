@@ -45,7 +45,7 @@ def initial_magento_folders(repo, buildtype, www_root, site_root, user):
 # Actually install Magento
 @task
 @roles('app_primary')
-def initial_magento_build(repo, repourl, branch, url, www_root, site_root, buildtype, build, config, rds, db_name, db_username, mysql_version, db_password, mysql_config, dump_file, magento_password, magento_username, magento_email, magento_firstname, magento_lastname, magento_admin_path, magento_mode):
+def initial_magento_build(repo, repourl, branch, url, www_root, site_root, buildtype, build, config, rds, db_name, db_username, mysql_version, db_password, mysql_config, dump_file, magento_password, magento_username, magento_email, magento_firstname, magento_lastname, magento_admin_path, magento_mode, cluster):
   # We can default these to None, mysql_new_database() will sort itself out
   list_of_app_servers = None
   db_host = None
