@@ -29,12 +29,16 @@ def initial_magento_folders(repo, buildtype, www_root, site_root, user):
   run("mkdir -p %s/www/pub/static" % site_root)
   # pub/media (must happen after the pub/static as it creates pub)
   sudo("ln -s %s/shared/%s_magento_%s_pub/media %s/www/pub/media" % (www_root, repo, buildtype, site_root))
+  sudo("chown -R %s:www-data %s/shared/%s_magento_%s_pub" % (user, www_root, repo, buildtype))
   # The 'var' directory is not 'shared' due to strange cache behaviour when the 'cache' dir is persistent across builds
   # Instead, only var/log, var/report and var/session are 'shared', but the rest of 'var' is build-specific.
   run("mkdir -p %s/www/var" % site_root)
   sudo("ln -s %s/shared/%s_magento_%s_var/log %s/www/var/log" % (www_root, repo, buildtype, site_root))
   sudo("ln -s %s/shared/%s_magento_%s_var/session %s/www/var/session" % (www_root, repo, buildtype, site_root))
   sudo("ln -s %s/shared/%s_magento_%s_var/report %s/www/var/report" % (www_root, repo, buildtype, site_root))
+  with cd("%s/shared/%s_magento_%s_var" % (www_root, repo, buildtype)):
+    sudo("chown -R %s:www-data *" % user)
+    sudo("chmod 2775 *")
   # app/etc
   run("mkdir -p %s/www/app/etc" % site_root)
 
