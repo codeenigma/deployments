@@ -21,7 +21,7 @@ env.shell = '/bin/bash -c'
 
 # Main build script
 @task
-def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, db_name=None, db_username=None, db_password=None, dump_file=None, keepbuilds=10, buildtype_override=False, httpauth_pass=None, cluster=False, with_no_dev=True, statuscakeuser=None, statuscakekey=None, statuscakeid=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', www_root='/var/www'):
+def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, db_name=None, db_username=None, db_password=None, dump_file=None, magento_marketplace_username=None, magento_marketplace_password=None, keepbuilds=10, buildtype_override=False, httpauth_pass=None, cluster=False, with_no_dev=True, statuscakeuser=None, statuscakekey=None, statuscakeid=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', www_root='/var/www'):
   
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
@@ -71,6 +71,8 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
   magento_admin_path = common.ConfigFile.return_config_item(config, "Magento", "magento_admin_path", "string", "admin")
   magento_mode = common.ConfigFile.return_config_item(config, "Magento", "magento_mode", "string", "production")
   magento_sample_data = common.ConfigFile.return_config_item(config, "Magento", "magento_sample_data", "boolean", False)
+  magento_marketplace_username = common.ConfigFile.return_config_item(config, "Magento", "magento_marketplace_username", "string", magento_marketplace_username)
+  magento_marketplace_password = common.ConfigFile.return_config_item(config, "Magento", "magento_marketplace_password", "string", magento_marketplace_password)
   # Can be set in the config.ini [Database] section
   db_name = common.ConfigFile.return_config_item(config, "Database", "db_name")
   db_username = common.ConfigFile.return_config_item(config, "Database", "db_username")
@@ -115,7 +117,7 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
 
     try:
       execute(InitialBuild.initial_magento_folders, repo, buildtype, www_root, site_root, user)
-      execute(InitialBuild.initial_magento_build, repo, repourl, branch, user, url, www_root, site_root, buildtype, build, config, rds, db_name, db_username, mysql_version, db_password, mysql_config, dump_file, magento_password, magento_username, magento_email, magento_firstname, magento_lastname, magento_admin_path, magento_mode, cluster)
+      execute(InitialBuild.initial_magento_build, repo, repourl, branch, user, url, www_root, site_root, buildtype, build, config, rds, db_name, db_username, mysql_version, db_password, mysql_config, dump_file, magento_password, magento_username, magento_email, magento_firstname, magento_lastname, magento_admin_path, magento_mode, magento_marketplace_username, magento_marketplace_password, cluster)
       execute(Magento.adjust_files_symlink, repo, buildtype, www_root, site_root, user)
       if magento_sample_data:
         execute(InitialBuild.initial_build_sample_data, site_root)
