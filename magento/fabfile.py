@@ -153,7 +153,7 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
       execute(Magento.adjust_files_symlink, repo, buildtype, www_root, site_root, user)
       execute(Magento.magento_compilation_steps, site_root, user)
       execute(Magento.magento_maintenance_mode, site_root, 'enable')
-      execute(common.adjust_live_symlink, repo, branch, build, buildtype)
+      execute(common.Utils.adjust_live_symlink, repo, branch, build, buildtype)
 
       # Let's allow developers to perform some actions right after Magento is built
       execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
