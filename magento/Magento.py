@@ -35,7 +35,8 @@ def adjust_files_symlink(repo, buildtype, www_root, site_link, site_root, user):
   sudo("ln -s %s/shared/%s_magento_%s_var/session %s/www/var/session" % (www_root, repo, buildtype, site_root))
   sudo("ln -s %s/shared/%s_magento_%s_var/report %s/www/var/report" % (www_root, repo, buildtype, site_root))
   # Sort out config files
-  sudo("mv %s/www/app/etc/config.php %s/shared/%s_magento_%s_etc/" % (site_link, www_root, repo, buildtype))
+  with settings(warn_only=True):
+    sudo("rm %s/www/app/etc/config.php" % site_link)
   sudo("ln -s %s/shared/%s_magento_%s_etc/config.php %s/www/app/etc/config.php" % (www_root, repo, buildtype, site_root))
   sudo("ln -s %s/shared/%s_magento_%s_etc/env.php %s/www/app/etc/env.php" % (www_root, repo, buildtype, site_root))
   # Build static assets
