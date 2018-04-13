@@ -168,7 +168,7 @@ def initial_build_vhost(webserver, repo, buildtype, url, webserverport):
 
   # Set up the vhost config
   print "===> Setting up an %s vhost" % webserver
-  sudo("cp /etc/%s/sites-available/dummy.conf /etc/%s/sites-available/%s.conf" % (webserver, webserver, url))
+  sudo("cp /etc/%s/sites-available/magento-dummy.conf /etc/%s/sites-available/%s.conf" % (webserver, webserver, url))
 
   # Change other dummy values e.g for logs, ServerName
   sudo("sed -i s/dummyfqdn/%s/g /etc/%s/sites-available/%s.conf" % (url, webserver, url))
@@ -179,7 +179,7 @@ def initial_build_vhost(webserver, repo, buildtype, url, webserverport):
   sudo("ln -s /etc/%s/sites-available/%s.conf /etc/%s/sites-enabled/%s.conf" % (webserver, url, webserver, url))
   print "Tidy up and remove the dummy vhosts. Don't fail the build if they can't be removed."
   with settings(warn_only=True):
-    sudo("rm /etc/%s/sites-available/dummy*.conf" % webserver)
+    sudo("rm /etc/%s/sites-available/*dummy*.conf" % webserver)
 
   url_output = url.lower()
   print "***** Your URL is http://%s *****" % url_output
