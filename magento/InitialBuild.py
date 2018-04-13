@@ -60,7 +60,7 @@ def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root,
   if magento_marketplace_username and magento_marketplace_password and composer:
     print "===> Provided with Magento repo credentials, let's use them to build Magento"
     # Make sure composer has the credentials we need, global is set to True
-    common.PHP.composer_command(site_root, "config http-basic.repo.magento.com %s %s", None, True, False, True % (magento_marketplace_username, magento_marketplace_password))
+    common.PHP.composer_command(site_root, "config http-basic.repo.magento.com %s %s" % (magento_marketplace_username, magento_marketplace_password), None, True, False, True)
     with cd(site_root):
       # Blow away any existing 'www' directory, we're going to totally recreate the project
       sudo("rm -R www")
