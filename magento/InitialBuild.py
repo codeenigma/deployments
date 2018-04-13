@@ -158,6 +158,14 @@ def initial_build_sample_data(site_root, user, magento_marketplace_username, mag
 @task
 @roles('app_all')
 def initial_build_vhost(webserver, repo, buildtype, url):
+  # Copy webserver dummy vhosts to server
+  print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
+  script_dir = os.path.dirname(os.path.realpath(__file__))
+  if put(script_dir + '/../util/vhosts/%s/*' % webserver, '/etc/%s/sites-available' % webserver, mode=0644, use_sudo=True).failed:
+    raise SystemExit("===> Couldn't copy over our dummy vhosts! Aborting.")
+  else:
+    print "===> Dummy vhosts copied to app server(s)."
+
   # Set up the vhost config
   print "===> Setting up an %s vhost" % webserver
   sudo("cp /etc/%s/sites-available/dummy.conf /etc/%s/sites-available/%s.conf" % (webserver, webserver, url))
