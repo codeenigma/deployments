@@ -55,18 +55,17 @@ def initial_magento_folders(repo, buildtype, www_root, site_root, user):
 # Actually install Magento
 @task
 @roles('app_primary')
-def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root, buildtype, build, config, rds, db_name, db_username, mysql_version, db_password, mysql_config, dump_file, magento_password, magento_username, magento_email, magento_firstname, magento_lastname, magento_admin_path, magento_mode, magento_marketplace_username, magento_marketplace_password, cluster):
+def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root, buildtype, build, config, composer, composer_lock, no_dev, rds, db_name, db_username, mysql_version, db_password, mysql_config, dump_file, magento_password, magento_username, magento_email, magento_firstname, magento_lastname, magento_admin_path, magento_mode, magento_marketplace_username, magento_marketplace_password, cluster):
   # Should we build Magento?
-  if magento_marketplace_username and magento_marketplace_password:
+  if magento_marketplace_username and magento_marketplace_password and composer:
     print "===> Provided with Magento repo credentials, let's use them to build Magento"
-    # Make sure composer has the credentials we need
-    #run("composer global config http-basic.repo.magento.com %s %s" % (magento_marketplace_username, magento_marketplace_password))
-    common.PHP.composer_command(site_root, "global config http-basic.repo.magento.com %s %s" % (magento_marketplace_username, magento_marketplace_password))
+    # Make sure composer has the credentials we need, global is set to True
+    common.PHP.composer_command(site_root, "config http-basic.repo.magento.com %s %s", None, True, False, True % (magento_marketplace_username, magento_marketplace_password))
     with cd(site_root):
       # Blow away any existing 'www' directory, we're going to totally recreate the project
       sudo("rm -R www")
       #run("composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition=2.2.3 www")
-      common.PHP.composer_command(site_root, "create-project --repository-url=https://repo.magento.com/ magento/project-community-edition=2.2.3 www", None, True, False)
+      common.PHP.composer_command(site_root, "create-project --repository-url=https://repo.magento.com/ magento/project-community-edition=2.2.3 www", None, no_dev, composer_lock)
       # Commit resulting config.php file back to Git
       run("git add -f www")
       run("git commit -m 'Committing the newly built Magento application back to the repository.'")
@@ -132,11 +131,16 @@ def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root,
 # Install sample data.
 @task
 @roles('app_primary')
-def initial_build_sample_data(site_root):
+def initial_build_sample_data(site_root, user):
   print "===> Installing sample data"
   with cd("%s/www" % site_root):
+    # We need Jenkins to own the directories for the installation
+    sudo("chown -R %s:%s *" % (user, user))
+    # Run the import jobs
     run("php bin/magento sampledata:deploy")
     run("php bin/magento setup:upgrade")
+    # Set perms back again to www user
+    sudo("chown -R www-data:www-data *")
 
 
 # Copy the dummy vhost and change values.
