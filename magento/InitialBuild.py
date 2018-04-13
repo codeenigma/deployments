@@ -115,6 +115,8 @@ def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root,
     sudo("ln -s %s/shared/%s_magento_%s_etc/env.php app/etc/env.php" % (www_root, repo, buildtype))
     # Deploy Magento
     run("php bin/magento deploy:mode:set %s" % magento_mode)
+    # Remove env.php again, because we will *re*set the link in Magento.adjust_files_symlink() momentarily
+    sudo("rm app/etc/env.php")
 
     # Commit resulting config.php file back to Git
     run("git add -f app/etc/config.php")
@@ -123,7 +125,6 @@ def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root,
     common.Utils._sshagent_run("cd %s/www && git push -u origin %s" % (site_root, branch))
     # And move it to shared so it is available to potential other app servers
     sudo("mv app/etc/config.php %s/shared/%s_magento_%s_etc/" % (www_root, repo, buildtype))
-    sudo("ln -s %s/shared/%s_magento_%s_etc/config.php app/etc/config.php" % (www_root, repo, buildtype))
     # Set perms back to www user
     sudo("chown -R www-data:www-data *")
 
