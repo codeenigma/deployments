@@ -143,7 +143,7 @@ def initial_build_sample_data(site_root, user, magento_marketplace_username, mag
       sudo("chown -R %s:%s *" % (user, user))
       # Run the import jobs
       run("php bin/magento sampledata:deploy")
-      run("php bin/magento setup:upgrade --keep-generated")
+      run("php bin/magento setup:upgrade")
       # Set perms back again to www user
       sudo("chown -R www-data:www-data *")
       print "===> Sample data installed"

@@ -121,6 +121,7 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
       execute(Magento.adjust_files_symlink, repo, buildtype, www_root, site_root, user)
       if magento_sample_data:
         execute(InitialBuild.initial_build_sample_data, site_root, user, magento_marketplace_username, magento_marketplace_password)
+        execute(Magento.magento_compilation_steps, site_root, user)
       execute(InitialBuild.initial_build_vhost, webserver, repo, buildtype, url, webserverport)
       if httpauth_pass:
         common.Utils.create_httpauth(webserver, repo, buildtype, url, httpauth_pass)
