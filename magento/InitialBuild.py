@@ -71,7 +71,7 @@ def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root,
       run("git add -f www")
       run("git commit -m 'Committing the newly built Magento application back to the repository.'")
       # Need to make sure we forward our private key to push
-      common.Utils._sshagent_run("git push -u origin %s" % branch)
+      common.Utils._sshagent_run("cd %s && git push -u origin %s" % (site_root, branch))
 
   # We can default these to None, mysql_new_database() will sort itself out
   list_of_app_servers = None
@@ -120,7 +120,7 @@ def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root,
     run("git add -f app/etc/config.php")
     run("git commit -m 'Committing config.php back to the repository.'")
     # Need to make sure we forward our private key to push
-    common.Utils._sshagent_run("git push -u origin %s" % branch)
+    common.Utils._sshagent_run("cd %s/www && git push -u origin %s" % (site_root, branch))
     # And move it to shared so it is available to potential other app servers
     sudo("mv app/etc/config.php %s/shared/%s_magento_%s_etc/" % (www_root, repo, buildtype))
     sudo("ln -s %s/shared/%s_magento_%s_etc/config.php app/etc/config.php" % (www_root, repo, buildtype))
