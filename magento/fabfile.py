@@ -63,7 +63,7 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
   url = common.Utils.generate_url(url, repo, buildtype)
 
   # Can be set in the config.ini [Magento] section
-  magento_password = common.ConfigFile.return_config_item(config, "Magento", "magento_username", "string", common.Utils._gen_passwd())
+  magento_password = common.ConfigFile.return_config_item(config, "Magento", "magento_username", "string", common.Utils._gen_passwd(8, True))
   magento_username = common.ConfigFile.return_config_item(config, "Magento", "magento_username", "string", "admin")
   magento_email = common.ConfigFile.return_config_item(config, "Magento", "magento_email", "string", magento_email)
   magento_firstname = common.ConfigFile.return_config_item(config, "Magento", "magento_firstname", "string", "Some")
