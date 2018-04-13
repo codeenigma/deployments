@@ -49,17 +49,15 @@ def adjust_files_symlink(repo, buildtype, www_root, site_root, user):
 @roles('app_all')
 def magento_compilation_steps(site_root, user):
   with cd("%s/www" % site_root):
-    sudo("chown -R %s:%s %s/www/pub/static" % (user, user, site_root))
-    with settings(hide('warnings', 'running', 'stdout', 'stderr'), warn_only=True):
-      if run("stat %s/www/generated" % site_root).return_code == 0:
-        sudo("chown -R %s:%s %s/www/generated" % (user, user, site_root))
-      if run("stat %s/www/var/generated" % site_root).return_code == 0:
-        sudo("chown -R %s:%s %s/www/var/generated" % (user, user, site_root))
+    # Make sure Jenkins owns Magento for the moment
+    sudo("chown -R %s:%s %s/www" % (user, user, site_root))
     # Run compile and static gen steps
     # Weird - apaprently at this point the var dir is chmod 755 again instead of 2775 as above. Set it back to 2775.
     sudo("chmod 2775 %s/www/var" % site_root)
     run("php bin/magento setup:di:compile")
     run("php bin/magento setup:static-content:deploy")
+    # Set perms back again
+    sudo("chown -R www-data:www-data %s/www" % site_root)
 
 
 # Magento maintenance mode tasks
