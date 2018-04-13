@@ -60,7 +60,7 @@ def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root,
   if magento_marketplace_username and magento_marketplace_password and composer:
     print "===> Provided with Magento repo credentials, let's use them to build Magento"
     # Make sure composer has the credentials we need, global is set to True
-    common.PHP.composer_command(site_root, "config http-basic.repo.magento.com %s %s" % (magento_marketplace_username, magento_marketplace_password), None, True, False, True)
+    common.PHP.composer_command(site_root, "config http-basic.repo.magento.com %s %s" % (magento_marketplace_username, magento_marketplace_password))
     with cd(site_root):
       # Blow away any existing 'www' directory, we're going to totally recreate the project
       sudo("rm -R www")
@@ -131,16 +131,23 @@ def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root,
 # Install sample data.
 @task
 @roles('app_primary')
-def initial_build_sample_data(site_root, user):
-  print "===> Installing sample data"
-  with cd("%s/www" % site_root):
-    # We need Jenkins to own the directories for the installation
-    sudo("chown -R %s:%s *" % (user, user))
-    # Run the import jobs
-    run("php bin/magento sampledata:deploy")
-    run("php bin/magento setup:upgrade")
-    # Set perms back again to www user
-    sudo("chown -R www-data:www-data *")
+def initial_build_sample_data(site_root, user, magento_marketplace_username, magento_marketplace_password):
+  if magento_marketplace_username and magento_marketplace_password:
+    print "===> Installing sample data"
+    with cd("%s/www" % site_root):
+      # Set repo.magento.com credentials
+      common.PHP.composer_command(site_root, "config http-basic.repo.magento.com %s %s" % (magento_marketplace_username, magento_marketplace_password))
+      # We need Jenkins to own the directories for the installation
+      sudo("chown -R %s:%s *" % (user, user))
+      # Run the import jobs
+      run("php bin/magento sampledata:deploy")
+      run("php bin/magento setup:upgrade")
+      # Set perms back again to www user
+      sudo("chown -R www-data:www-data *")
+      print "===> Sample data installed"
+  else:
+    print "######### We cannot install sample data without repo.magento.com credentials"
+    print "===> Please set magento_marketplace_username and magento_marketplace_password in your config.ini file or fabric script executor"
 
 
 # Copy the dummy vhost and change values.
