@@ -157,7 +157,7 @@ def initial_build_sample_data(site_root, user, magento_marketplace_username, mag
 # Copy the dummy vhost and change values.
 @task
 @roles('app_all')
-def initial_build_vhost(webserver, repo, buildtype, url):
+def initial_build_vhost(webserver, repo, buildtype, url, webserverport):
   # Copy webserver dummy vhosts to server
   print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
   script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -169,11 +169,11 @@ def initial_build_vhost(webserver, repo, buildtype, url):
   # Set up the vhost config
   print "===> Setting up an %s vhost" % webserver
   sudo("cp /etc/%s/sites-available/dummy.conf /etc/%s/sites-available/%s.conf" % (webserver, webserver, url))
-  sudo("sed -i s/dummydocroot/'\/var\/www\/live.%s.%s\/www/' /etc/%s/sites-available/%s.conf" % (repo, buildtype, webserver, url))
 
-  # change other dummy values e.g for logs, ServerName
-  sudo("sed -i s/dummy/%s.%s/ /etc/%s/sites-available/%s.conf" % (repo, buildtype, webserver, url))
-  sudo("sed -i s/example/%s/ /etc/%s/sites-available/%s.conf" % (url, webserver, url))
+  # Change other dummy values e.g for logs, ServerName
+  sudo("sed -i s/dummyfqdn/%s/g /etc/%s/sites-available/%s.conf" % (url, webserver, url))
+  sudo("sed -i s/dummyport/%s/g /etc/%s/sites-available/%s.conf" % (webserverport, webserver, url))
+  sudo("sed -i s/dummy/%s.%s/g /etc/%s/sites-available/%s.conf" % (repo, buildtype, webserver, url))
 
   # Enable the vhost
   sudo("ln -s /etc/%s/sites-available/%s.conf /etc/%s/sites-enabled/%s.conf" % (webserver, url, webserver, url))

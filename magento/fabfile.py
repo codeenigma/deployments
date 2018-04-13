@@ -21,7 +21,7 @@ env.shell = '/bin/bash -c'
 
 # Main build script
 @task
-def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, db_name=None, db_username=None, db_password=None, dump_file=None, magento_marketplace_username=None, magento_marketplace_password=None, keepbuilds=10, buildtype_override=False, httpauth_pass=None, cluster=False, with_no_dev=True, statuscakeuser=None, statuscakekey=None, statuscakeid=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', www_root='/var/www'):
+def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, db_name=None, db_username=None, db_password=None, dump_file=None, magento_marketplace_username=None, magento_marketplace_password=None, keepbuilds=10, buildtype_override=False, httpauth_pass=None, cluster=False, with_no_dev=True, statuscakeuser=None, statuscakekey=None, statuscakeid=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', www_root='/var/www', webserverport='8080'):
   
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
@@ -121,7 +121,7 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
       execute(Magento.adjust_files_symlink, repo, buildtype, www_root, site_root, user)
       if magento_sample_data:
         execute(InitialBuild.initial_build_sample_data, site_root, user, magento_marketplace_username, magento_marketplace_password)
-      execute(InitialBuild.initial_build_vhost, webserver, repo, buildtype, url)
+      execute(InitialBuild.initial_build_vhost, webserver, repo, buildtype, url, webserverport)
       if httpauth_pass:
         common.Utils.create_httpauth(webserver, repo, buildtype, url, httpauth_pass)
       # Restart services
