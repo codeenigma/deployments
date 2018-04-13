@@ -59,6 +59,8 @@ def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root,
   # Should we build Magento?
   if magento_marketplace_username and magento_marketplace_password and composer:
     print "===> Provided with Magento repo credentials, let's use them to build Magento"
+    # Make sure composer.json exists
+    common.PHP.composer_command(site_root, "--no-interaction init")
     # Make sure composer has the credentials we need, global is set to True
     common.PHP.composer_command(site_root, "config http-basic.repo.magento.com %s %s" % (magento_marketplace_username, magento_marketplace_password))
     with cd(site_root):
@@ -135,6 +137,8 @@ def initial_build_sample_data(site_root, user, magento_marketplace_username, mag
   if magento_marketplace_username and magento_marketplace_password:
     print "===> Installing sample data"
     with cd("%s/www" % site_root):
+      # Make sure composer.json exists
+      common.PHP.composer_command(site_root, "--no-interaction init")
       # Set repo.magento.com credentials
       common.PHP.composer_command(site_root, "config http-basic.repo.magento.com %s %s" % (magento_marketplace_username, magento_marketplace_password))
       # We need Jenkins to own the directories for the installation
