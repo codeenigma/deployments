@@ -172,7 +172,7 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
       # Let's allow developers to perform some post-build actions if they need to
       execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
 
-      execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, hosts=env.roledefs['app_all'])
+      execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, buildtype, hosts=env.roledefs['app_all'])
     except:
       e = sys.exc_info()[1]
       raise SystemError(e)
@@ -181,8 +181,7 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
 
   # Run phpunit tests
   if phpunit_run:
-    path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
-    phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path)
+    phpunit_tests_failed = common.Tests.run_phpunit_tests(site_root + '/www', phpunit_group, phpunit_test_directory, phpunit_path)
     if phpunit_tests_failed:
       print "####### phpunit tests failed but the build is set to disregard... continuing, but you should review your test output"
     else:
