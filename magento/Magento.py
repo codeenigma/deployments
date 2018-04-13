@@ -39,7 +39,7 @@ def adjust_files_symlink(repo, buildtype, www_root, site_root, user):
   with cd("%s/www" % site_root):
     sudo("php bin/magento setup:static-content:deploy")
     sudo("chown -R %s:%s %s/www/pub/static" % (user, user, site_root))
-    sudo("chown -R www-data:www-data %s/www/pub/static/_requirejs" % site_root)
+    sudo("chown -R www-data:www-data %s/www/pub/static" % site_root)
     sudo("chown -R www-data:www-data %s/shared/%s_magento_%s_var" % (www_root, repo, buildtype))
 
 

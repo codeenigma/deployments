@@ -102,7 +102,7 @@ def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root,
         ).failed:
       print "########### Magento install went wrong, aborting!"
     else:
-      print "########### Your Magento site is ready!"
+      print "########### Your Magento site is almost ready!"
       print "===> The admin area URL is %s" % (magento_url + '/' + magento_admin_path)
       print "            username: %s" % (magento_username)
       print "            password: %s" % (magento_password)
