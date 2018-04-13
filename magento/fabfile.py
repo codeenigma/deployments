@@ -118,10 +118,9 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
     try:
       execute(InitialBuild.initial_magento_folders, repo, buildtype, www_root, site_root, user)
       execute(InitialBuild.initial_magento_build, repo, repourl, branch, user, url, www_root, site_root, buildtype, build, config, composer, composer_lock, no_dev, rds, db_name, db_username, mysql_version, db_password, mysql_config, dump_file, magento_password, magento_username, magento_email, magento_firstname, magento_lastname, magento_admin_path, magento_mode, magento_marketplace_username, magento_marketplace_password, cluster)
-      execute(Magento.adjust_files_symlink, repo, buildtype, www_root, site_root, user)
+      execute(Magento.adjust_files_symlink, repo, buildtype, www_root, site_link, site_root, user)
       if magento_sample_data:
         execute(InitialBuild.initial_build_sample_data, site_root, user, magento_marketplace_username, magento_marketplace_password)
-        execute(Magento.magento_compilation_steps, site_root, user)
       execute(InitialBuild.initial_build_vhost, webserver, repo, buildtype, url, webserverport)
       if httpauth_pass:
         common.Utils.create_httpauth(webserver, repo, buildtype, url, httpauth_pass)
@@ -151,7 +150,7 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
       execute(common.MySQL.mysql_backup_db, db_name, build, True)
 
       # Start Magento tasks
-      execute(Magento.adjust_files_symlink, repo, buildtype, www_root, site_root, user)
+      execute(Magento.adjust_files_symlink, repo, buildtype, www_root, site_link, site_root, user)
       execute(Magento.magento_compilation_steps, site_root, user)
       execute(Magento.magento_maintenance_mode, site_root, 'enable')
       execute(common.adjust_live_symlink, repo, branch, build, buildtype)

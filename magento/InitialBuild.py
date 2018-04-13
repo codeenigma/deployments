@@ -68,7 +68,7 @@ def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root,
       sudo("rm -R www")
       #run("composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition=2.2.3 www")
       common.PHP.composer_command(site_root, "create-project --repository-url=https://repo.magento.com/ magento/project-community-edition=2.2.3 www", None, no_dev, composer_lock)
-      # Commit resulting config.php file back to Git
+      # Commit resulting www directory back to Git
       run("git add -f www")
       run("git commit -m 'Committing the newly built Magento application back to the repository.'")
       # Need to make sure we forward our private key to push
@@ -124,8 +124,6 @@ def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root,
     run("git commit -m 'Committing config.php back to the repository.'")
     # Need to make sure we forward our private key to push
     common.Utils._sshagent_run("cd %s/www && git push -u origin %s" % (site_root, branch))
-    # And move it to shared so it is available to potential other app servers
-    sudo("mv app/etc/config.php %s/shared/%s_magento_%s_etc/" % (www_root, repo, buildtype))
     # Set perms back to www user
     sudo("chown -R www-data:www-data *")
 
@@ -145,7 +143,7 @@ def initial_build_sample_data(site_root, user, magento_marketplace_username, mag
       sudo("chown -R %s:%s *" % (user, user))
       # Run the import jobs
       run("php bin/magento sampledata:deploy")
-      run("php bin/magento setup:upgrade")
+      run("php bin/magento setup:upgrade --keep-generated")
       # Set perms back again to www user
       sudo("chown -R www-data:www-data *")
       print "===> Sample data installed"

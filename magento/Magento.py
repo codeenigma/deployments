@@ -25,7 +25,8 @@ def generate_magento_cron(repo, buildtype, site_link):
 
 # Adjust shared files symlink
 @task
-def adjust_files_symlink(repo, buildtype, www_root, site_root, user):
+@roles('app_all')
+def adjust_files_symlink(repo, buildtype, www_root, site_link, site_root, user):
   print "===> Setting the symlink for files"
   sudo("ln -s %s/shared/%s_magento_%s_pub/media %s/www/pub/media" % (www_root, repo, buildtype, site_root))
   # The 'var' directory is not 'shared' due to strange cache behaviour when the 'cache' dir is persistent across builds
@@ -34,6 +35,7 @@ def adjust_files_symlink(repo, buildtype, www_root, site_root, user):
   sudo("ln -s %s/shared/%s_magento_%s_var/session %s/www/var/session" % (www_root, repo, buildtype, site_root))
   sudo("ln -s %s/shared/%s_magento_%s_var/report %s/www/var/report" % (www_root, repo, buildtype, site_root))
   # Sort out config files
+  sudo("mv %s/www/app/etc/config.php %s/shared/%s_magento_%s_etc/" % (site_link, www_root, repo, buildtype))
   sudo("ln -s %s/shared/%s_magento_%s_etc/config.php %s/www/app/etc/config.php" % (www_root, repo, buildtype, site_root))
   sudo("ln -s %s/shared/%s_magento_%s_etc/env.php %s/www/app/etc/env.php" % (www_root, repo, buildtype, site_root))
   # Build static assets
