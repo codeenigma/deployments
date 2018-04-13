@@ -1,4 +1,5 @@
 from fabric.api import *
+from fabric.contrib.files import *
 import os
 import sys
 import random
