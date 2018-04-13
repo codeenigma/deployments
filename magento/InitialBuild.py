@@ -138,9 +138,9 @@ def initial_build_sample_data(site_root, user, magento_marketplace_username, mag
     print "===> Installing sample data"
     with cd("%s/www" % site_root):
       # Make sure composer.json exists
-      common.PHP.composer_command(site_root, "--no-interaction init")
+      common.PHP.composer_command(site_root + '/www', "--no-interaction init")
       # Set repo.magento.com credentials
-      common.PHP.composer_command(site_root, "config http-basic.repo.magento.com %s %s" % (magento_marketplace_username, magento_marketplace_password))
+      common.PHP.composer_command(site_root + '/www', "config http-basic.repo.magento.com %s %s" % (magento_marketplace_username, magento_marketplace_password))
       # We need Jenkins to own the directories for the installation
       sudo("chown -R %s:%s *" % (user, user))
       # Run the import jobs
