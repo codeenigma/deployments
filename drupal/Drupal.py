@@ -301,6 +301,8 @@ def drush_updatedb(repo, branch, build, site, alias, drupal_version):
   db_name = get_db_name(repo, branch, site)
   print "===> Running any database hook updates"
   with settings(warn_only=True):
+    # Clear the Drupal cache before running database updates, as sometimes there can be unexpected results
+    drush_clear_cache(repo, branch, build, site, drupal_version)
     # Apparently APC cache can interfere with drush updatedb expected results here. Clear any chance of caches
     common.Services.clear_php_cache()
     common.Services.clear_varnish_cache()
