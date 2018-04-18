@@ -77,6 +77,8 @@ def mysql_new_database(repo, buildtype, rds=False, db_name=None, db_host=None, d
         for host in app_hosts:
           print "===> Creating a grant host %s." % host
           sudo("mysql --defaults-file=%s -e 'GRANT ALL ON `%s`.* TO \"%s\"@\"%s\" IDENTIFIED BY \"%s\"'" % (mysql_config, db_name, db_username, host, db_password))
+        print "===> Flush privileges."
+        sudo("mysql --defaults-file=%s -e 'FLUSH PRIVILEGES'" % mysql_config)
         # We're done here, break out of the loop
         database_created = True
 

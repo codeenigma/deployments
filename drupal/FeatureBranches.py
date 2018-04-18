@@ -144,6 +144,10 @@ def remove_site(repo, branch, alias):
         dbname = dbname.translate(None, "',")
         print "DEBUG INFO: dbname = %s" % dbname
 
+  # If the dbname variable is still empty, fail the build early
+  if not dbname:
+    raise SystemExit("Could not determine the database name, so we cannot proceed with tearing down the site.")
+
   print "===> Dropping database and user: %s" % dbname
   sudo("mysql --defaults-file=/etc/mysql/debian.cnf -e 'DROP DATABASE IF EXISTS `%s`;'" % dbname)
   sudo("mysql --defaults-file=/etc/mysql/debian.cnf -e \"DROP USER \'%s\'@\'localhost\';\"" % dbname)
