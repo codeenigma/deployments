@@ -18,7 +18,6 @@ import DrupalUtils
 import FeatureBranches
 import InitialBuild
 import Revert
-import Autoscale
 # Needed to get variables set in modules back into the main script
 from DrupalTests import *
 from FeatureBranches import *
@@ -260,10 +259,6 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
   execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
   execute(Drupal.generate_drush_cron, repo, branch)
 
-  # If this is autoscale at AWS, we need to remove *.settings.php from autoscale initial build folders
-  if autoscale:
-    execute(Autoscale.remove_original_settings_files, repo, site)
-
   # If this is a custom/feature branch deployment, we want to run drush updb. If it fails,
   # the build will fail, but because this is being run at the end, there shouldn't need to be
   # any manual clean-up first. Everything else will have run, such as generate drush alias and
@@ -298,10 +293,6 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
 
   # Let's allow developers to perform some actions right after Drupal is built
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
-
-  # If this is autoscale at AWS, we need to remove *.settings.php from autoscale initial build folders
-  if autoscale:
-    execute(Autoscale.remove_original_settings_files, repo, site)
 
   # Export the config if we need to (Drupal 8+)
   if config_export:
