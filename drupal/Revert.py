@@ -16,12 +16,12 @@ def _revert_db(alias, branch, build):
 
 # Function to revert settings.php change for when a build fails and database is reverted
 @task
-def _revert_settings(repo, branch, build, site, alias):
+def _revert_settings(repo, branch, build, buildtype, site, alias):
   with settings(warn_only=True):
     settings_file = "/var/www/config/%s_%s.settings.inc" % (alias, branch)
     stable_build = run("readlink /var/www/live.%s.%s" % (repo, branch))
     replace_string = "/var/www/.*\.settings\.php"
-    replace_with = "%s/www/sites/%s/%s.settings.php" % (stable_build, site, branch)
+    replace_with = "%s/www/sites/%s/%s.settings.php" % (stable_build, site, buildtype)
     sed(settings_file, replace_string, replace_with, limit='', use_sudo=True, backup='', flags="i", shell=True)
     print "===> Reverted settings.php"
 
