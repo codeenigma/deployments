@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Generate a Drush Crontab for this site
+
+REPO=$1
+BRANCH=$2
+MINUTE=$(date +%M)
+
+if [[ -z $REPO ]] || [[ -z $BRANCH ]]
+then
+  echo "Missing args!"
+  exit 1
+fi
+
+if [ ! -f /etc/cron.d/${REPO}_${BRANCH}_cron ]; then
+  cat > /etc/cron.d/${REPO}_${BRANCH}_cron <<EOF
+${MINUTE} * * * *       www-data	/usr/local/bin/drush @${REPO}_${BRANCH} cron > /dev/null 2>&1
+EOF
+fi
