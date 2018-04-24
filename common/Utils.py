@@ -31,7 +31,6 @@ def _sshagent_run(cmd, ssh_key=None):
 @task
 def _gen_passwd(N=8, force_mix=False, number_of_numbers=2):
   if force_mix:
-    passwd = None
     password = ''.join(random.choice(string.ascii_letters) for x in range(N-number_of_numbers))
     return password + ''.join(random.choice(string.digits) for x in range(number_of_numbers))
   else:
