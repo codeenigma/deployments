@@ -98,6 +98,9 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
   # Run the tasks.
   execute(common.Utils.clone_repo, repo, repourl, branch, build, buildtype, ssh_key, hosts=env.roledefs['app_all'])
 
+  # Pause StatusCake monitoring
+  statuscake_paused = common.Utils.statuscake_state(statuscakeuser, statuscakekey, statuscakeid, "pause")
+
   # Let's allow developers to perform some early actions if they need to
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
 
@@ -191,6 +194,10 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
     print "===> No phpunit tests."
 
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', hosts=env.roledefs['app_all'])
+
+  # Resume StatusCake monitoring
+  if statuscake_paused:
+    common.Utils.statuscake_state(statuscakeuser, statuscakekey, statuscakeid)
 
   # If this is autoscale at AWS, let's update the tarball in S3
   if autoscale:
