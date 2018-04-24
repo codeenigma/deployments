@@ -125,7 +125,7 @@ def generate_drush_cron(repo, branch):
     sudo("touch /etc/cron.d/%s_%s_cron" % (repo, branch))
     append_string = """%s * * * *       www-data  /usr/local/bin/drush @%s_%s cron > /dev/null 2>&1""" % (now.minute, repo, branch)
     append("/etc/cron.d/%s_%s_cron" % (repo, branch), append_string, use_sudo=True)
-    print "===> New Drupal cron job created at /etc/cron.d/%s_%s_magento_cron" % (repo, branch)
+    print "===> New Drupal cron job created at /etc/cron.d/%s_%s_cron" % (repo, branch)
 
 
 # This function is used to get a fresh database of the site to import into the custom
