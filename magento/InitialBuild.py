@@ -122,6 +122,10 @@ def initial_magento_build(repo, repourl, branch, user, url, www_root, site_root,
     # Commit resulting config.php file back to Git
     run("git add -f app/etc/config.php")
     run("git commit -m 'Committing config.php back to the repository.'")
+    # Note: this happens on app_primary but if we have a cluster this will be shared with other app servers
+    # and the later run of Magento/adjust_files_symlink() will ensure all links are in place.
+    sudo("mv app/etc/config.php %s/shared/%s_magento_%s_etc/" % (www_root, repo, buildtype))
+    sudo("ln -s %s/shared/%s_magento_%s_etc/config.php app/etc/config.php" % (www_root, repo, buildtype))
     # Need to make sure we forward our private key to push
     common.Utils._sshagent_run("cd %s/www && git push -u origin %s" % (site_root, branch))
     # Set perms back to www user
