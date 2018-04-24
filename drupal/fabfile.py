@@ -241,8 +241,8 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
   # Check for expected shared directories
   execute(common.Utils.create_config_directory, hosts=env.roledefs['app_all'])
   execute(common.Utils.create_shared_directory, hosts=env.roledefs['app_all'])
+  execute(common.Utils.initial_build_create_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
   # Build out Drupal
-  execute(InitialBuild.initial_build_create_live_symlink, repo, branch, build)
   execute(InitialBuild.initial_build, repo, url, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds)
   execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build, site, alias)
   execute(InitialBuild.initial_build_move_settings, alias, branch)
