@@ -22,14 +22,16 @@ config = common.ConfigFile.read_config_file()
 
 
 @task
-def main(repo, repourl, branch, build, buildtype, symassets="nosym", keepbuilds=10, cluster=False):
+def main(repo, repourl, branch, build, buildtype, symassets="nosym", keepbuilds=10, url=None, cluster=False, php_ini_file=None):
   # Set our host_string based on user@host
   user = 'jenkins'
 
-  # Set SSH key if needed
-  ssh_key = None
-  if "git@github.com" in repourl:
-    ssh_key = "/var/lib/jenkins/.ssh/id_rsa_github"
+  # Can be set in the config.ini [Build] section
+  ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
+  notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
+  # Need to keep potentially passed in 'url' value as default
+  url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
+  php_ini_file = common.ConfigFile.return_config_item(config, "Build", "php_ini_file", "string", php_ini_file)
 
   # Define primary host
   common.Utils.define_host(config, buildtype, repo)

@@ -32,7 +32,7 @@ global config
 
 # Main build script
 @task
-def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", import_config=False, statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini'):
+def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", import_config=False, statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', php_ini_file=None):
 
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
@@ -63,6 +63,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
   # Need to keep potentially passed in 'url' value as default
   url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
+  php_ini_file = common.ConfigFile.return_config_item(config, "Build", "php_ini_file", "string", php_ini_file)
 
   # Can be set in the config.ini [Database] section
   db_name = common.ConfigFile.return_config_item(config, "Database", "db_name")
