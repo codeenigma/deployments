@@ -79,8 +79,11 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   else:
     console_buildtype = buildtype
 
+  # Check the php_ini_file string isn't doing anything naughty
+  malicious_code = False
+  malicious_code = common.Utils.detect_malicious_strings([';', '&&'], php_ini_file)
   # Set CLI PHP version, if we need to
-  if php_ini_file:
+  if php_ini_file and not malicious_code:
     run("export PHPRC='%s'" % php_ini_file)
 
   # Let's allow developers to perform some early actions if they need to

@@ -136,8 +136,11 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   branch = common.Utils.generate_branch_name(branch)
   print "===> Branch is %s" % branch
 
+  # Check the php_ini_file string isn't doing anything naughty
+  malicious_code = False
+  malicious_code = common.Utils.detect_malicious_strings([';', '&&'], php_ini_file)
   # Set CLI PHP version, if we need to
-  if php_ini_file:
+  if php_ini_file and not malicious_code:
     run("export PHPRC='%s'" % php_ini_file)
 
   # Set branches to be treated as feature branches
