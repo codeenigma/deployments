@@ -30,12 +30,7 @@ config = common.ConfigFile.read_config_file()
 # New 'main()' task which should replace the deployment.sh wrapper, and support repo -> host mapping
 #####
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserverport='8080'):
-  # Set SSH key if needed
-  ssh_key = None
-  if "git@github.com" in repourl:
-    ssh_key = "/var/lib/jenkins/.ssh/id_rsa_github"
-
+def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserverport='8080', php_ini_file=None):
   # We need to iterate through the options in the map and find the right host based on
   # whether the repo name matches any of the options, as they may not be exactly identical
   if config.has_section(buildtype):
@@ -58,6 +53,13 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
   # Set our host_string based on user@host
   env.host_string = '%s@%s' % (user, env.host)
 
+  # Can be set in the config.ini [Build] section
+  ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
+  notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
+  # Need to keep potentially passed in 'url' value as default
+  url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
+  php_ini_file = common.ConfigFile.return_config_item(config, "Build", "php_ini_file", "string", php_ini_file)
+
   # Set a URL if one wasn't already provided
   if url is None:
     url = "%s-%s.codeenigma.net" % (repo, branch)
@@ -73,14 +75,25 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
     else:
       fresh_install = True
 
+  # Check the php_ini_file string isn't doing anything naughty
+  malicious_code = False
+  malicious_code = common.Utils.detect_malicious_strings([';', '&&'], php_ini_file)
+  # Set CLI PHP version, if we need to
+  if php_ini_file and not malicious_code:
+    run("export PHPRC='%s'" % php_ini_file)
+
   if fresh_install == True:
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
     try:
       common.Utils.clone_repo(repo, repourl, branch, build, None, ssh_key)
       InitialBuild.initial_build(repo, url, branch, build, profile, webserverport)
+      # Unset CLI PHP version if we need to
+      if php_ini_file:
+        run("export PHPRC=''")
       common.Services.clear_php_cache()
       common.Services.clear_varnish_cache()
       common.Services.reload_webserver()
+      print "####### BUILD COMPLETE. Your new WordPress site is available at %s" % (url)
     except:
       e = sys.exc_info()[1]
       raise SystemError(e)
@@ -107,14 +120,17 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
       Revert._revert_db(repo, branch, build)
       raise SystemExit("Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
-    #go_online(repo, branch, build, previous_build) # This will revert the database and switch the symlink back if it fails
+    # Unset CLI PHP version if we need to
+    if php_ini_file:
+      run("export PHPRC=''")
+
+    # Restart services
     common.Services.clear_php_cache()
     common.Services.clear_varnish_cache()
-    #generate_drush_cron(repo, branch)
-    #run_tests(repo, branch, build)
-    #cron_enable(repo, branch)
-    #run_behat_tests(repo, branch, build)
-    #commit_new_db(repo, repourl, url, build, branch)
+
+    # @TODO: cron generation not yet created
+    #generate_wordpress_cron(repo, branch)
+
     common.Utils.remove_old_builds(repo, branch, keepbuilds)
 
     script_dir = os.path.dirname(os.path.realpath(__file__))
