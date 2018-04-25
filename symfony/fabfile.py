@@ -79,6 +79,10 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   else:
     console_buildtype = buildtype
 
+  # Set CLI PHP version, if we need to
+  if php_ini_file:
+    run("export PHPRC='%s'" % php_ini_file)
+
   # Let's allow developers to perform some early actions if they need to
   execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
 
@@ -120,12 +124,15 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   if ckfinder:
     execute(Symfony.ckfinder_install, repo, buildtype, build, console_buildtype)
 
+  # Unset CLI PHP version if we need to
+  if php_ini_file:
+    run("export PHPRC=''")
+
 # Probably obsolete, parameters_BUILDTYPE.yml files should autoload
 # @TODO: delete post testing
 #  update_local_parameters(repo, buildtype, build)
 
   execute(Symfony.clear_cache, repo, buildtype, build, console_buildtype)
-  # @TODO - this is Drupal specific. Oops!
   execute(common.Utils.adjust_live_symlink, repo, branch, build, buildtype, hosts=env.roledefs['app_all'])
   execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
   execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])

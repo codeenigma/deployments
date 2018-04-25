@@ -45,6 +45,10 @@ def main(repo, repourl, branch, build, buildtype, symassets="nosym", keepbuilds=
 
   env.host_string = '%s@%s' % (user, env.host)
 
+  # Set CLI PHP version, if we need to (someone might want to execute some CLI PHP in a build hook)
+  if php_ini_file:
+    run("export PHPRC='%s'" % php_ini_file)
+
   # Let's allow developers to perform some pre-build actions if they need to
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
 
@@ -55,5 +59,9 @@ def main(repo, repourl, branch, build, buildtype, symassets="nosym", keepbuilds=
 
   # Let's allow developers to perform some post-build actions if they need to
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
+
+  # Unset CLI PHP version if we need to
+  if php_ini_file:
+    run("export PHPRC=''")
 
   common.Utils.remove_old_builds(repo, branch, keepbuilds)

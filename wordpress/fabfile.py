@@ -75,14 +75,22 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
     else:
       fresh_install = True
 
+  # Set CLI PHP version, if we need to
+  if php_ini_file:
+    run("export PHPRC='%s'" % php_ini_file)
+
   if fresh_install == True:
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
     try:
       common.Utils.clone_repo(repo, repourl, branch, build, None, ssh_key)
       InitialBuild.initial_build(repo, url, branch, build, profile, webserverport)
+      # Unset CLI PHP version if we need to
+      if php_ini_file:
+        run("export PHPRC=''")
       common.Services.clear_php_cache()
       common.Services.clear_varnish_cache()
       common.Services.reload_webserver()
+      print "####### BUILD COMPLETE. Your new WordPress site is available at %s" % (url)
     except:
       e = sys.exc_info()[1]
       raise SystemError(e)
@@ -109,14 +117,17 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
       Revert._revert_db(repo, branch, build)
       raise SystemExit("Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
-    #go_online(repo, branch, build, previous_build) # This will revert the database and switch the symlink back if it fails
+    # Unset CLI PHP version if we need to
+    if php_ini_file:
+      run("export PHPRC=''")
+
+    # Restart services
     common.Services.clear_php_cache()
     common.Services.clear_varnish_cache()
-    #generate_drush_cron(repo, branch)
-    #run_tests(repo, branch, build)
-    #cron_enable(repo, branch)
-    #run_behat_tests(repo, branch, build)
-    #commit_new_db(repo, repourl, url, build, branch)
+
+    # @TODO: cron generation not yet created
+    #generate_wordpress_cron(repo, branch)
+
     common.Utils.remove_old_builds(repo, branch, keepbuilds)
 
     script_dir = os.path.dirname(os.path.realpath(__file__))

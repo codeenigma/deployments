@@ -102,6 +102,10 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
   # Pause StatusCake monitoring
   statuscake_paused = common.Utils.statuscake_state(statuscakeuser, statuscakekey, statuscakeid, "pause")
 
+  # Set CLI PHP version, if we need to
+  if php_ini_file:
+    run("export PHPRC='%s'" % php_ini_file)
+
   # Let's allow developers to perform some early actions if they need to
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
 
@@ -195,6 +199,10 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
     print "===> No phpunit tests."
 
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', hosts=env.roledefs['app_all'])
+
+  # Unset CLI PHP version if we need to
+  if php_ini_file:
+    run("export PHPRC=''")
 
   # Resume StatusCake monitoring
   if statuscake_paused:

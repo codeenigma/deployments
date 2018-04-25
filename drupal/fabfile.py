@@ -136,6 +136,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   branch = common.Utils.generate_branch_name(branch)
   print "===> Branch is %s" % branch
 
+  # Set CLI PHP version, if we need to
+  if php_ini_file:
+    run("export PHPRC='%s'" % php_ini_file)
+
   # Set branches to be treated as feature branches
   # Regardless of whether or not 'fra' is set, we need to set 'branches'
   # our our existing_build_wrapper() function gets upset later.
@@ -204,6 +208,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # If this is a single site, we're done with the 'url' variable anyway
     # If this is a multisite, we have to set it to None so a new 'url' gets generated on the next pass
     url = None
+
+  # Unset CLI PHP version if we need to
+  if php_ini_file:
+    run("export PHPRC=''")
 
   # Resume StatusCake monitoring
   if statuscake_paused:
