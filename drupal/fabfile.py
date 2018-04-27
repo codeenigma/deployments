@@ -172,6 +172,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Just sets to 'default' if it is not
   mapping = {}
   mapping = Drupal.configure_site_mapping(repo, mapping, config)
+  # If this is a multisite build, set the url to None so one is generated for every site in the multisite setup. This particular line will ensure the *first* site has its url generated.
+  if len(mapping) > 1:
+    url = None
   # Run new installs
   for alias,site in mapping.iteritems():
     # Compile variables for feature branch builds (if applicable)
