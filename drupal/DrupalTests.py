@@ -120,8 +120,6 @@ def run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, jun
               break
 
       with cd("/var/www/%s_%s_%s/tests/behat" % (repo, branch, build)):
-        common.PHP.composer_command("/var/www/%s_%s_%s/tests/behat" % (repo, branch, build))
-
         if run("stat behat.yml").failed:
           # No behat.yml file, so let's move our buildtype specific behat file into place, if it exists.
           if run("stat %s.behat.yml" % buildtype).failed:
@@ -172,7 +170,7 @@ def run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, jun
           test_method = '-f progress -o std -f junit -o xml'
         else:
           test_method = '-f pretty -o std'
-        if run("bin/behat -v --tags=\"%s\" %s" % (test_tags, test_method)).failed:
+        if run("/var/www/%s_%s_%s/vendor/bin/behat --config=tests/behat/behat.yml -v --tags=\"%s\" %s" % (test_tags, test_method)).failed:
           print "Behat tests seem to have failed!"
           tests_failed = True
         else:
