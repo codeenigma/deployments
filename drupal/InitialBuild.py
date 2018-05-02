@@ -28,13 +28,6 @@ $aliases['%s_%s'] = array(
   append("/etc/drush/%s_%s.alias.drushrc.php" % (alias, branch), append_string, use_sudo=True)
 
 
-@task
-@roles('app_all')
-def initial_build_create_live_symlink(repo, branch, build):
-  print "===> Setting the live document root symlink"
-  # We need to force this to avoid a repeat of https://redmine.codeenigma.net/issues/20779
-  sudo("ln -nsf /var/www/%s_%s_%s /var/www/live.%s.%s" % (repo, branch, build, repo, branch))
-
 # If composer was run beforehand because the site is Drupal 8, it will have created a
 # files directory for the site with 777 perms. Move it aside and fix perms.
 @task
@@ -307,7 +300,7 @@ def initial_build_vhost(repo, url, branch, build, alias, buildtype, ssl_enabled,
   sudo("ln -s /etc/%s/sites-available/%s.conf /etc/%s/sites-enabled/%s.conf" % (webserver, url, webserver, url))
   print "Tidy up and remove the dummy vhosts. Don't fail the build if they can't be removed."
   with settings(warn_only=True):
-    sudo("rm /etc/%s/sites-available/dummy*.conf" % webserver)
+    sudo("rm /etc/%s/sites-available/*dummy*.conf" % webserver)
 
   url_output = url.lower()
   print "***** Your URL is http://%s *****" % url_output

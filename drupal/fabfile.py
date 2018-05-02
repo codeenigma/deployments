@@ -31,7 +31,7 @@ global config
 
 # Main build script
 @task
-def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", import_config=False, statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini'):
+def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", import_config=False, statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', php_ini_file=None):
 
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
@@ -62,6 +62,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
   # Need to keep potentially passed in 'url' value as default
   url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
+  php_ini_file = common.ConfigFile.return_config_item(config, "Build", "php_ini_file", "string", php_ini_file)
 
   # Can be set in the config.ini [Database] section
   db_name = common.ConfigFile.return_config_item(config, "Database", "db_name")
@@ -134,6 +135,13 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   branch = common.Utils.generate_branch_name(branch)
   print "===> Branch is %s" % branch
 
+  # Check the php_ini_file string isn't doing anything naughty
+  malicious_code = False
+  malicious_code = common.Utils.detect_malicious_strings([';', '&&'], php_ini_file)
+  # Set CLI PHP version, if we need to
+  if php_ini_file and not malicious_code:
+    run("export PHPRC='%s'" % php_ini_file)
+
   # Set branches to be treated as feature branches
   # Regardless of whether or not 'fra' is set, we need to set 'branches'
   # our our existing_build_wrapper() function gets upset later.
@@ -164,6 +172,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Just sets to 'default' if it is not
   mapping = {}
   mapping = Drupal.configure_site_mapping(repo, mapping, config)
+  # If this is a multisite build, set the url to None so one is generated for every site in the multisite setup. This particular line will ensure the *first* site has its url generated.
+  if config.has_section("Sites"):
+    print "Config file has a Sites section, so we'll assume this is a multisite build and set url to None."
+    url = None
   # Run new installs
   for alias,site in mapping.iteritems():
     # Compile variables for feature branch builds (if applicable)
@@ -203,6 +215,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # If this is a multisite, we have to set it to None so a new 'url' gets generated on the next pass
     url = None
 
+  # Unset CLI PHP version if we need to
+  if php_ini_file:
+    run("export PHPRC=''")
+
   # Resume StatusCake monitoring
   if statuscake_paused:
     common.Utils.statuscake_state(statuscakeuser, statuscakekey, statuscakeid)
@@ -241,8 +257,8 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
   # Check for expected shared directories
   execute(common.Utils.create_config_directory, hosts=env.roledefs['app_all'])
   execute(common.Utils.create_shared_directory, hosts=env.roledefs['app_all'])
+  execute(common.Utils.initial_build_create_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
   # Build out Drupal
-  execute(InitialBuild.initial_build_create_live_symlink, repo, branch, build)
   execute(InitialBuild.initial_build, repo, url, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds)
   execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build, site, alias)
   execute(InitialBuild.initial_build_move_settings, alias, branch)
