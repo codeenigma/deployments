@@ -2,6 +2,33 @@ from fabric.api import *
 import common.ConfigFile
 
 
+# Runs a drush command
+@task
+def drush_command(drush_command, drush_runtime_location=None, drush_site=None, drush_sudo=False, drush_path=None, www_user=False):
+  this_command = ""
+  if drush_sudo:
+    this_command = "sudo "
+  # Allow calling applications to specify a path to drush
+  if drush_path:
+    this_command = this_command + drush_path + " -y "
+  else:
+    this_command = this_command + "drush -y "
+  # Pass a URI to drush to process a multisite
+  if drush_site:
+    this_command = this_command + "-l " + drush_site
+  # Run as the web user
+  if www_user:
+    this_command = "su -s /bin/bash www-data -c '" + this_command + "'"
+  # Report back before executing
+  print "===> Running the drush command %s" % this_command
+  # Optionally run in a provided directory
+  if drush_runtime_location:
+    with cd(drush_runtime_location):
+      run(this_command)
+  else:
+    run(this_command)
+
+
 # Determine which Drupal version is being used
 @task
 def determine_drupal_version(drupal_version, repo, branch, build, config, method="deployment"):

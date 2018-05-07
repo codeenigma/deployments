@@ -4,6 +4,7 @@ import random
 import string
 import datetime
 # Custom Code Enigma modules
+import DrupalUtils
 import common.ConfigFile
 import common.Services
 import common.Utils
@@ -362,9 +363,12 @@ def drush_clear_cache(repo, branch, build, site, drupal_version):
   print "===> Clearing Drupal cache..."
   with settings(warn_only=True):
     if drupal_version > 7:
-      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cr'" % (repo, branch, build, site))
+      drush_command = "cr"
+      #sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -l %s -y cr'" % (repo, branch, build, site, site))
     else:
-      sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cc all'" % (repo, branch, build, site))
+      drush_command = "cc all"
+      #sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -l %s -y cc all'" % (repo, branch, build, site, site))
+    DrupalUtils.drush_command(drush_command, "/var/www/%s_%s_%s/www/sites/%s", site, False, None, True % (repo, branch, build, site))
 
 
 # Manage or setup the 'environment_indicator' Drupal module, if it exists in the build

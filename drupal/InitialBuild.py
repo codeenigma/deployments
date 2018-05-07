@@ -52,6 +52,7 @@ def initial_build_create_files_symlink(repo, branch, build, site, alias):
 def initial_build_updatedb(repo, branch, build, site, drupal_version):
   print "===> Running any database hook updates"
   with settings(warn_only=True):
+    # Will use 'site-local' drush, if available
     if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
       raise SystemExit("Could not apply database updates! Everything else has been done, but failing the build to alert to the fact database updates could not be run.")
     if drupal_version > 7:
