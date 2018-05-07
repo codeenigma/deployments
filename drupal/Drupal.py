@@ -108,7 +108,7 @@ def get_db_name(repo, branch, site):
     #db_name = sudo("drush status --format=yaml 2>&1 | grep \"db-name: \" | cut -d \":\" -f 2")
   drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
   drush_output = DrupalUtils.drush_command("status", site, drush_runtime_location, True)
-  db_name = run("echo %s | grep \"db-name: \" | cut -d \":\" -f 2" % drush_output)
+  db_name = run("echo \"%s\" | grep \"db-name: \" | cut -d \":\" -f 2" % drush_output)
 
   # If the dbname variable is empty for whatever reason, resort to grepping settings.php
   if not db_name:

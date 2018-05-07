@@ -8,9 +8,9 @@ def drush_command(drush_command, drush_site=None, drush_runtime_location=".", dr
   this_command = ""
   # Allow calling applications to specify a path to drush
   if drush_path:
-    this_command = this_command + drush_path + " -y "
+    this_command = this_command + drush_path + " -y --format=%s " % drush_format
   else:
-    this_command = this_command + "drush -y "
+    this_command = this_command + "drush -y --format=%s " % drush_format
   # Pass a URI to drush to process a multisite
   if drush_site:
     this_command = this_command + "-l " + drush_site
