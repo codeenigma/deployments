@@ -18,7 +18,6 @@ import DrupalUtils
 import FeatureBranches
 import InitialBuild
 import Revert
-import Autoscale
 # Needed to get variables set in modules back into the main script
 from DrupalTests import *
 from FeatureBranches import *
@@ -173,6 +172,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Just sets to 'default' if it is not
   mapping = {}
   mapping = Drupal.configure_site_mapping(repo, mapping, config)
+  # If this is a multisite build, set the url to None so one is generated for every site in the multisite setup. This particular line will ensure the *first* site has its url generated.
+  if config.has_section("Sites"):
+    print "Config file has a Sites section, so we'll assume this is a multisite build and set url to None."
+    url = None
   # Run new installs
   for alias,site in mapping.iteritems():
     # Compile variables for feature branch builds (if applicable)
@@ -272,10 +275,6 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
   execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
   execute(Drupal.generate_drush_cron, repo, branch)
 
-  # If this is autoscale at AWS, we need to remove *.settings.php from autoscale initial build folders
-  if autoscale:
-    execute(Autoscale.remove_original_settings_files, repo, site)
-
   # If this is a custom/feature branch deployment, we want to run drush updb. If it fails,
   # the build will fail, but because this is being run at the end, there shouldn't need to be
   # any manual clean-up first. Everything else will have run, such as generate drush alias and
@@ -311,26 +310,22 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
   # Let's allow developers to perform some actions right after Drupal is built
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
 
-  # If this is autoscale at AWS, we need to remove *.settings.php from autoscale initial build folders
-  if autoscale:
-    execute(Autoscale.remove_original_settings_files, repo, site)
-
   # Export the config if we need to (Drupal 8+)
   if config_export:
     execute(Drupal.config_export, repo, branch, build, drupal_version)
-  execute(Drupal.drush_status, repo, branch, build, site, alias, revert_settings=True)
+  execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert_settings=True)
 
   # Time to update the database!
   if do_updates == True:
     execute(Drupal.go_offline, repo, branch, build, alias, readonlymode, drupal_version)
     execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
-    execute(Drupal.drush_updatedb, repo, branch, build, site, alias, drupal_version)            # This will revert the database if it fails
+    execute(Drupal.drush_updatedb, repo, branch, build, buildtype, site, alias, drupal_version)            # This will revert the database if it fails
     if fra == True:
       if branch in feature_branches:
-        execute(Drupal.drush_fra, repo, branch, build, site, alias, drupal_version)
+        execute(Drupal.drush_fra, repo, branch, build, buildtype, site, alias, drupal_version)
     if run_cron == True:
       execute(Drupal.drush_cron, repo, branch, build, site, drupal_version)
-    execute(Drupal.drush_status, repo, branch, build, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+    execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
     # Cannot use try: because execute() return not compatible.
     execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
@@ -340,22 +335,22 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
     # The above paths should match - something is wrong if they don't!
     if not this_build == live_build:
       common.MySQL.mysql_revert_db(db_name, build)
-      Revert._revert_settings(repo, branch, build, site, alias)
+      Revert._revert_settings(repo, branch, build, buildtype, site, alias)
       raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
     if import_config:
-      execute(Drupal.config_import, repo, branch, build, site, alias, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
+      execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
 
     # Let's allow developers to use other config management for imports, such as CMI
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', hosts=env.roledefs['app_primary'])
 
     execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
-    execute(Drupal.go_online, repo, branch, build, alias, site, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
+    execute(Drupal.go_online, repo, branch, build, buildtype, alias, site, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
     execute(Drupal.check_node_access, alias, branch, notifications_email)
 
   else:
     print "####### WARNING: by skipping database updates we cannot check if the node access table will be rebuilt. If it will this is an intrusive action that may result in an extended outage."
-    execute(Drupal.drush_status, repo, branch, build, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+    execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
     # Cannot use try: because execute() return not compatible.
     execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
@@ -365,11 +360,11 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
     # The above paths should match - something is wrong if they don't!
     if not this_build == live_build:
       common.MySQL.mysql_revert_db(db_name, build)
-      Revert._revert_settings(repo, branch, build, site, alias)
+      Revert._revert_settings(repo, branch, build, buildtype, site, alias)
       raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
     if import_config:
-      execute(Drupal.config_import, repo, branch, build, site, alias, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
+      execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
 
     # Let's allow developers to use other config management for imports, such as CMI
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', hosts=env.roledefs['app_primary'])
@@ -406,7 +401,7 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
     if phpunit_fail_build and phpunit_tests_failed:
       db_name = get_db_name(repo, branch, site)
       common.MySQL.mysql_revert_db(db_name, build)
-      Revert._revert_settings(repo, branch, build, site, alias)
+      Revert._revert_settings(repo, branch, build, buildtype, site, alias)
       raise SystemExit("####### phpunit tests failed and you have specified you want to fail and roll back when this happens. Reverting database")
     elif phpunit_tests_failed:
       print "####### phpunit tests failed but the build is set to disregard... continuing, but you should review your test output"
