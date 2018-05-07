@@ -368,7 +368,7 @@ def drush_clear_cache(repo, branch, build, site, drupal_version):
     else:
       drush_command = "cc all"
       #sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -l %s -y cc all'" % (repo, branch, build, site, site))
-    DrupalUtils.drush_command(drush_command, "/var/www/%s_%s_%s/www/sites/%s", site, False, None, True % (repo, branch, build, site))
+    DrupalUtils.drush_command(drush_command, "/var/www/%s_%s_%s/www/sites/%s", site, False, None, True) % (repo, branch, build, site)
 
 
 # Manage or setup the 'environment_indicator' Drupal module, if it exists in the build
