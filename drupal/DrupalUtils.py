@@ -16,13 +16,16 @@ def drush_command(drush_command, drush_runtime_location=None, drush_site=None, d
   # Pass a URI to drush to process a multisite
   if drush_site:
     this_command = this_command + "-l " + drush_site
-  # Run as the web user
+  # Build the final command
+  this_command = this_command + " " + drush_command
+  # Optionally run as the web user
   if www_user:
     this_command = "su -s /bin/bash www-data -c '" + this_command + "'"
   # Report back before executing
   print "===> Running the drush command %s" % this_command
   # Optionally run in a provided directory
   if drush_runtime_location:
+    print "===> Running the drush command in the %s directory" % drush_runtime_location
     with cd(drush_runtime_location):
       run(this_command)
   else:
