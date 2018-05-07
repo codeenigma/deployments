@@ -177,7 +177,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   for alias,site in mapping.iteritems():
     # Compile variables for feature branch builds (if applicable)
     FeatureBranches.configure_feature_branch(buildtype, config, branch, alias)
-    print "Feature branch debug information below:"
+    print "===> Feature branch debug information below:"
     print "httpauth_pass: %s" % FeatureBranches.httpauth_pass
     print "ssl_enabled: %s" % FeatureBranches.ssl_enabled
     print "ssl_cert: %s" % FeatureBranches.ssl_cert
@@ -196,7 +196,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Now check if we have a Drush alias with that name. If not, run an install
     with settings(hide('warnings', 'stderr'), warn_only=True):
       if run("drush sa | grep ^@%s_%s$ > /dev/null" % (alias, branch)).failed:
-        print "Didn't find a Drush alias %s_%s so we'll install this new site %s" % (alias, branch, url)
+        print "===> Didn't find a Drush alias %s_%s so we'll install this new site %s" % (alias, branch, url)
         initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale)
       else:
         # Otherwise it's an existing build
@@ -235,7 +235,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # If any of our tests failed, abort the job
   # r23697
   if behat_tests_failed:
-    print "Some tests failed. Aborting the job."
+    print "####### Some tests failed. Aborting the job."
     sys.exit(3)
 
 

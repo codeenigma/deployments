@@ -16,7 +16,7 @@ def determine_drupal_version(drupal_version, repo, branch, build, config, method
     print "===> No drupal_version override in config.ini, so we'll figure out the version of Drupal ourselves"
 
     if run("cd %s/www && drush st | grep 'Drupal version'" % drupal_path).failed:
-      raise SystemExit("Could not determine Drupal version from drush st. If you're using composer, you MUST override this check in the config.ini file with drupal_version set in the [Drupal] section. Please raise a ticket if you're not sure how to do this.")
+      raise SystemExit("####### Could not determine Drupal version from drush st. If you're using composer, you MUST override this check in the config.ini file with drupal_version set in the [Drupal] section. Please raise a ticket if you're not sure how to do this.")
     else:
       drupal_version = run("cd %s/www && drush st | grep \"Drupal version\" | cut -d\: -f2 | cut -d. -f1" % drupal_path)
       drupal_version = drupal_version.strip()
@@ -30,7 +30,7 @@ def determine_drupal_version(drupal_version, repo, branch, build, config, method
 def get_database(shortname, branch, santise):
   # First, check the site exists on target server server
   if run('drush sa | grep ^@%s_%s$ > /dev/null' % (shortname, branch)).failed:
-    print "ERROR: Could not find a site with the Drush alias %s_%s in order to grab a database dump. Aborting." % (shortname, branch)
+    print "####### ERROR: Could not find a site with the Drush alias %s_%s in order to grab a database dump. Aborting." % (shortname, branch)
     raise SystemError("Could not find a site with the Drush alias %s_%s in order to grab a database dump. Aborting." % (shortname, branch))
 
   print "===> Found a site with Drush alias %s_%s. Let's grab a database and copy it down." % (shortname, branch)
