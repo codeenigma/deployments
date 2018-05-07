@@ -4,7 +4,7 @@ import common.ConfigFile
 
 # Runs a drush command
 @task
-def drush_command(drush_command, drush_site=None, drush_runtime_location=".", drush_sudo=False, drush_format="yaml", drush_path=None, www_user=False):
+def drush_command(drush_command, drush_site=None, drush_runtime_location=None, drush_sudo=False, drush_format="yaml", drush_path=None, www_user=False):
   this_command = ""
   # Allow calling applications to specify a path to drush
   if drush_path:
@@ -19,14 +19,17 @@ def drush_command(drush_command, drush_site=None, drush_runtime_location=".", dr
   # Optionally run as the web user
   if www_user:
     this_command = "su -s /bin/bash www-data -c '" + this_command + "'"
+  # Optionally set a runtime location
+  if drush_runtime_location:
+    this_command = "cd %s && %s" % (drush_runtime_location, this_command)
   # Report back before executing
-  print "===> Running the drush command %s in the %s directory" % (this_command, drush_runtime_location)
+  print "===> Running the following command for drush:"
+  print "=====> %s" % this_command
   drush_output = ""
-  with cd(drush_runtime_location):
-    if drush_sudo:
-      drush_output = sudo(this_command)
-    else:
-      drush_output = run(this_command)
+  if drush_sudo:
+    drush_output = sudo(this_command)
+  else:
+    drush_output = run(this_command)
   # Send back whatever happened in case another script needs it
   return drush_output
 
