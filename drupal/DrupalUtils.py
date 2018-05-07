@@ -16,12 +16,12 @@ def drush_command(drush_command, drush_site=None, drush_runtime_location=None, d
     this_command = this_command + "-l " + drush_site
   # Build the final command
   this_command = this_command + " " + drush_command
-  # Optionally run as the web user
-  if www_user:
-    this_command = "su -s /bin/bash www-data -c '" + this_command + "'"
   # Optionally set a runtime location
   if drush_runtime_location:
     this_command = "cd %s && %s" % (drush_runtime_location, this_command)
+  # Optionally run as the web user - this needs to be last to wrap the whole thing
+  if www_user:
+    this_command = "su -s /bin/bash www-data -c '" + this_command + "'"
   # Report back before executing
   print "===> Running the following command for drush:"
   print "=====> %s" % this_command
