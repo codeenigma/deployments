@@ -6,8 +6,6 @@ import common.ConfigFile
 @task
 def drush_command(drush_command, drush_runtime_location=".", drush_site=None, drush_sudo=False, drush_path=None, www_user=False):
   this_command = ""
-  if drush_sudo:
-    this_command = "sudo "
   # Allow calling applications to specify a path to drush
   if drush_path:
     this_command = this_command + drush_path + " -y "
