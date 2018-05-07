@@ -60,9 +60,14 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Can be set in the config.ini [Build] section
   ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
   notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
-  # Need to keep potentially passed in 'url' value as default
-  url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
   php_ini_file = common.ConfigFile.return_config_item(config, "Build", "php_ini_file", "string", php_ini_file)
+  # If this is a multisite build, set the url to None so one is generated for every site in the multisite setup. This particular line will ensure the *first* site has its url generated.
+  if config.has_section("Sites"):
+    print "===> Config file has a [Sites] section, so we'll assume this is a multisite build and set url to None"
+    url = None
+  # Need to keep potentially passed in 'url' value as default
+  else:
+    url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
 
   # Can be set in the config.ini [Database] section
   db_name = common.ConfigFile.return_config_item(config, "Database", "db_name")
@@ -172,10 +177,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Just sets to 'default' if it is not
   mapping = {}
   mapping = Drupal.configure_site_mapping(repo, mapping, config)
-  # If this is a multisite build, set the url to None so one is generated for every site in the multisite setup. This particular line will ensure the *first* site has its url generated.
-  if config.has_section("Sites"):
-    print "Config file has a Sites section, so we'll assume this is a multisite build and set url to None."
-    url = None
+
   # Run new installs
   for alias,site in mapping.iteritems():
     # Compile variables for feature branch builds (if applicable)
