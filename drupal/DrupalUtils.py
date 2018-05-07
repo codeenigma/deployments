@@ -4,13 +4,16 @@ import common.ConfigFile
 
 # Runs a drush command
 @task
-def drush_command(drush_command, drush_site=None, drush_runtime_location=None, drush_sudo=False, drush_format="yaml", drush_path=None, www_user=False):
+def drush_command(drush_command, drush_site=None, drush_runtime_location=None, drush_sudo=False, drush_format=None, drush_path=None, www_user=False):
   this_command = ""
   # Allow calling applications to specify a path to drush
   if drush_path:
-    this_command = this_command + drush_path + " -y --format=%s " % drush_format
+    this_command = this_command + drush_path + " -y "
   else:
-    this_command = this_command + "drush -y --format=%s " % drush_format
+    this_command = this_command + "drush -y "
+  # Set an optional format for the output
+  if drush_format:
+    this_command = this_command + "--format=%s " % drush_format
   # Pass a URI to drush to process a multisite
   if drush_site:
     this_command = this_command + "-l " + drush_site
