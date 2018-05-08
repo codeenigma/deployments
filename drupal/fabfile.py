@@ -305,6 +305,8 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
     # Grab some information about the current build
     previous_build = common.Utils.get_previous_build(repo, branch, build)
     previous_db = common.Utils.get_previous_db(repo, branch, build)
+    # Executing get_db_name twice for Drupal 8 multisites because of a weird drush bug where the db is incorrect on first pass
+    execute(Drupal.get_db_name, repo, branch, build, buildtype, site)
     db_name = execute(Drupal.get_db_name, repo, branch, build, buildtype, site)
     # execute() returns a dictionary of values keyed by hostname
     db_name = db_name[env.roledefs['app_primary'][0]]
