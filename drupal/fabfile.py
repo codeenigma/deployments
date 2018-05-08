@@ -322,7 +322,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
 
     # Time to update the database!
     if do_updates == True:
-      execute(Drupal.go_offline, repo, branch, build, alias, readonlymode, drupal_version)
+      execute(Drupal.go_offline, repo, branch, build, site, alias, readonlymode, drupal_version)
       execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
       execute(Drupal.drush_updatedb, repo, branch, build, buildtype, site, alias, drupal_version)            # This will revert the database if it fails
       if fra == True:
@@ -351,7 +351,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
 
       execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
       execute(Drupal.go_online, repo, branch, build, buildtype, alias, site, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
-      execute(Drupal.check_node_access, alias, branch, notifications_email)
+      execute(Drupal.check_node_access, repo, alias, branch, build, site, notifications_email)
 
     else:
       print "####### WARNING: by skipping database updates we cannot check if the node access table will be rebuilt. If it will this is an intrusive action that may result in an extended outage."

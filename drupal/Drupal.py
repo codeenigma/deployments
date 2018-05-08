@@ -104,11 +104,8 @@ def drush_fra_branches(config, branch):
 @roles('app_primary')
 def get_db_name(repo, branch, build, buildtype, site):
   db_name = None
-  #with cd("/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)):
-    #db_name = sudo("drush status --format=yaml 2>&1 | grep \"db-name: \" | cut -d \":\" -f 2")
   #drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
   #drush_path = "/var/www/live.%s.%s/www/vendor/drush/drush/drush" % (repo, branch)
-  #drush_output = DrupalUtils.drush_command("status", site, drush_runtime_location, True, "yaml", drush_path)
   drush_output = drush_status(repo, branch, build, buildtype, site)
   db_name = run("echo \"%s\" | grep \"db-name: \" | cut -d \":\" -f 2" % drush_output)
 
@@ -321,7 +318,6 @@ def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version):
     common.Services.clear_varnish_cache()
     # Set drush location
     drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
-    #if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
     if DrupalUtils.drush_command("updatedb", site, drush_runtime_location, True, None, None, True).failed:
       print "###### Could not apply database updates! Reverting this database"
       db_name = get_db_name(repo, branch, build, buildtype, site)
@@ -329,7 +325,6 @@ def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version):
       Revert._revert_settings(repo, branch, build, buildtype, site, alias)
       raise SystemExit("###### Could not apply database updates! Reverted database. Site remains on previous build")
     if drupal_version > 7:
-      #if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y entity-updates'" % (repo, branch, build, site)).failed:
       if DrupalUtils.drush_command("entity-updates", site, drush_runtime_location, True, None, None, True).failed:
         print "###### Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
   print "===> Database updates applied"
@@ -366,7 +361,6 @@ def drush_cron(repo, branch, build, site, drupal_version):
   print "===> Running Drupal cron..."
   drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   with settings(warn_only=True):
-    #if sudo("drush -y cron").failed:
     if DrupalUtils.drush_command("cron", site, drush_runtime_location).failed:
       print "###### Could not run cron!"
       raise SystemExit("###### Could not run cron! Site remains on previous build.")
@@ -382,12 +376,10 @@ def drush_clear_cache(repo, branch, build, site, drupal_version):
   with settings(warn_only=True):
     if drupal_version > 7:
       drush_command = "cr"
-      #sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -l %s -y cr'" % (repo, branch, build, site, site))
     else:
       drush_command = "cc all"
-      #sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -l %s -y cc all'" % (repo, branch, build, site, site))
-    drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
-    DrupalUtils.drush_command(drush_command, site, drush_runtime_location, True, None, None, True)
+      drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
+      DrupalUtils.drush_command(drush_command, site, drush_runtime_location, True, None, None, True)
 
 
 # Manage or setup the 'environment_indicator' Drupal module, if it exists in the build
@@ -457,7 +449,8 @@ def environment_indicator(www_root, repo, branch, build, buildtype, alias, site,
         append("%s/config/%s_%s.settings.inc" % (www_root, alias, branch), "$config['environment_indicator.indicator']['fg_color'] = '#ffffff';", True)
 
     if drupal_version > 6:
-      sudo("su -s /bin/bash www-data -c 'cd %s/%s_%s_%s/www/sites/%s && drush -y en environment_indicator'" % (www_root, repo, branch, build, site))
+      drush_runtime_location = "%s/%s_%s_%s/www/sites/%s" % (www_root, repo, branch, build, site)
+      DrupalUtils.drush_command("en environment_indicator", site, drush_runtime_location, True, None, None, True)
     if drupal_version == 6:
       print "Drupal 6 site. Not setting up environment_indicator at this time.."
   else:
@@ -472,14 +465,15 @@ def config_import(repo, branch, build, buildtype, site, alias, drupal_version, p
     # Check to see if this is a Drupal 8 build
     if drupal_version > 7:
       print "===> Importing configuration for Drupal 8 site..."
-      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cim'" % (repo, branch, build, site)).failed:
-        print "Could not import configuration! Reverting this database and settings"
+      drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
+      if DrupalUtils.drush_command("cim", site, drush_runtime_location, True, None, None, True).failed:
+        print "###### Could not import configuration! Reverting this database and settings"
         sudo("unlink /var/www/live.%s.%s" % (repo, branch))
         sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
         db_name = get_db_name(repo, branch, build, buildtype, site)
         common.MySQL.mysql_revert_db(db_name, build)
         Revert._revert_settings(repo, branch, build, buildtype, site, alias)
-        raise SystemExit("Could not import configuration! Reverted database and settings. Site remains on previous build")
+        raise SystemExit("###### Could not import configuration! Reverted database and settings. Site remains on previous build")
       else:
         print "===> Configuration imported. Running a cache rebuild..."
         drush_clear_cache(repo, branch, build, site, drupal_version)
@@ -501,42 +495,46 @@ def config_export(repo, branch, build, drupal_version):
         else:
           print "Exporting config"
           sudo("chown -R jenkins:www-data /var/www/shared/%s_%s_exported_config" % (repo, branch))
-          if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cex --destination=/var/www/shared/%s_%s_exported_config" % (repo, branch, build, repo, branch)).failed:
-            print "Warning: Cannot export config. Stop exporting, but proceed with rest of the build"
+          # Set drush variables
+          drush_runtime_location = "%s/%s_%s_%s/www/sites/%s" % (www_root, repo, branch, build, site)
+          drush_command = "cex --destination=/var/www/shared/%s_%s_exported_config" % (repo, branch)
+          if DrupalUtils.drush_command(drush_command, site, drush_runtime_location, True, None, None, True).failed:
+            print "###### Warning: Cannot export config. Stop exporting, but proceed with rest of the build"
           else:
-            print "Exported config successfully. It will be available at /var/www/shared/%s_%s_exported_config" % (repo, branch)
+            print "===> Exported config successfully. It will be available at /var/www/shared/%s_%s_exported_config" % (repo, branch)
 
 
 # Take the site offline (prior to drush updatedb)
 @task
 @roles('app_primary')
-def go_offline(repo, branch, build, alias, readonlymode, drupal_version):
-  # readonlymode can either be 'maintenance' (the default) or 'readonlymode', which uses the readonlymode module
-
+def go_offline(repo, branch, build, site, alias, readonlymode, drupal_version):
+  # readonlymode can either be 'maintenance' (the default) or 'readonlymode'
+  # which uses the readonlymode module
   print "===> go_offline mode is %s" % readonlymode
-
+  # Set drush location
+  drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   # If readonlymode is 'readonlymode', check that it exists
   if readonlymode == "readonlymode":
     print "===> First checking that the readonlymode module exists..."
     with settings(warn_only=True):
       if run("find /var/www/%s_%s_%s/www -type d -name readonlymode | egrep '.*'" % (repo, branch, build)).return_code == 0:
-        print "It does exist, so enable it if it's not already enabled"
+        print "===> It does exist, so enable it if it's not already enabled"
         # Enable the module if it isn't already enabled
-        run("drush @%s_%s en -y readonlymode" % (alias, branch))
+        DrupalUtils.drush_command("en readonlymode", site, drush_runtime_location)
         # Set the site_readonly mode variable to 1
         print "===> Setting readonlymode so content cannot be changed while database updates are run..."
-        run("drush @%s_%s -y vset site_readonly 1" % (alias, branch))
+        DrupalUtils.drush_command("vset site_readonly 1", site, drush_runtime_location)
       else:
-        print "Hm, the readonly flag in config.ini was set to readonly, yet the readonlymode module does not exist. We'll revert to normal maintenance mode..."
+        print "###### The readonly flag in config.ini was set to readonly, yet the readonlymode module does not exist. We'll revert to normal maintenance mode..."
         readonlymode = 'maintenance'
 
   if readonlymode == "maintenance":
     print "===> Taking the site offline temporarily to do the drush updatedb..."
     if drupal_version > 7:
-      run("drush @%s_%s -y state-set system.maintenancemode 1" % (alias, branch))
+      DrupalUtils.drush_command("state-set system.maintenancemode 1", site, drush_runtime_location)
     else:
-      run("drush @%s_%s -y vset site_offline 1" % (alias, branch))
-      run("drush @%s_%s -y vset maintenance_mode 1" % (alias, branch))
+      DrupalUtils.drush_command("vset site_offline 1", site, drush_runtime_location)
+      DrupalUtils.drush_command("vset maintenance_mode 1", site, drush_runtime_location)
 
 
 # Take the site online (after drush updatedb)
@@ -544,7 +542,7 @@ def go_offline(repo, branch, build, alias, readonlymode, drupal_version):
 @roles('app_primary')
 def go_online(repo, branch, build, buildtype, alias, site, previous_build, readonlymode, drupal_version):
   db_name = get_db_name(repo, branch, build, buildtype, site)
-
+  drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   # readonlymode can either be 'maintenance' (the default) or 'readonlymode', which uses the readonlymode module
   # If readonlymode is 'readonlymode', check that it exists
   if readonlymode == "readonlymode":
@@ -553,39 +551,38 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
       if run("find /var/www/%s_%s_%s/www -type d -name readonlymode | egrep '.*'" % (repo, branch, build)).return_code == 0:
         print "It does exist, so enable it if it's not already enabled"
         # Enable the module if it isn't already enabled
-        run("drush @%s_%s en -y readonlymode" % (alias, branch))
+        DrupalUtils.drush_command("en readonlymode", site, drush_runtime_location)
         # Set the site_readonly mode variable to 1
         print "===> Setting readonlymode back to 0 so content can once again be edited..."
-        if run("drush @%s_%s -y vset site_readonly 0" % (alias, branch)).failed:
-          print "Could not set the site out of read only mode! Reverting this build and database."
+        if DrupalUtils.drush_command("vset site_readonly 0", site, drush_runtime_location).failed:
+          print "###### Could not set the site out of read only mode! Reverting this build and database."
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
           common.MySQL.mysql_revert_db(db_name, build)
           Revert._revert_settings(repo, branch, build, buildtype, site, alias)
       else:
-        print "Hm, the readonly flag in config.ini was set to readonly, yet the readonlymode module does not exist. We'll revert to normal maintenance mode..."
+        print "###### The readonly flag in config.ini was set to readonly, yet the readonlymode module does not exist. We'll revert to normal maintenance mode..."
         readonlymode = 'maintenance'
 
   if readonlymode == "maintenance":
     print "===> Taking the site back online..."
     with settings(warn_only=True):
       if drupal_version > 7:
-        if run("drush @%s_%s -y state-set system.maintenancemode 0" % (alias, branch)).failed:
-          print "Could not set the site back online! Reverting this build and database"
+        if DrupalUtils.drush_command("state-set system.maintenancemode 0", site, drush_runtime_location).failed:
+          print "###### Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
           common.MySQL.mysql_revert_db(db_name, build)
           Revert._revert_settings(repo, branch, build, buildtype, site, alias)
       else:
-        if run("drush @%s_%s -y vset site_offline 0" % (alias, branch)).failed:
-          print "Could not set the site back online! Reverting this build and database"
+        if DrupalUtils.drush_command("vset site_offline 0", site, drush_runtime_location).failed:
+          print "###### Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
           common.MySQL.mysql_revert_db(db_name, build)
           Revert._revert_settings(repo, branch, build, buildtype, site, alias)
-
         else:
-          run("drush @%s_%s -y vset maintenance_mode 0" % (alias, branch))
+          DrupalUtils.drush_command("vset maintenance_mode 0", site, drush_runtime_location)
 
 
 # Set the username and password of user 1 to something random if the buildtype is 'prod'
@@ -593,23 +590,28 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
 @roles('app_primary')
 def secure_admin_password(repo, branch, build, site, drupal_version):
   print "===> Setting secure username and password for uid 1"
+  drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   u1pass = common.Utils._gen_passwd(20)
   u1name = common.Utils._gen_passwd(20)
   with cd('/var/www/%s_%s_%s/www/sites/%s' % (repo, branch, build, site)):
     with settings(warn_only=True):
       if drupal_version > 7:
-        run('drush sqlq "UPDATE users_field_data SET name = \'%s\' WHERE uid = 1"' % u1name)
+        drush_command = 'drush sqlq "UPDATE users_field_data SET name = \'%s\' WHERE uid = 1"' % u1name
+        DrupalUtils.drush_command(drush_command, site, drush_runtime_location)
       else:
-        run('drush sqlq "UPDATE users SET name = \'%s\' WHERE uid = 1"' % u1name)
+        drush_command = 'drush sqlq "UPDATE users SET name = \'%s\' WHERE uid = 1"' % u1name
+        DrupalUtils.drush_command(drush_command, site, drush_runtime_location)
       drush_clear_cache(repo, branch, build, site, drupal_version)
-      run("drush upwd %s --password='%s'" % (u1name, u1pass))
+      drush_command = "drush upwd %s --password='%s'" % (u1name, u1pass)
+      DrupalUtils.drush_command(drush_command, site, drush_runtime_location)
 
 
 # Check if node access table will get rebuilt and warn if necessary
 @task
-def check_node_access(alias, branch, notifications_email):
+def check_node_access(repo, alias, branch, build, site, notifications_email):
+  drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   with settings(warn_only=True):
-    node_access_needs_rebuild = run("drush @%s_%s php-eval 'echo node_access_needs_rebuild();'" % (alias, branch))
+    node_access_needs_rebuild = DrupalUtils.drush_command("php-eval 'echo node_access_needs_rebuild();'", site, drush_runtime_location)
     if node_access_needs_rebuild == 1:
       print "####### WARNING: this release needs the content access table to be rebuilt. This is an intrusive operation that imply the site needs to stay in maintenance mode untill the whole process is finished."
       print "####### Depending on the number of nodes and the complexity of access rules, this can take several hours. Be sure to either plan the release appropriately, or when possible use alternative method that are not intrusive."
