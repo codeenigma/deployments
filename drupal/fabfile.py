@@ -305,7 +305,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
     # Grab some information about the current build
     previous_build = common.Utils.get_previous_build(repo, branch, build)
     previous_db = common.Utils.get_previous_db(repo, branch, build)
-    db_name = execute(Drupal.get_db_name, repo, branch, build, buildtype, site)
+    db_name = Drupal.get_db_name(repo, branch, build, buildtype, site)
     execute(common.MySQL.mysql_backup_db, db_name, build, True)
 
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
