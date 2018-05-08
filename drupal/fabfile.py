@@ -192,7 +192,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
-      dump_file = Drupal.prepare_database(repo, branch, build, alias, site, syncbranch, env.host_string, sanitise, sanitised_password, sanitised_email)
+      dump_file = Drupal.prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, env.host_string, sanitise, sanitised_password, sanitised_email)
 
     if FeatureBranches.featurebranch_url is not None:
       url = FeatureBranches.featurebranch_url
@@ -303,7 +303,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
   # Grab some information about the current build
   previous_build = common.Utils.get_previous_build(repo, branch, build)
   previous_db = common.Utils.get_previous_db(repo, branch, build)
-  db_name = Drupal.get_db_name(repo, branch, site)
+  db_name = Drupal.get_db_name(repo, branch, build, buildtype, site)
   execute(common.MySQL.mysql_backup_db, db_name, build, True)
 
   execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
@@ -402,7 +402,7 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
     path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
     phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path)
     if phpunit_fail_build and phpunit_tests_failed:
-      db_name = get_db_name(repo, branch, site)
+      db_name = Drupal.get_db_name(repo, branch, build, buildtype, site)
       common.MySQL.mysql_revert_db(db_name, build)
       Revert._revert_settings(repo, branch, build, buildtype, site, alias)
       raise SystemExit("####### phpunit tests failed and you have specified you want to fail and roll back when this happens. Reverting database")
