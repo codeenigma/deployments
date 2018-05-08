@@ -200,10 +200,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     with settings(hide('warnings', 'stderr'), warn_only=True):
       if run("drush sa | grep ^@%s_%s$ > /dev/null" % (alias, branch)).failed:
         print "Didn't find a Drush alias %s_%s so we'll install this new site %s" % (alias, branch, url)
-        initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale)
+        initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale, php_ini_file)
       else:
         # Otherwise it's an existing build
-        existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches)
+        existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file)
 
     # After any build we want to run all the available automated tests
     test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths)
@@ -249,135 +249,137 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
 # Wrapper function for carrying out a first build of a site
 @task
-def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale):
+def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale, php_ini_file):
   print "===> URL is http://%s" % url
 
   print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
 
-  # Check for expected shared directories
-  execute(common.Utils.create_config_directory, hosts=env.roledefs['app_all'])
-  execute(common.Utils.create_shared_directory, hosts=env.roledefs['app_all'])
-  execute(common.Utils.initial_build_create_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
-  # Build out Drupal
-  execute(InitialBuild.initial_build, repo, url, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds)
-  execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build, site, alias)
-  execute(InitialBuild.initial_build_move_settings, alias, branch)
-  # Configure the server
-  execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
-  execute(InitialBuild.initial_build_vhost, repo, url, branch, build, alias, buildtype, FeatureBranches.ssl_enabled, FeatureBranches.ssl_cert, FeatureBranches.ssl_ip, FeatureBranches.httpauth_pass, FeatureBranches.drupal_common_config, webserverport)
-  execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
-  # Restart services
-  execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
-  execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
-  execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
-  # Do some final Drupal config tweaking
-  execute(InitialBuild.generate_drush_alias, repo, url, branch, alias)
-  execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
-  execute(Drupal.generate_drush_cron, repo, branch)
+  with shell_env(PHPRC='%s' % php_ini_file):
+    # Check for expected shared directories
+    execute(common.Utils.create_config_directory, hosts=env.roledefs['app_all'])
+    execute(common.Utils.create_shared_directory, hosts=env.roledefs['app_all'])
+    execute(common.Utils.initial_build_create_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
+    # Build out Drupal
+    execute(InitialBuild.initial_build, repo, url, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds)
+    execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build, site, alias)
+    execute(InitialBuild.initial_build_move_settings, alias, branch)
+    # Configure the server
+    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
+    execute(InitialBuild.initial_build_vhost, repo, url, branch, build, alias, buildtype, FeatureBranches.ssl_enabled, FeatureBranches.ssl_cert, FeatureBranches.ssl_ip, FeatureBranches.httpauth_pass, FeatureBranches.drupal_common_config, webserverport)
+    execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
+    # Restart services
+    execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
+    execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
+    execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
+    # Do some final Drupal config tweaking
+    execute(InitialBuild.generate_drush_alias, repo, url, branch, alias)
+    execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
+    execute(Drupal.generate_drush_cron, repo, branch)
 
-  # If this is a custom/feature branch deployment, we want to run drush updb. If it fails,
-  # the build will fail, but because this is being run at the end, there shouldn't need to be
-  # any manual clean-up first. Everything else will have run, such as generate drush alias and
-  # webserver vhost, so the issue can be fixed and the job re-run.
-  if buildtype == "custombranch":
-    FeatureBranches.initial_db_and_config(repo, branch, build, import_config, drupal_version)
-  else:
-    execute(InitialBuild.initial_build_updatedb, repo, branch, build, site, drupal_version)
-    execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
-    if import_config:
-      execute(InitialBuild.initial_build_config_import, repo, branch, build, site, drupal_version)
+    # If this is a custom/feature branch deployment, we want to run drush updb. If it fails,
+    # the build will fail, but because this is being run at the end, there shouldn't need to be
+    # any manual clean-up first. Everything else will have run, such as generate drush alias and
+    # webserver vhost, so the issue can be fixed and the job re-run.
+    if buildtype == "custombranch":
+      FeatureBranches.initial_db_and_config(repo, branch, build, import_config, drupal_version)
+    else:
+      execute(InitialBuild.initial_build_updatedb, repo, branch, build, site, drupal_version)
       execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
+      if import_config:
+        execute(InitialBuild.initial_build_config_import, repo, branch, build, site, drupal_version)
+        execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
 
-  # Let's allow developers to perform some post-build actions if they need to
-  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
-  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-initial', hosts=env.roledefs['app_all'])
+    # Let's allow developers to perform some post-build actions if they need to
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-initial', hosts=env.roledefs['app_all'])
 
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches):
+def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
-  # Grab some information about the current build
-  previous_build = common.Utils.get_previous_build(repo, branch, build)
-  previous_db = common.Utils.get_previous_db(repo, branch, build)
-  db_name = Drupal.get_db_name(repo, branch, site)
-  execute(common.MySQL.mysql_backup_db, db_name, build, True)
+  with shell_env(PHPRC='%s' % php_ini_file):
+    # Grab some information about the current build
+    previous_build = common.Utils.get_previous_build(repo, branch, build)
+    previous_db = common.Utils.get_previous_db(repo, branch, build)
+    db_name = Drupal.get_db_name(repo, branch, site)
+    execute(common.MySQL.mysql_backup_db, db_name, build, True)
 
-  execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
-  execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
-  execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build, alias, site)
+    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
+    execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
+    execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build, alias, site)
 
-  # Let's allow developers to perform some actions right after Drupal is built
-  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
+    # Let's allow developers to perform some actions right after Drupal is built
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
 
-  # Export the config if we need to (Drupal 8+)
-  if config_export:
-    execute(Drupal.config_export, repo, branch, build, drupal_version)
-  execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert_settings=True)
+    # Export the config if we need to (Drupal 8+)
+    if config_export:
+      execute(Drupal.config_export, repo, branch, build, drupal_version)
+    execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert_settings=True)
 
-  # Time to update the database!
-  if do_updates == True:
-    execute(Drupal.go_offline, repo, branch, build, alias, readonlymode, drupal_version)
-    execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
-    execute(Drupal.drush_updatedb, repo, branch, build, buildtype, site, alias, drupal_version)            # This will revert the database if it fails
-    if fra == True:
-      if branch in feature_branches:
-        execute(Drupal.drush_fra, repo, branch, build, buildtype, site, alias, drupal_version)
-    if run_cron == True:
-      execute(Drupal.drush_cron, repo, branch, build, site, drupal_version)
-    execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+    # Time to update the database!
+    if do_updates == True:
+      execute(Drupal.go_offline, repo, branch, build, alias, readonlymode, drupal_version)
+      execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
+      execute(Drupal.drush_updatedb, repo, branch, build, buildtype, site, alias, drupal_version)            # This will revert the database if it fails
+      if fra == True:
+        if branch in feature_branches:
+          execute(Drupal.drush_fra, repo, branch, build, buildtype, site, alias, drupal_version)
+      if run_cron == True:
+        execute(Drupal.drush_cron, repo, branch, build, site, drupal_version)
+      execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
-    # Cannot use try: because execute() return not compatible.
-    execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
-    # This will revert the database if fails
-    live_build = run("readlink %s/live.%s.%s" % (www_root, repo, branch))
-    this_build = "%s/%s_%s_%s" % (www_root, repo, branch, build)
-    # The above paths should match - something is wrong if they don't!
-    if not this_build == live_build:
-      common.MySQL.mysql_revert_db(db_name, build)
-      Revert._revert_settings(repo, branch, build, buildtype, site, alias)
-      raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
+      # Cannot use try: because execute() return not compatible.
+      execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
+      # This will revert the database if fails
+      live_build = run("readlink %s/live.%s.%s" % (www_root, repo, branch))
+      this_build = "%s/%s_%s_%s" % (www_root, repo, branch, build)
+      # The above paths should match - something is wrong if they don't!
+      if not this_build == live_build:
+        common.MySQL.mysql_revert_db(db_name, build)
+        Revert._revert_settings(repo, branch, build, buildtype, site, alias)
+        raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
-    if import_config:
-      execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
+      if import_config:
+        execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
 
-    # Let's allow developers to use other config management for imports, such as CMI
-    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', hosts=env.roledefs['app_primary'])
+      # Let's allow developers to use other config management for imports, such as CMI
+      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', hosts=env.roledefs['app_primary'])
 
-    execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
-    execute(Drupal.go_online, repo, branch, build, buildtype, alias, site, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
-    execute(Drupal.check_node_access, alias, branch, notifications_email)
+      execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
+      execute(Drupal.go_online, repo, branch, build, buildtype, alias, site, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
+      execute(Drupal.check_node_access, alias, branch, notifications_email)
 
-  else:
-    print "####### WARNING: by skipping database updates we cannot check if the node access table will be rebuilt. If it will this is an intrusive action that may result in an extended outage."
-    execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+    else:
+      print "####### WARNING: by skipping database updates we cannot check if the node access table will be rebuilt. If it will this is an intrusive action that may result in an extended outage."
+      execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
-    # Cannot use try: because execute() return not compatible.
-    execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
-    # This will revert the database if fails
-    live_build = run("readlink %s/live.%s.%s" % (www_root, repo, branch))
-    this_build = "%s/%s_%s_%s" % (www_root, repo, branch, build)
-    # The above paths should match - something is wrong if they don't!
-    if not this_build == live_build:
-      common.MySQL.mysql_revert_db(db_name, build)
-      Revert._revert_settings(repo, branch, build, buildtype, site, alias)
-      raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
+      # Cannot use try: because execute() return not compatible.
+      execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
+      # This will revert the database if fails
+      live_build = run("readlink %s/live.%s.%s" % (www_root, repo, branch))
+      this_build = "%s/%s_%s_%s" % (www_root, repo, branch, build)
+      # The above paths should match - something is wrong if they don't!
+      if not this_build == live_build:
+        common.MySQL.mysql_revert_db(db_name, build)
+        Revert._revert_settings(repo, branch, build, buildtype, site, alias)
+        raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
-    if import_config:
-      execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
+      if import_config:
+        execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, previous_build) # This will revert database, settings and live symlink if it fails.
 
-    # Let's allow developers to use other config management for imports, such as CMI
-    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', hosts=env.roledefs['app_primary'])
+      # Let's allow developers to use other config management for imports, such as CMI
+      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', hosts=env.roledefs['app_primary'])
 
-    execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
+      execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
 
-  # Final clean up and run tests, if applicable
-  execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
-  execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
-  execute(Drupal.generate_drush_cron, repo, branch)
+    # Final clean up and run tests, if applicable
+    execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
+    execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
+    execute(Drupal.generate_drush_cron, repo, branch)
 
-  # Let's allow developers to perform some post-build actions if they need to
-  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
+    # Let's allow developers to perform some post-build actions if they need to
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
 
 
 # Wrapper function for runnning automated tests on a site
