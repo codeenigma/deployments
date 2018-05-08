@@ -319,6 +319,8 @@ def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version):
     # Apparently APC cache can interfere with drush updatedb expected results here. Clear any chance of caches
     common.Services.clear_php_cache()
     common.Services.clear_varnish_cache()
+    # Set drush variables
+    drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
     drush_command = "updatedb"
     #if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
     if DrupalUtils.drush_command(drush_command, site, drush_runtime_location, True, None, None, True).failed:
