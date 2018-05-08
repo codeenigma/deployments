@@ -283,7 +283,7 @@ def drush_status(repo, branch, build, buildtype, site, alias=None, revert=False,
   #drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
   #drush_path = "/var/www/live.%s.%s/www/vendor/drush/drush/drush" % (repo, branch)
-  drush_output = DrupalUtils.drush_command("status", site, drush_runtime_location)
+  drush_output = DrupalUtils.drush_command("status", site, drush_runtime_location, False, "yaml")
   if run("echo \"%s\" | egrep 'Connected|Successful'" % drush_output).failed:
     print "###### Could not bootstrap the database!"
     if revert == False and revert_settings == True:
