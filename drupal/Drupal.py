@@ -319,20 +319,18 @@ def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version):
     # Apparently APC cache can interfere with drush updatedb expected results here. Clear any chance of caches
     common.Services.clear_php_cache()
     common.Services.clear_varnish_cache()
-    # Set drush variables
+    # Set drush location
     drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
-    drush_command = "updatedb"
     #if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
-    if DrupalUtils.drush_command(drush_command, site, drush_runtime_location, True, None, None, True).failed:
+    if DrupalUtils.drush_command("updatedb", site, drush_runtime_location, True, None, None, True).failed:
       print "###### Could not apply database updates! Reverting this database"
       db_name = get_db_name(repo, branch, build, buildtype, site)
       common.MySQL.mysql_revert_db(db_name, build)
       Revert._revert_settings(repo, branch, build, buildtype, site, alias)
       raise SystemExit("###### Could not apply database updates! Reverted database. Site remains on previous build")
     if drupal_version > 7:
-      drush_command = "entity-updates"
       #if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y entity-updates'" % (repo, branch, build, site)).failed:
-      if DrupalUtils.drush_command(drush_command, site, drush_runtime_location, True, None, None, True).failed:
+      if DrupalUtils.drush_command("entity-updates", site, drush_runtime_location, True, None, None, True).failed:
         print "###### Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
   print "===> Database updates applied"
   drush_clear_cache(repo, branch, build, site, drupal_version)
@@ -342,20 +340,23 @@ def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version):
 @task
 @roles('app_primary')
 def drush_fra(repo, branch, build, buildtype, site, alias, drupal_version):
-  with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
-    if run("drush pm-list --pipe --type=module --status=enabled --no-core | grep -q ^features$").return_code != 0:
-      print "===> Features module not installed, skipping feature revert"
-    else:
-      print "===> Reverting all features..."
-      with settings(warn_only=True):
-        if sudo("su -s /bin/bash www-data -c 'drush -y fra'").failed:
-          print "Could not revert features! Reverting database and settings..."
-          db_name = get_db_name(repo, branch, build, buildtype, site)
-          common.MySQL.mysql_revert_db(db_name, build)
-          Revert._revert_settings(repo, branch, build, buildtype, site, alias)
-          raise SystemExit("Could not revert features! Site remains on previous build")
-        else:
-          drush_clear_cache(repo, branch, build, site, drupal_version)
+  # Set drush variables
+  drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
+  drush_command = "pm-list --pipe --type=module --status=enabled --no-core"
+  drush_output = DrupalUtils.drush_command(drush_command, site, drush_runtime_location, False, "yaml")
+  if run("echo \"%s\" | grep -q ^features$" % drush_output).return_code != 0:
+    print "===> Features module not installed, skipping feature revert"
+  else:
+    print "===> Reverting all features..."
+    with settings(warn_only=True):
+      if DrupalUtils.drush_command("fra", site, drush_runtime_location, True, None, None, True).failed:
+        print "###### Could not revert features! Reverting database and settings..."
+        db_name = get_db_name(repo, branch, build, buildtype, site)
+        common.MySQL.mysql_revert_db(db_name, build)
+        Revert._revert_settings(repo, branch, build, buildtype, site, alias)
+        raise SystemExit("###### Could not revert features! Site remains on previous build")
+      else:
+        drush_clear_cache(repo, branch, build, site, drupal_version)
 
 
 # Function to run Drupal cron (mainly used by RBKC's microsites that use the Domain module)
@@ -363,13 +364,14 @@ def drush_fra(repo, branch, build, buildtype, site, alias, drupal_version):
 @roles('app_primary')
 def drush_cron(repo, branch, build, site, drupal_version):
   print "===> Running Drupal cron..."
+  drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   with settings(warn_only=True):
-    with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
-      if sudo("drush -y cron").failed:
-        print "Could not run cron!"
-        raise SystemExit("Could not run cron! Site remains on previous build.")
-      else:
-        drush_clear_cache(repo, branch, build, site, drupal_version)
+    #if sudo("drush -y cron").failed:
+    if DrupalUtils.drush_command("cron", site, drush_runtime_location).failed:
+      print "###### Could not run cron!"
+      raise SystemExit("###### Could not run cron! Site remains on previous build.")
+    else:
+      drush_clear_cache(repo, branch, build, site, drupal_version)
 
 
 # Function that can be used to clear Drupal cache
