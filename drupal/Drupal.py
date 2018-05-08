@@ -319,15 +319,19 @@ def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version):
     # Apparently APC cache can interfere with drush updatedb expected results here. Clear any chance of caches
     common.Services.clear_php_cache()
     common.Services.clear_varnish_cache()
-    if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
-      print "Could not apply database updates! Reverting this database"
+    drush_command = "updatedb"
+    #if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
+    if DrupalUtils.drush_command(drush_command, site, drush_runtime_location, True, None, None, True).failed:
+      print "###### Could not apply database updates! Reverting this database"
       db_name = get_db_name(repo, branch, build, buildtype, site)
       common.MySQL.mysql_revert_db(db_name, build)
       Revert._revert_settings(repo, branch, build, buildtype, site, alias)
-      raise SystemExit("Could not apply database updates! Reverted database. Site remains on previous build")
+      raise SystemExit("###### Could not apply database updates! Reverted database. Site remains on previous build")
     if drupal_version > 7:
-      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y entity-updates'" % (repo, branch, build, site)).failed:
-        print "Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
+      drush_command = "entity-updates"
+      #if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y entity-updates'" % (repo, branch, build, site)).failed:
+      if DrupalUtils.drush_command(drush_command, site, drush_runtime_location, True, None, None, True).failed:
+        print "###### Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
   print "===> Database updates applied"
   drush_clear_cache(repo, branch, build, site, drupal_version)
 
