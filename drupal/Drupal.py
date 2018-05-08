@@ -280,7 +280,8 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
 @roles('app_primary')
 def drush_status(repo, branch, build, buildtype, site, alias=None, revert=False, revert_settings=False):
   print "===> Running a drush status test"
-  drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
+  #drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
+  drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
   #drush_path = "/var/www/live.%s.%s/www/vendor/drush/drush/drush" % (repo, branch)
   drush_output = DrupalUtils.drush_command("status", site, drush_runtime_location)
   if run("echo \"%s\" | egrep 'Connected|Successful'" % drush_output).failed:
