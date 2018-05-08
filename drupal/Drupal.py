@@ -541,7 +541,6 @@ def go_offline(repo, branch, build, site, alias, readonlymode, drupal_version):
 @task
 @roles('app_primary')
 def go_online(repo, branch, build, buildtype, alias, site, previous_build, readonlymode, drupal_version):
-  db_name = get_db_name(repo, branch, build, buildtype, site)
   drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   # readonlymode can either be 'maintenance' (the default) or 'readonlymode', which uses the readonlymode module
   # If readonlymode is 'readonlymode', check that it exists
@@ -558,6 +557,7 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
           print "###### Could not set the site out of read only mode! Reverting this build and database."
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
+          db_name = get_db_name(repo, branch, build, buildtype, site)
           common.MySQL.mysql_revert_db(db_name, build)
           Revert._revert_settings(repo, branch, build, buildtype, site, alias)
       else:
@@ -572,6 +572,7 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
           print "###### Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
+          db_name = get_db_name(repo, branch, build, buildtype, site)
           common.MySQL.mysql_revert_db(db_name, build)
           Revert._revert_settings(repo, branch, build, buildtype, site, alias)
       else:
@@ -579,6 +580,7 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
           print "###### Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
+          db_name = get_db_name(repo, branch, build, buildtype, site)
           common.MySQL.mysql_revert_db(db_name, build)
           Revert._revert_settings(repo, branch, build, buildtype, site, alias)
         else:
@@ -596,13 +598,13 @@ def secure_admin_password(repo, branch, build, site, drupal_version):
   with cd('/var/www/%s_%s_%s/www/sites/%s' % (repo, branch, build, site)):
     with settings(warn_only=True):
       if drupal_version > 7:
-        drush_command = 'drush sqlq "UPDATE users_field_data SET name = \'%s\' WHERE uid = 1"' % u1name
+        drush_command = 'sqlq "UPDATE users_field_data SET name = \'%s\' WHERE uid = 1"' % u1name
         DrupalUtils.drush_command(drush_command, site, drush_runtime_location)
       else:
-        drush_command = 'drush sqlq "UPDATE users SET name = \'%s\' WHERE uid = 1"' % u1name
+        drush_command = 'sqlq "UPDATE users SET name = \'%s\' WHERE uid = 1"' % u1name
         DrupalUtils.drush_command(drush_command, site, drush_runtime_location)
       drush_clear_cache(repo, branch, build, site, drupal_version)
-      drush_command = "drush upwd %s --password='%s'" % (u1name, u1pass)
+      drush_command = "upwd %s --password='%s'" % (u1name, u1pass)
       DrupalUtils.drush_command(drush_command, site, drush_runtime_location)
 
 

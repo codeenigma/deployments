@@ -394,7 +394,7 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
   # Run behat tests
   if behat_config:
     if buildtype in behat_config['behat_buildtypes']:
-      behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+      behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
   else:
     print "===> No behat tests."
 
