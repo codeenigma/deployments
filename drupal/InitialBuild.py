@@ -199,7 +199,7 @@ def initial_build_move_settings(alias, branch):
 # Copy the dummy vhost and change values.
 @task
 @roles('app_all')
-def initial_build_vhost(repo, url, branch, build, alias, buildtype, ssl_enabled, ssl_cert, ssl_ip, httpauth_pass, drupal_common_config, webserverport):
+def initial_build_vhost(repo, url, branch, build, alias, buildtype, ssl_enabled, ssl_cert, ssl_ip, httpauth_pass, drupal_common_config, featurebranch_vhost, webserverport):
   # Some quick clean-up from earlier, delete the 'shared' settings.inc
   with settings(warn_only=True):
     if run("stat /var/www/shared/%s_%s.settings.inc" % (alias, branch)).return_code == 0:
@@ -266,6 +266,12 @@ def initial_build_vhost(repo, url, branch, build, alias, buildtype, ssl_enabled,
         dummy_file = 'dummy_feature_branch.conf'
     else:
       dummy_file = 'dummy.conf'
+
+    if featurebranch_vhost is not None:
+      print "A dummy feature branch vhost is set, so copy /var/www/%s_%s_%s/vhosts/%s to /etc/%s/sites-available." % (repo, branch, build, featurebranch_vhost, webserver)
+      sudo("mv /var/www/%s_%s_%s/vhosts/%s /etc/%s/sites-available/" % (repo, branch, build, featurebranch_vhost, webserver))
+      sudo("chown root:root /etc/%s/sites-available/%s" % (webserver, featurebranch_vhost))
+      dummy_file = featurebranch_vhost
 
     sudo("cp /etc/%s/sites-available/%s /etc/%s/sites-available/%s.conf" % (webserver, dummy_file, webserver, url))
 
