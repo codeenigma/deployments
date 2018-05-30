@@ -102,11 +102,11 @@ def drush_fra_branches(config, branch):
 # Get the database name of an existing Drupal website
 @task
 @roles('app_primary')
-def get_db_name(repo, branch, build, buildtype, site):
+def get_db_name(repo, branch, build, buildtype, site, drush_output):
   db_name = None
   #drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
   #drush_path = "/var/www/live.%s.%s/www/vendor/drush/drush/drush" % (repo, branch)
-  drush_output = drush_status(repo, branch, build, buildtype, site)
+  #drush_output = drush_status(repo, branch, build, buildtype, site)
   db_name = run("echo \"%s\" | grep \"db-name: \" | cut -d \":\" -f 2" % drush_output)
 
   # If the dbname variable is empty for whatever reason, resort to grepping settings.php
