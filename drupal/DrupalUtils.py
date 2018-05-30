@@ -58,6 +58,8 @@ def determine_drupal_version(drupal_version, repo, branch, build, config, method
     else:
       drupal_version = run("echo \"%s\" | grep \"drupal-version\" | cut -d\: -f2 | cut -d. -f1" % drush_output)
       drupal_version = drupal_version.strip()
+      # Older versions of Drupal put version in single quotes
+      drupal_version = drupal_version.strip("'")
 
   print "===> Drupal version is Drupal %s." % drupal_version
   return drupal_version
