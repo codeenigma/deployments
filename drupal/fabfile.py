@@ -289,7 +289,7 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
     # any manual clean-up first. Everything else will have run, such as generate drush alias and
     # webserver vhost, so the issue can be fixed and the job re-run.
     if buildtype == "custombranch":
-      FeatureBranches.initial_db_and_config(repo, branch, build, import_config, drupal_version)
+      FeatureBranches.initial_db_and_config(repo, branch, build, site, import_config, drupal_version)
     else:
       execute(InitialBuild.initial_build_updatedb, repo, branch, build, site, drupal_version)
       execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)

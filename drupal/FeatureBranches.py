@@ -16,7 +16,7 @@ drupal_common_config = None
 # Feature branches only, preparing database
 # Assumes single server, cannot work on a cluster
 @task
-def initial_db_and_config(repo, branch, build, import_config, drupal_version):
+def initial_db_and_config(repo, branch, build, site, import_config, drupal_version):
   with settings(warn_only=True):
     # Run database updates
     drush_runtime_location = "/var/www/%s_%s_%s/www/sites/default" % (repo, branch, build)
