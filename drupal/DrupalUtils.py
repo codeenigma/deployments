@@ -51,7 +51,8 @@ def determine_drupal_version(drupal_version, repo, branch, build, config, method
     print "===> No drupal_version override in config.ini, so we'll figure out the version of Drupal ourselves"
 
     drush_runtime_location = "/var/www/live.%s.%s/www/sites/default" % (repo, branch)
-    drush_output = drush_command("status", site, drush_runtime_location, False, "yaml")
+    # We're only checking the Drupal version so it's fine to not pass a 'site' and rely on default
+    drush_output = drush_command("status", None, drush_runtime_location, False, "yaml")
     if run("echo \"%s\" | grep 'drupal-version'" % drush_output).failed:
       raise SystemExit("####### Could not determine Drupal version from drush st. If you're using composer, you MUST override this check in the config.ini file with drupal_version set in the [Drupal] section. Please raise a ticket if you're not sure how to do this.")
     else:
