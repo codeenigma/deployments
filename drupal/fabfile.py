@@ -324,7 +324,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
 
     # Time to update the database!
     if do_updates == True:
-      execute(Drupal.go_offline, repo, branch, build, site, alias, readonlymode, drupal_version)
+      execute(Drupal.go_offline, repo, branch, site, alias, readonlymode, drupal_version)
       execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
       execute(Drupal.drush_updatedb, repo, branch, build, buildtype, site, alias, drupal_version)            # This will revert the database if it fails
       if fra == True:

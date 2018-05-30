@@ -507,17 +507,17 @@ def config_export(repo, branch, build, drupal_version):
 # Take the site offline (prior to drush updatedb)
 @task
 @roles('app_primary')
-def go_offline(repo, branch, build, site, alias, readonlymode, drupal_version):
+def go_offline(repo, branch, site, alias, readonlymode, drupal_version):
   # readonlymode can either be 'maintenance' (the default) or 'readonlymode'
   # which uses the readonlymode module
   print "===> go_offline mode is %s" % readonlymode
   # Set drush location
-  drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
+  drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
   # If readonlymode is 'readonlymode', check that it exists
   if readonlymode == "readonlymode":
     print "===> First checking that the readonlymode module exists..."
     with settings(warn_only=True):
-      if run("find /var/www/%s_%s_%s/www -type d -name readonlymode | egrep '.*'" % (repo, branch, build)).return_code == 0:
+      if run("find /var/www/live.%s.%s/www -type d -name readonlymode | egrep '.*'" % (repo, branch)).return_code == 0:
         print "===> It does exist, so enable it if it's not already enabled"
         # Enable the module if it isn't already enabled
         DrupalUtils.drush_command("en readonlymode", site, drush_runtime_location)
