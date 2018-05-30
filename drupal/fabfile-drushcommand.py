@@ -20,7 +20,9 @@ def main(shortname, branch, command, backup=True):
 
   # Take a database backup first if told to.  
   if backup:
-    db_name = Drupal.get_db_name(shortname, branch, None, branch, "default")
+    drush_runtime_location = "/var/www/live.%s.%s/www" % (shortname, branch)
+    drush_output = Drupal.drush_status(repo, branch, build, buildtype, site, drush_runtime_location)
+    db_name = Drupal.get_db_name(shortname, branch, None, branch, "default", drush_output)
     execute(common.MySQL.mysql_backup_db, db_name, 'drush_command', True)
 
   # Strip nastiness from the command

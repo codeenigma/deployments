@@ -139,7 +139,9 @@ def configure_feature_branch(buildtype, config, branch, alias):
 def remove_site(repo, branch, alias, mysql_config):
   # Drop DB...
   # 'build' and 'buildtype' can be none because only needed for revert which isn't relevant
-  dbname = Drupal.get_db_name(repo, branch, None, None, "default")
+  drush_runtime_location = "/var/www/live.%s.%s/www" % (repo, branch)
+  drush_output = Drupal.drush_status(repo, branch, build, buildtype, site, drush_runtime_location)
+  dbname = Drupal.get_db_name(repo, branch, None, None, "default", drush_output)
 
   # If the dbname variable is still empty, fail the build early
   if not dbname:
