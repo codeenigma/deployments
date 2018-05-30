@@ -50,8 +50,10 @@ def configure_feature_branch(buildtype, config, branch, alias):
   global ssl_cert
   global drupal_common_config
   global featurebranch_url
+  global featurebranch_vhost
 
   featurebranch_url = None
+  featurebranch_vhost = None
 
 
   # If the buildtype is 'custombranch', which it will be when deploying a custom branch (i.e one
@@ -123,6 +125,11 @@ def configure_feature_branch(buildtype, config, branch, alias):
             print "Feature Branch: Found a drupalcommonconfig option..."
             drupal_common_config = config.get("featurebranch", "drupalcommonconfig")
             print "Feature Branch: drupal_common_config is now %s" % drupal_common_config
+
+          if config.has_option("featurebranch", "vhost"):
+            print "Feature branch: Found a vhost option..."
+            featurebranch_vhost = config.get("featurebranch", "vhost")
+            print "Feature Branch: featurebranch_vhost is now %s" % featurebranch_vhost
         else:
           print "We could not find a [featurebranch] section in the config.ini file, yet this *is* a feature branch build. That is perfectly fine, as options do not need to be set for a feature branch build, but they can be handy."
 

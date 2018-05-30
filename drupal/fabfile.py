@@ -190,6 +190,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     print "ssl_ip: %s" % FeatureBranches.ssl_ip
     print "drupal_common_config: %s" % FeatureBranches.drupal_common_config
     print "featurebranch_url: %s" % FeatureBranches.featurebranch_url
+    print "featurebranch_vhost: %s" % FeatureBranches.featurebranch_vhost
 
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
@@ -269,7 +270,7 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
     execute(InitialBuild.initial_build_move_settings, alias, branch)
     # Configure the server
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
-    execute(InitialBuild.initial_build_vhost, repo, url, branch, build, alias, buildtype, FeatureBranches.ssl_enabled, FeatureBranches.ssl_cert, FeatureBranches.ssl_ip, FeatureBranches.httpauth_pass, FeatureBranches.drupal_common_config, webserverport)
+    execute(InitialBuild.initial_build_vhost, repo, url, branch, build, alias, buildtype, FeatureBranches.ssl_enabled, FeatureBranches.ssl_cert, FeatureBranches.ssl_ip, FeatureBranches.httpauth_pass, FeatureBranches.drupal_common_config, FeatureBranches.featurebranch_vhost, webserverport)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
     # Restart services
     execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
