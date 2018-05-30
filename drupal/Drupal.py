@@ -442,7 +442,7 @@ def environment_indicator(www_root, repo, branch, build, buildtype, alias, site,
 
     if drupal_version > 6:
       drush_runtime_location = "%s/%s_%s_%s/www/sites/%s" % (www_root, repo, branch, build, site)
-      DrupalUtils.drush_command("en environment_indicator", site, drush_runtime_location, True, None, None, True)
+      DrupalUtils.drush_command("pm-enable environment_indicator", site, drush_runtime_location, True, None, None, True)
     if drupal_version == 6:
       print "Drupal 6 site. Not setting up environment_indicator at this time.."
   else:
@@ -511,7 +511,7 @@ def go_offline(repo, branch, site, alias, readonlymode, drupal_version):
       if run("find /var/www/live.%s.%s/www -type d -name readonlymode | egrep '.*'" % (repo, branch)).return_code == 0:
         print "===> It does exist, so enable it if it's not already enabled"
         # Enable the module if it isn't already enabled
-        DrupalUtils.drush_command("en readonlymode", site, drush_runtime_location)
+        DrupalUtils.drush_command("pm-enable readonlymode", site, drush_runtime_location)
         # Set the site_readonly mode variable to 1
         print "===> Setting readonlymode so content cannot be changed while database updates are run..."
         DrupalUtils.drush_command("vset site_readonly 1", site, drush_runtime_location)
@@ -541,7 +541,7 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
       if run("find /var/www/%s_%s_%s/www -type d -name readonlymode | egrep '.*'" % (repo, branch, build)).return_code == 0:
         print "It does exist, so enable it if it's not already enabled"
         # Enable the module if it isn't already enabled
-        DrupalUtils.drush_command("en readonlymode", site, drush_runtime_location)
+        DrupalUtils.drush_command("pm-enable readonlymode", site, drush_runtime_location)
         # Set the site_readonly mode variable to 1
         print "===> Setting readonlymode back to 0 so content can once again be edited..."
         if DrupalUtils.drush_command("vset site_readonly 0", site, drush_runtime_location).failed:

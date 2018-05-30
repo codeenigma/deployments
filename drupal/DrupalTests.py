@@ -218,7 +218,7 @@ def reenable_modules(repo, alias, branch, build, site, buildtype, drupal_version
     else:
       if enable_modules:
         for module in enable_modules:
-          drush_command = "en %s" % module
+          drush_command = "pm-enable %s" % module
           if DrupalUtils.drush_command(drush_command, site, drush_runtime_location).failed:
             print "###### Cannot enable %s. Manual investigation is required." % module
           else:
