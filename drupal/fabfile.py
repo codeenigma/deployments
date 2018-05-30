@@ -307,8 +307,11 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
     # Grab some information about the current build
     previous_build = common.Utils.get_previous_build(repo, branch, build)
     previous_db = common.Utils.get_previous_db(repo, branch, build)
-    drush_output = Drupal.drush_status(repo, branch, build, buildtype, site)
+    # Check Drupal status to retrieve database name
+    drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
+    drush_output = Drupal.drush_status(repo, branch, build, buildtype, site, drush_runtime_location)
     db_name = Drupal.get_db_name(repo, branch, build, buildtype, site, drush_output)
+    # Backup database
     execute(common.MySQL.mysql_backup_db, db_name, build, True)
 
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
@@ -321,7 +324,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
     # Export the config if we need to (Drupal 8+)
     if config_export:
       execute(Drupal.config_export, repo, branch, build, drupal_version)
-    execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert_settings=True)
+    execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, revert_settings=True)
 
     # Time to update the database!
     if do_updates == True:
@@ -333,7 +336,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
           execute(Drupal.drush_fra, repo, branch, build, buildtype, site, alias, drupal_version)
       if run_cron == True:
         execute(Drupal.drush_cron, repo, branch, build, site, drupal_version)
-      execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+      execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       # Cannot use try: because execute() return not compatible.
       execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
@@ -343,7 +346,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
       # The above paths should match - something is wrong if they don't!
       if not this_build == live_build:
         common.MySQL.mysql_revert_db(db_name, build)
-        Revert._revert_settings(repo, branch, build, buildtype, site, alias)
+        execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
         raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if import_config:
@@ -358,7 +361,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
 
     else:
       print "####### WARNING: by skipping database updates we cannot check if the node access table will be rebuilt. If it will this is an intrusive action that may result in an extended outage."
-      execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+      execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       # Cannot use try: because execute() return not compatible.
       execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
@@ -368,7 +371,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
       # The above paths should match - something is wrong if they don't!
       if not this_build == live_build:
         common.MySQL.mysql_revert_db(db_name, build)
-        Revert._revert_settings(repo, branch, build, buildtype, site, alias)
+        execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
         raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if import_config:
@@ -407,9 +410,8 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
     path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
     phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path)
     if phpunit_fail_build and phpunit_tests_failed:
-      db_name = Drupal.get_db_name(repo, branch, build, buildtype, site)
-      common.MySQL.mysql_revert_db(db_name, build)
-      Revert._revert_settings(repo, branch, build, buildtype, site, alias)
+      execute(Revert._revert_db, repo, branch, build, buildtype, site)
+      execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
       raise SystemExit("####### phpunit tests failed and you have specified you want to fail and roll back when this happens. Reverting database")
     elif phpunit_tests_failed:
       print "####### phpunit tests failed but the build is set to disregard... continuing, but you should review your test output"
