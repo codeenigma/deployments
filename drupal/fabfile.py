@@ -60,9 +60,14 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Can be set in the config.ini [Build] section
   ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
   notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
-  # Need to keep potentially passed in 'url' value as default
-  url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
   php_ini_file = common.ConfigFile.return_config_item(config, "Build", "php_ini_file", "string", php_ini_file)
+  # If this is a multisite build, set the url to None so one is generated for every site in the multisite setup. This particular line will ensure the *first* site has its url generated.
+  if config.has_section("Sites"):
+    print "===> Config file has a [Sites] section, so we'll assume this is a multisite build and set url to None"
+    url = None
+  # Need to keep potentially passed in 'url' value as default
+  else:
+    url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
 
   # Can be set in the config.ini [Database] section
   db_name = common.ConfigFile.return_config_item(config, "Database", "db_name")
@@ -173,15 +178,15 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Just sets to 'default' if it is not
   mapping = {}
   mapping = Drupal.configure_site_mapping(repo, mapping, config)
-  # If this is a multisite build, set the url to None so one is generated for every site in the multisite setup. This particular line will ensure the *first* site has its url generated.
-  if config.has_section("Sites"):
-    print "Config file has a Sites section, so we'll assume this is a multisite build and set url to None."
-    url = None
+
+  # Record the link to the previous build
+  previous_build = common.Utils.get_previous_build(repo, branch, build)
+
   # Run new installs
   for alias,site in mapping.iteritems():
     # Compile variables for feature branch builds (if applicable)
     FeatureBranches.configure_feature_branch(buildtype, config, branch, alias)
-    print "Feature branch debug information below:"
+    print "===> Feature branch debug information below:"
     print "httpauth_pass: %s" % FeatureBranches.httpauth_pass
     print "ssl_enabled: %s" % FeatureBranches.ssl_enabled
     print "ssl_cert: %s" % FeatureBranches.ssl_cert
@@ -192,7 +197,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
-      dump_file = Drupal.prepare_database(repo, branch, build, alias, site, syncbranch, env.host_string, sanitise, sanitised_password, sanitised_email)
+      dump_file = Drupal.prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, env.host_string, sanitise, sanitised_password, sanitised_email)
 
     if FeatureBranches.featurebranch_url is not None:
       url = FeatureBranches.featurebranch_url
@@ -200,12 +205,13 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     url = common.Utils.generate_url(url, alias, branch)
     # Now check if we have a Drush alias with that name. If not, run an install
     with settings(hide('warnings', 'stderr'), warn_only=True):
+      # Because this runs in Jenkins home directory, it will use 'system' drush
       if run("drush sa | grep ^@%s_%s$ > /dev/null" % (alias, branch)).failed:
         print "Didn't find a Drush alias %s_%s so we'll install this new site %s" % (alias, branch, url)
         initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale, php_ini_file)
       else:
         # Otherwise it's an existing build
-        existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file)
+        existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file)
 
     # After any build we want to run all the available automated tests
     test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths)
@@ -240,7 +246,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # If any of our tests failed, abort the job
   # r23697
   if behat_tests_failed:
-    print "Some tests failed. Aborting the job."
+    print "####### Some tests failed. Aborting the job."
     sys.exit(3)
 
 
@@ -298,14 +304,17 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file):
+def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   with shell_env(PHPRC='%s' % php_ini_file):
-    # Grab some information about the current build
-    previous_build = common.Utils.get_previous_build(repo, branch, build)
-    previous_db = common.Utils.get_previous_db(repo, branch, build)
-    db_name = Drupal.get_db_name(repo, branch, site)
+    # Check Drupal status to retrieve database name
+    drush_runtime_location = "%s/www/sites/%s" % (previous_build, site)
+    drush_output = Drupal.drush_status(repo, branch, build, buildtype, site, drush_runtime_location)
+    db_name = Drupal.get_db_name(repo, branch, build, buildtype, site, drush_output)
+    # Backup database
     execute(common.MySQL.mysql_backup_db, db_name, build, True)
+    # Build the location of the backup
+    previous_db = common.Utils.get_previous_db(repo, branch, build)
 
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
@@ -317,11 +326,11 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
     # Export the config if we need to (Drupal 8+)
     if config_export:
       execute(Drupal.config_export, repo, branch, build, drupal_version)
-    execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert_settings=True)
+    execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, revert_settings=True)
 
     # Time to update the database!
     if do_updates == True:
-      execute(Drupal.go_offline, repo, branch, build, alias, readonlymode, drupal_version)
+      execute(Drupal.go_offline, repo, branch, site, alias, readonlymode, drupal_version)
       execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
       execute(Drupal.drush_updatedb, repo, branch, build, buildtype, site, alias, drupal_version)            # This will revert the database if it fails
       if fra == True:
@@ -329,7 +338,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
           execute(Drupal.drush_fra, repo, branch, build, buildtype, site, alias, drupal_version)
       if run_cron == True:
         execute(Drupal.drush_cron, repo, branch, build, site, drupal_version)
-      execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+      execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       # Cannot use try: because execute() return not compatible.
       execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
@@ -339,7 +348,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
       # The above paths should match - something is wrong if they don't!
       if not this_build == live_build:
         common.MySQL.mysql_revert_db(db_name, build)
-        Revert._revert_settings(repo, branch, build, buildtype, site, alias)
+        execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
         raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if import_config:
@@ -350,11 +359,11 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
 
       execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
       execute(Drupal.go_online, repo, branch, build, buildtype, alias, site, previous_build, readonlymode, drupal_version) # This will revert the database and switch the symlink back if it fails
-      execute(Drupal.check_node_access, alias, branch, notifications_email)
+      execute(Drupal.check_node_access, repo, alias, branch, build, site, notifications_email)
 
     else:
       print "####### WARNING: by skipping database updates we cannot check if the node access table will be rebuilt. If it will this is an intrusive action that may result in an extended outage."
-      execute(Drupal.drush_status, repo, branch, build, buildtype, site, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+      execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, revert=True) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       # Cannot use try: because execute() return not compatible.
       execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
@@ -364,7 +373,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
       # The above paths should match - something is wrong if they don't!
       if not this_build == live_build:
         common.MySQL.mysql_revert_db(db_name, build)
-        Revert._revert_settings(repo, branch, build, buildtype, site, alias)
+        execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
         raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
       if import_config:
@@ -393,7 +402,7 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
   # Run behat tests
   if behat_config:
     if buildtype in behat_config['behat_buildtypes']:
-      behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+      behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
   else:
     print "===> No behat tests."
 
@@ -403,9 +412,8 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
     path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
     phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path)
     if phpunit_fail_build and phpunit_tests_failed:
-      db_name = get_db_name(repo, branch, site)
-      common.MySQL.mysql_revert_db(db_name, build)
-      Revert._revert_settings(repo, branch, build, buildtype, site, alias)
+      execute(Revert._revert_db, repo, branch, build, buildtype, site)
+      execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
       raise SystemExit("####### phpunit tests failed and you have specified you want to fail and roll back when this happens. Reverting database")
     elif phpunit_tests_failed:
       print "####### phpunit tests failed but the build is set to disregard... continuing, but you should review your test output"

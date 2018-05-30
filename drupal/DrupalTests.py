@@ -4,6 +4,7 @@ import os
 # Custom Code Enigma modules
 import common.Tests
 import common.PHP
+import DrupalUtils
 
 
 # Builds the variables needed to carry out Behat testing later
@@ -97,10 +98,11 @@ def run_tests(repo, branch, build, config, drupal_version, codesniffer=False, ex
 # Run behat tests, if present
 @task
 @roles('app_primary')
-def run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, junit, drupal_version, tags = [], disable_modules = []):
+def run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, junit, drupal_version, tags = [], disable_modules = []):
   cwd = os.getcwd()
   continue_tests = True
   tests_failed = False
+  drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
 
   with settings(warn_only=True):
     while continue_tests:
@@ -108,14 +110,16 @@ def run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, jun
       if disable_modules:
         if drupal_version > 7:
           for module in disable_modules:
-            if run("drush @%s_%s -y pm-uninstall %s" % (alias, branch, module)).failed:
-              print "Cannot disable %s. Stopping tests early..." % module
+            drush_command = "pm-uninstall %s" % module
+            if DrupalUtils.drush_command(drush_command, site, drush_runtime_location).failed:
+              print "###### Cannot disable %s. Stopping tests early..." % module
               continue_tests = False
               break
         else:
           for module in disable_modules:
-            if run("drush @%s_%s -y dis %s" % (alias, branch, module)).failed:
-              print "Cannot disable %s. Stopping tests early..." % module
+            drush_command = "dis %s" % module
+            if DrupalUtils.drush_command(drush_command, site, drush_runtime_location).failed:
+              print "###### Cannot disable %s. Stopping tests early..." % module
               continue_tests = False
               break
 
@@ -196,24 +200,26 @@ def run_behat_tests(repo, branch, build, alias, buildtype, url, ssl_enabled, jun
 
     # Re-enable modules
     if disable_modules:
-      reenable_modules(alias, branch, buildtype, drupal_version, disable_modules)
+      reenable_modules(repo, alias, branch, build, site, buildtype, drupal_version, disable_modules)
 
     # Send test status back to main fabfile
     return tests_failed
 
 
 @task
-def reenable_modules(alias, branch, buildtype, drupal_version, enable_modules = []):
+def reenable_modules(repo, alias, branch, build, site, buildtype, drupal_version, enable_modules = []):
+  drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   with settings(warn_only=True):
     if drupal_version > 7:
-      if run("drush @%s_%s -y cim" % (alias, branch)).failed:
-        print "Cannot import config to enable modules. Manual investigation is required."
+      if DrupalUtils.drush_command("cim", site, drush_runtime_location).failed:
+        print "###### Cannot import config to enable modules. Manual investigation is required."
       else:
-        print "Modules re-enabled via config import."
+        print " ===> Modules re-enabled via config import."
     else:
       if enable_modules:
         for module in enable_modules:
-          if run("drush @%s_%s -y en %s" % (alias, branch, module)).failed:
-            print "Cannot enable %s. Manual investigation is required." % module
+          drush_command = "en %s" % module
+          if DrupalUtils.drush_command(drush_command, site, drush_runtime_location).failed:
+            print "###### Cannot enable %s. Manual investigation is required." % module
           else:
-            print "%s re-enabled." % module
+            print "===> %s re-enabled." % module
