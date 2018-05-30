@@ -50,7 +50,7 @@ def determine_drupal_version(drupal_version, repo, branch, build, config, method
   if drupal_version is None:
     print "===> No drupal_version override in config.ini, so we'll figure out the version of Drupal ourselves"
 
-    drush_runtime_location = "/var/www/live.%s.%s/www/sites/default" % (repo, branch)
+    drush_runtime_location = "%s/www" % drupal_path
     # We're only checking the Drupal version so it's fine to not pass a 'site' and rely on default
     drush_output = drush_command("status", None, drush_runtime_location, False, "yaml")
     if run("echo \"%s\" | grep 'drupal-version'" % drush_output).failed:
