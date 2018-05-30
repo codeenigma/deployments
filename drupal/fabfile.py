@@ -179,6 +179,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   mapping = {}
   mapping = Drupal.configure_site_mapping(repo, mapping, config)
 
+  # Record the link to the previous build
+  previous_build = common.Utils.get_previous_build(repo, branch, build)
+
   # Run new installs
   for alias,site in mapping.iteritems():
     # Compile variables for feature branch builds (if applicable)
@@ -208,7 +211,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale, php_ini_file)
       else:
         # Otherwise it's an existing build
-        existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file)
+        existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file)
 
     # After any build we want to run all the available automated tests
     test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths)
@@ -301,18 +304,17 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file):
+def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   with shell_env(PHPRC='%s' % php_ini_file):
-    # Grab some information about the current build
-    previous_build = common.Utils.get_previous_build(repo, branch, build)
-    previous_db = common.Utils.get_previous_db(repo, branch, build)
     # Check Drupal status to retrieve database name
-    drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
+    drush_runtime_location = "%s/www/sites/%s" % (previous_build, site)
     drush_output = Drupal.drush_status(repo, branch, build, buildtype, site, drush_runtime_location)
     db_name = Drupal.get_db_name(repo, branch, build, buildtype, site, drush_output)
     # Backup database
     execute(common.MySQL.mysql_backup_db, db_name, build, True)
+    # Build the location of the backup
+    previous_db = common.Utils.get_previous_db(repo, branch, build)
 
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
