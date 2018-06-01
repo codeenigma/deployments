@@ -14,6 +14,9 @@ env.shell = '/bin/bash -c'
 
 @task
 def main(shortname, branch, command, backup=True):
+  # Define server roles (if applicable)
+  common.Utils.define_roles(None, False)
+  # Run the command
   with settings(warn_only=True):
     if run('drush sa | grep ^@%s_%s$ > /dev/null' % (shortname, branch)).failed:
       raise SystemError("You can't run a command on a site that doesn't exist! Alias @%s_%s not recognised." % (shortname, branch))
