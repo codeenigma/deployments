@@ -206,8 +206,8 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Now check if we have a Drush alias with that name. If not, run an install
     with settings(hide('warnings', 'stderr'), warn_only=True):
       # Because this runs in Jenkins home directory, it will use 'system' drush
-      if run("drush sa | grep ^@%s_%s$ > /dev/null" % (alias, branch)).failed:
-        print "Didn't find a Drush alias %s_%s so we'll install this new site %s" % (alias, branch, url)
+      if previous_build is None:
+        print "Didn't find a previous build so we'll install this new site %s" % url
         initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale, php_ini_file)
       else:
         # Otherwise it's an existing build
