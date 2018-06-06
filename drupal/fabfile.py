@@ -207,7 +207,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     with settings(hide('warnings', 'stderr'), warn_only=True):
       # Because this runs in Jenkins home directory, it will use 'system' drush
       if previous_build is None:
-        print "Didn't find a previous build so we'll install this new site %s" % url
+        print "===> Didn't find a previous build so we'll install this new site %s" % url
         initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale, php_ini_file)
       else:
         # Otherwise it's an existing build
