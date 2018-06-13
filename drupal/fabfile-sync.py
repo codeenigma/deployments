@@ -61,14 +61,14 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
         Sync.backup_db(staging_shortname, staging_branch)
         Sync.sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config)
         # Allow developer to run a script mid-way through a sync
-        common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'mid')
+        common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'mid-db')
         Sync.drush_updatedb(orig_host, staging_shortname, staging_branch)
 
       # Files syncing (uploads)
       if synctype == 'files' or synctype == 'both':
         Sync.sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, remote_files_dir, staging_files_dir, sync_dir)
         # Allow developer to run a script mid-way through a sync
-        common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'mid')
+        common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'mid-files')
 
       # Cleanup
       Sync.clear_caches(orig_host, staging_shortname, staging_branch, drupal_version)
