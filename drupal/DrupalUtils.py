@@ -2,6 +2,41 @@ from fabric.api import *
 import common.ConfigFile
 
 
+# Runs a drush command
+@task
+def drush_command(drush_command, drush_site=None, drush_runtime_location=None, drush_sudo=False, drush_format=None, drush_path=None, www_user=False):
+  this_command = ""
+  # Allow calling applications to specify a path to drush
+  if drush_path:
+    this_command = this_command + drush_path + " -y "
+  else:
+    this_command = this_command + "drush -y "
+  # Set an optional format for the output
+  if drush_format:
+    this_command = this_command + "--format=%s " % drush_format
+  # Pass a URI to drush to process a multisite
+  if drush_site:
+    this_command = this_command + "-l " + drush_site
+  # Build the final command
+  this_command = this_command + " " + drush_command
+  # Optionally set a runtime location
+  if drush_runtime_location:
+    this_command = "cd %s && %s" % (drush_runtime_location, this_command)
+  # Optionally run as the web user - this needs to be last to wrap the whole thing
+  if www_user:
+    this_command = "su -s /bin/bash www-data -c '" + this_command + "'"
+  # Report back before executing
+  print "===> Running the following command for drush:"
+  print "=====> %s" % this_command
+  drush_output = ""
+  if drush_sudo:
+    drush_output = sudo(this_command)
+  else:
+    drush_output = run(this_command)
+  # Send back whatever happened in case another script needs it
+  return drush_output
+
+
 # Determine which Drupal version is being used
 @task
 def determine_drupal_version(drupal_version, repo, branch, build, config, method="deployment"):
@@ -15,13 +50,18 @@ def determine_drupal_version(drupal_version, repo, branch, build, config, method
   if drupal_version is None:
     print "===> No drupal_version override in config.ini, so we'll figure out the version of Drupal ourselves"
 
-    if run("cd %s/www && drush st | grep 'Drupal version'" % drupal_path).failed:
-      raise SystemExit("Could not determine Drupal version from drush st. If you're using composer, you MUST override this check in the config.ini file with drupal_version set in the [Drupal] section. Please raise a ticket if you're not sure how to do this.")
+    drush_runtime_location = "%s/www" % drupal_path
+    # We're only checking the Drupal version so it's fine to not pass a 'site' and rely on default
+    drush_output = drush_command("status", None, drush_runtime_location, False, "yaml")
+    if run("echo \"%s\" | grep 'drupal-version'" % drush_output).failed:
+      raise SystemExit("####### Could not determine Drupal version from drush st. If you're using composer, you MUST override this check in the config.ini file with drupal_version set in the [Drupal] section. Please raise a ticket if you're not sure how to do this.")
     else:
-      drupal_version = run("cd %s/www && drush st | grep \"Drupal version\" | cut -d\: -f2 | cut -d. -f1" % drupal_path)
+      drupal_version = run("echo \"%s\" | grep \"drupal-version\" | cut -d\: -f2 | cut -d. -f1" % drush_output)
       drupal_version = drupal_version.strip()
+      # Older versions of Drupal put version in single quotes
+      drupal_version = drupal_version.strip("'")
 
-  print "===> Drupal version is D%s." % drupal_version
+  print "===> Drupal version is Drupal %s." % drupal_version
   return drupal_version
 
 
@@ -30,7 +70,7 @@ def determine_drupal_version(drupal_version, repo, branch, build, config, method
 def get_database(shortname, branch, santise):
   # First, check the site exists on target server server
   if run('drush sa | grep ^@%s_%s$ > /dev/null' % (shortname, branch)).failed:
-    print "ERROR: Could not find a site with the Drush alias %s_%s in order to grab a database dump. Aborting." % (shortname, branch)
+    print "####### ERROR: Could not find a site with the Drush alias %s_%s in order to grab a database dump. Aborting." % (shortname, branch)
     raise SystemError("Could not find a site with the Drush alias %s_%s in order to grab a database dump. Aborting." % (shortname, branch))
 
   print "===> Found a site with Drush alias %s_%s. Let's grab a database and copy it down." % (shortname, branch)
