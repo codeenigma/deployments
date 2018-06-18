@@ -70,7 +70,11 @@ def generate_url(url, repo, branch):
 # Tasks for getting previous build strings for path and database
 @task
 def get_previous_build(repo, branch, build):
-  return run("readlink /var/www/live.%s.%s" % (repo, branch))
+  with settings(warn_only=True):
+    if run("readlink /var/www/live.%s.%s" % (repo, branch)).failed:
+      return None
+    else:
+      return run("readlink /var/www/live.%s.%s" % (repo, branch))
 
 @task
 def get_previous_db(repo, branch, build):

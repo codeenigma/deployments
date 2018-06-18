@@ -1,6 +1,9 @@
 from fabric.api import *
 from fabric.contrib.files import sed
 import string
+# Custom Code Enigma modules
+import DrupalUtils
+import Drupal
 
 
 httpauth_pass = None
@@ -13,32 +16,28 @@ drupal_common_config = None
 # Feature branches only, preparing database
 # Assumes single server, cannot work on a cluster
 @task
-def initial_db_and_config(repo, branch, build, import_config, drupal_version):
+def initial_db_and_config(repo, branch, build, site, import_config, drupal_version):
   with settings(warn_only=True):
     # Run database updates
-    if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y updatedb'" % (repo, branch, build)).failed:
-      print "Could not run database updates! Everything else has been done, but failing the build to alert to the fact database updates could not be run."
-      raise SystemExit("Could not run database updates! Everything else has been done, but failing the build to alert to the fact database updates could not be run.")
+    drush_runtime_location = "/var/www/%s_%s_%s/www/sites/default" % (repo, branch, build)
+    if DrupalUtils.drush_command("updatedb", site, drush_runtime_location, True, None, None, True).failed:
+      raise SystemExit("###### Could not run database updates! Everything else has been done, but failing the build to alert to the fact database updates could not be run.")
     else:
-      if drupal_version > 7:
-        sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cr'" % (repo, branch, build))
-      else:
-        sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cc all'" % (repo, branch, build))
+      Drupal.drush_clear_cache(repo, branch, build, "default", drupal_version)
 
     # Run entity updates
     if drupal_version > 7:
-      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y entity-updates'" % (repo, branch, build)).failed:
-        print "Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
+      if DrupalUtils.drush_command("entity-updates", site, drush_runtime_location, True, None, None, True).failed:
+        print "###### Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
 
     # Import config
     if drupal_version > 7 and import_config:
       print "===> Importing configuration for Drupal 8 site..."
-      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cim'" % (repo, branch, build)).failed:
-        print "Could not import configuration! Failing build."
-        raise SystemExit("Could not import configuration! Failing build.")
+      if DrupalUtils.drush_command("cim", site, drush_runtime_location, True, None, None, True).failed:
+        raise SystemExit("###### Could not import configuration! Failing build.")
       else:
         print "===> Configuration imported. Running a cache rebuild..."
-        sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/default && drush -y cr'" % (repo, branch, build))
+        Drupal.drush_clear_cache(repo, branch, build, "default", drupal_version)
 
 
 # Sets all the variables for a feature branch InitialBuild
@@ -51,8 +50,10 @@ def configure_feature_branch(buildtype, config, branch, alias):
   global ssl_cert
   global drupal_common_config
   global featurebranch_url
+  global featurebranch_vhost
 
   featurebranch_url = None
+  featurebranch_vhost = None
 
 
   # If the buildtype is 'custombranch', which it will be when deploying a custom branch (i.e one
@@ -124,33 +125,31 @@ def configure_feature_branch(buildtype, config, branch, alias):
             print "Feature Branch: Found a drupalcommonconfig option..."
             drupal_common_config = config.get("featurebranch", "drupalcommonconfig")
             print "Feature Branch: drupal_common_config is now %s" % drupal_common_config
+
+          if config.has_option("featurebranch", "vhost"):
+            print "Feature branch: Found a vhost option..."
+            featurebranch_vhost = config.get("featurebranch", "vhost")
+            print "Feature Branch: featurebranch_vhost is now %s" % featurebranch_vhost
         else:
           print "We could not find a [featurebranch] section in the config.ini file, yet this *is* a feature branch build. That is perfectly fine, as options do not need to be set for a feature branch build, but they can be handy."
 
 
 # Used for Drupal build teardowns.
 @task
-def remove_site(repo, branch, alias):
+def remove_site(repo, branch, alias, mysql_config):
   # Drop DB...
-  with cd("/var/www/live.%s.%s/www/sites/default" % (repo, branch)):
-    with settings(warn_only=True):
-      dbname = sudo("drush status 2>&1 | grep \"Database name \|DB name \" | cut -d \":\" -f 2")
-      print "DEBUG INFO: dbname = %s" % dbname
-
-      # If the dbname variable is empty for whatever reason, resort to grepping settings.php
-      if not dbname:
-        dbname = sudo("grep \"'database' => '%s*\" settings.php | cut -d \">\" -f 2" % alias)
-        print "DEBUG INFO: dbname = %s" % dbname
-        dbname = dbname.translate(None, "',")
-        print "DEBUG INFO: dbname = %s" % dbname
+  # 'build' and 'buildtype' can be none because only needed for revert which isn't relevant
+  drush_runtime_location = "/var/www/live.%s.%s/www" % (repo, branch)
+  drush_output = Drupal.drush_status(repo, branch, None, None, None, drush_runtime_location)
+  dbname = Drupal.get_db_name(repo, branch, None, None, "default", drush_output)
 
   # If the dbname variable is still empty, fail the build early
   if not dbname:
-    raise SystemExit("Could not determine the database name, so we cannot proceed with tearing down the site.")
+    raise SystemExit("###### Could not determine the database name, so we cannot proceed with tearing down the site.")
 
   print "===> Dropping database and user: %s" % dbname
-  sudo("mysql --defaults-file=/etc/mysql/debian.cnf -e 'DROP DATABASE IF EXISTS `%s`;'" % dbname)
-  sudo("mysql --defaults-file=/etc/mysql/debian.cnf -e \"DROP USER \'%s\'@\'localhost\';\"" % dbname)
+  sudo("mysql --defaults-file=%s -e 'DROP DATABASE IF EXISTS `%s`;'" % (mysql_config, dbname))
+  sudo("mysql --defaults-file=%s -e \"DROP USER \'%s\'@\'localhost\';\"" % (mysql_config, dbname))
 
   with settings(warn_only=True):
     # Remove site directories
