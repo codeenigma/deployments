@@ -117,6 +117,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   codesniffer_extensions = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_extensions", "string", "php,module,inc,install,test,profile,theme,info,txt,md")
   codesniffer_ignore = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_ignore", "string", "node_modules,bower_components,vendor")
   codesniffer_paths = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_paths", "string", "www/modules/custom www/themes/custom")
+  # Regex check
+  string_to_check = common.ConfigFile.return_config_item(config, "Testing", "string_to_check", "string")
+  curl_options = common.ConfigFile.return_config_item(config, "Testing", "curl_options", "string", "sL")
+  check_protocol = common.ConfigFile.return_config_item(config, "Testing", "check_protocol", "string", "https")
 
   # Set SSH key if needed
   # @TODO: this needs to be moved to config.ini for Code Enigma GitHub projects
@@ -395,7 +399,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
 
 # Wrapper function for runnning automated tests on a site
 @task
-def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths):
+def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email):
   # Run simpletest tests
   execute(DrupalTests.run_tests, repo, branch, build, config, drupal_version, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, www_root)
 
@@ -421,5 +425,9 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
       print "===> phpunit tests ran successfully."
   else:
     print "===> No phpunit tests."
+
+  # Run a regex check
+  if url and string_to_check:
+    common.Tests.run_regex_check(url, string_to_check, check_protocol, curl_options, notifications_email)
 
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', hosts=env.roledefs['app_all'])
