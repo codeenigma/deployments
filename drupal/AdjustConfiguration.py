@@ -22,12 +22,12 @@ def adjust_settings_php(repo, branch, build, buildtype, alias, site):
     # Let's make sure we're checking for $buildtype.settings.php.
     # If so, we'll update the build number - if not, we'll add the check to the bottom of the file.
     contain_string = "if (file_exists($file)) {"
-    settings_file = "/var/www/%s_%s_%s/www/sites/%s/settings.php" % (repo, branch, build, site)
+    settings_file = "/var/www/config/%s_%s.settings.inc" % (alias, branch)
     does_contain = contains(settings_file, contain_string, exact=True, use_sudo=True)
     if not does_contain:
       append_string = """$file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
 if (file_exists($file)) {
-include_once($file);
+include($file);
 }""" % (repo, branch, build, site, buildtype)
       append(settings_file, append_string, use_sudo=True)
       print "===> %s did not have a file_exists() check, so it was appended to the bottom of the file." % settings_file
