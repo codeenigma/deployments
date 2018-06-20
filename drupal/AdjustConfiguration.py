@@ -21,7 +21,7 @@ def adjust_settings_php(repo, branch, build, buildtype, alias, site):
   with settings(warn_only=True):
     # Let's make sure we're checking for $buildtype.settings.php.
     # If so, we'll update the build number - if not, we'll add the check to the bottom of the file.
-    contain_string = "if (file_exists($file)) {"
+    contain_string = "if (file_exists(\$file)) {"
     settings_file = "/var/www/config/%s_%s.settings.inc" % (alias, branch)
     if sudo("grep \"%s\" %s" % (contain_string, settings_file)):
       print "===> %s already has a file_exists() check. We need to replace the build number so the newer %s.settings.php file is used." % (settings_file, buildtype)
