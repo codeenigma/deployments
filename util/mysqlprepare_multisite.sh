@@ -107,7 +107,7 @@ if [ $? -eq 0 ]; then
 \$config_directories['sync'] = '../config/sync';
 \$file = '$SITE_ROOT/www/sites/$URL/$BRANCH.settings.php';
 if (file_exists(\$file)) {
-  include_once(\$file);
+  include(\$file);
 }
 EOF
   elif [ -f $SITE_ROOT/modules/overlay/overlay.info ]; then
@@ -121,7 +121,7 @@ EOF
  );
 \$file = '$SITE_ROOT/sites/$URL/$BRANCH.settings.php';
 if (file_exists(\$file)) {
-  include_once(\$file);
+  include(\$file);
 }
 EOF
   else
@@ -129,7 +129,7 @@ EOF
 \$db_url = 'mysql://$NEWDB:$PASS@localhost/$NEWDB';
 \$file = '$SITE_ROOT/sites/$URL/$BRANCH.settings.php';
 if (file_exists(\$file)) {
-  include_once(\$file);
+  include(\$file);
 }
 EOF
   fi

@@ -459,7 +459,7 @@ def adjust_settings_php(repo, branch, build, buildtype, mapping, sites):
                 #append_string = """$file = '/var/www/live.%s.%s/www/sites/default/%s.settings.php';
                 append_string = """$file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
 if (file_exists($file)) {
-  include_once($file);
+  include($file);
 }""" % (repo, branch, build, buildsite, buildtype)
                 append(settings_file, append_string, use_sudo=True)
                 print "%s did not have a file_exists() check, so it was appended to the bottom of the file." % settings_file
@@ -480,7 +480,7 @@ if (file_exists($file)) {
             does_contain = contains(settings_file, contain_string, exact=True, use_sudo=True)
             if does_contain:
               # 8. The shared settings.inc contains the comment from #5. Therefore, we won't add a file_exists($buildtype.settings.php) check.
-              print "%s contains '%s', so we won't append a file_exists() check and include_once. This is because the settings.php file was copied from sites/%s/%s.settings.php and it wouldn't make sense to include itself." % (settings_file, contain_string, buildsite, buildtype)
+              print "%s contains '%s', so we won't append a file_exists() check and include. This is because the settings.php file was copied from sites/%s/%s.settings.php and it wouldn't make sense to include itself." % (settings_file, contain_string, buildsite, buildtype)
             else:
               # 9. The shared settings.inc does not contain a comment (from #5), so we'll see if we need to append a file_exists() check.
               print "%s does not contain '%s', so we'll check if we need to append a file_exists() check to settings.inc." % (settings_file, contain_string)
@@ -490,7 +490,7 @@ if (file_exists($file)) {
                 #append_string = """$file = '/var/www/live.%s.%s/www/sites/default/%s.settings.php';
                 append_string = """$file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
 if (file_exists($file)) {
-  include_once($file);
+  include($file);
 }""" % (repo, branch, build, buildsite, buildtype)
                 append(settings_file, append_string, use_sudo=True)
                 print "%s did not have a file_exists() check, so it was appended to the bottom of the file." % settings_file
@@ -516,7 +516,7 @@ if (file_exists($file)) {
           does_contain = contains(settings_file, contain_string, exact=True, use_sudo=True)
           if does_contain:
             # 8. The settings.inc contains the comment from #5. Therefore, we won't add a file_exists($buildtype.settings.php) check.
-            print "%s contains '%s', so we won't append a file_exists() check and include_once. This is because the settings.php file was copied from sites/%s/%s.settings.php and it wouldn't make sense to include itself." % (settings_file, contain_string, buildsite, buildtype)
+            print "%s contains '%s', so we won't append a file_exists() check and include. This is because the settings.php file was copied from sites/%s/%s.settings.php and it wouldn't make sense to include itself." % (settings_file, contain_string, buildsite, buildtype)
           else:
             # 9. The settings.inc does not contain a comment (from #5), so we'll see if we need to append a file_exists() check.
             print "%s does not contain '%s', so we'll check if we need to append a file_exists() check to settings.inc." % (settings_file, contain_string)
@@ -526,7 +526,7 @@ if (file_exists($file)) {
               #append_string = """$file = '/var/www/live.%s.%s/www/sites/default/%s.settings.php';
               append_string = """$file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
 if (file_exists($file)) {
-  include_once($file);
+  include($file);
 }""" % (repo, branch, build, buildsite, buildtype)
               append(settings_file, append_string, use_sudo=True)
               print "%s did not have a file_exists() check, so it was appended to the bottom of the file." % settings_file
