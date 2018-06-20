@@ -31,7 +31,7 @@ def adjust_settings_php(repo, branch, build, buildtype, alias, site):
     else:
       append_string = """$file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
 if (file_exists($file)) {
-include($file);
+  include($file);
 }""" % (repo, branch, build, site, buildtype)
       append(settings_file, append_string, use_sudo=True)
       print "===> %s did not have a file_exists() check, so it was appended to the bottom of the file." % settings_file
