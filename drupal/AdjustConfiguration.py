@@ -27,7 +27,7 @@ def adjust_settings_php(repo, branch, build, buildtype, alias, site):
       print "===> %s already has a file_exists() check. We need to replace the build number so the newer %s.settings.php file is used." % (settings_file, buildtype)
       replace_string = "/var/www/.+_.+_build_[0-9]+/.+\.settings\.php"
       replace_with = "/var/www/%s_%s_%s/www/sites/%s/%s.settings.php" % (repo, branch, build, site, buildtype)
-      sed(settings_file, replace_string, replace_with, limit='', use_sudo=True, backup='.bak', flags="i", shell=False)
+      sed(settings_file, replace_string, replace_with, limit='', use_sudo=False, backup='.bak', flags="i", shell=False)
     else:
       append_string = """$file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
 if (file_exists($file)) {
