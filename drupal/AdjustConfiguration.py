@@ -55,7 +55,7 @@ def adjust_settings_php(repo, branch, build, buildtype, alias, site):
           run("ln -s /var/www/config/%s_%s.settings.inc /var/www/%s_%s_%s/www/sites/%s/settings.php" % (alias, branch, repo, branch, build, site))
       else:
         # 6. We found settings.php. Let's see if it's checking for $buildtype.settings.php. If it's not, we'll add the check to the bottom of the file.
-        contain_string = "if (file_exists($file)) {"
+        contain_string = "if (file_exists(\$file)) {"
         settings_file = "/var/www/%s_%s_%s/www/sites/%s/settings.php" % (repo, branch, build, site)
         does_contain = contains(settings_file, contain_string, exact=True, use_sudo=True)
         if not does_contain:
@@ -82,7 +82,7 @@ include_once($file);
       else:
         # 9. The settings.inc does not contain a comment (from #5), so we'll see if we need to append a file_exists() check.
         print "===> %s does not contain '%s', so we'll check if we need to append a file_exists() check to settings.inc." % (settings_file, contain_string)
-        contain_string = "if (file_exists($file)) {"
+        contain_string = "if (file_exists(\$file)) {"
         does_contain = contains(settings_file, contain_string, exact=True, use_sudo=True)
         if not does_contain:
           append_string = """$file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
