@@ -23,19 +23,18 @@ def adjust_settings_php(repo, branch, build, buildtype, alias, site):
     # If so, we'll update the build number - if not, we'll add the check to the bottom of the file.
     contain_string = "if (file_exists($file)) {"
     settings_file = "/var/www/config/%s_%s.settings.inc" % (alias, branch)
-    does_contain = contains(settings_file, contain_string, exact=True, use_sudo=True)
-    if not does_contain:
-      append_string = """$file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
-if (file_exists($file)) {
-include($file);
-}""" % (repo, branch, build, site, buildtype)
-      append(settings_file, append_string, use_sudo=True)
-      print "===> %s did not have a file_exists() check, so it was appended to the bottom of the file." % settings_file
-    else:
+    if run("grep %s %s" % (contain_string, settings_file)):
       print "===> %s already has a file_exists() check. We need to replace the build number so the newer %s.settings.php file is used." % (settings_file, buildtype)
       replace_string = "/var/www/.+_.+_build_[0-9]+/.+\.settings\.php"
       replace_with = "/var/www/%s_%s_%s/www/sites/%s/%s.settings.php" % (repo, branch, build, site, buildtype)
       sed(settings_file, replace_string, replace_with, limit='', use_sudo=True, backup='.bak', flags="i", shell=False)
+    else:
+      append_string = """$file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
+if (file_exists($file)) {
+  include($file);
+}""" % (repo, branch, build, site, buildtype)
+      append(settings_file, append_string, use_sudo=True)
+      print "===> %s did not have a file_exists() check, so it was appended to the bottom of the file." % settings_file
 
 
 # Adjust shared files symlink
