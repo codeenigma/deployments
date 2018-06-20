@@ -23,7 +23,7 @@ def adjust_settings_php(repo, branch, build, buildtype, alias, site):
     # If so, we'll update the build number - if not, we'll add the check to the bottom of the file.
     contain_string = "if (file_exists(\$file))"
     settings_file = "/var/www/config/%s_%s.settings.inc" % (alias, branch)
-    if sudo('grep "\$file = \'\/var\/www\/%s" %s' % (repo, settings_file)):
+    if run('grep "\$file = \'\/var\/www\/%s" %s' % (repo, settings_file)).return_code == 0:
       print "===> %s already has a file_exists() check. We need to replace the build number so the newer %s.settings.php file is used." % (settings_file, buildtype)
       replace_string = "/var/www/.+_.+_build_[0-9]+/.+\.settings\.php"
       replace_with = "/var/www/%s_%s_%s/www/sites/%s/%s.settings.php" % (repo, branch, build, site, buildtype)
