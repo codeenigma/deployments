@@ -1,12 +1,13 @@
 # Deployments
 
-[Code Enigma](https://www.codeenigma.com)'s custom [Fabric](http://www.fabfile.org/) and shell scripts for deploying various PHP apps. We predominantly do this using [Jenkins CI](https://jenkins.io), however in principle, any system capable of triggering a shell command on a server with Fabric installed can be used as a trigger for these scripts.
+[Code Enigma](https://www.codeenigma.com)'s custom [Robo.li](https://robo.li) and shell scripts for deploying various PHP apps. We predominantly do this using [Jenkins CI](https://jenkins.io), however in principle, any system capable of triggering a shell command on a server with Fabric installed can be used as a trigger for these scripts.
 
 These deployment scripts currently support:
 
 * [Drupal](https://www.drupal.org)
 * [WordPress](https://wordpress.com/)
 * [Symfony](https://symfony.com/)
+* [Magento](https://magento.com/)
 * Flat HTML
 
 # Features
@@ -50,7 +51,7 @@ Because as a company we mostly specialise in Drupal, a lot of the best features 
 
 We are continually looking to reduce this list of assumptions and dependencies, but for now in order to use these scripts you must meet the following criteria:
 
-* Linux CI server with Fabric installed
+* Linux CI server with PHP installed
 * a 'jenkins' user on the CI server which is used to trigger commands
 * Linux target app server(s) (Debian will work best without modification)
 * a 'jenkins' user with a home directory and public key of the CI user on target app server(s)
@@ -74,7 +75,7 @@ If you use a MySQL (or similar) database (so clearly Drupal, WordPress and some 
 
 Clone this repository into a location of your choice on your CI server (usually Jenkins).
 
-Create a means to trigger the Fabric scripts (usually a "Freestyle project" in Jenkins with a trigger based on repository change).
+Create a means to trigger the PHP scripts (usually a "Freestyle project" in Jenkins with a trigger based on repository change).
 
 Ensure your application is either in a `www` repository in the repository or has a link to `./www` committed to the repository and pointing at the relative application location within the repository (the scripts expect to find an app in `www`).
 
@@ -90,19 +91,14 @@ example-drupal=dev1.codeenigma.com
 An example trigger command, typically placed in an Execute Shell box in Jenkins, looks like this - example uses Drupal:
 
 ```
-fab -f /path/to/these/scripts/drupal/fabfile.py
-main:repo=myreponame,repourl=git@git.mydomain.com:myreponame.git,build=build_${BUILD_NUMBER},branch=master,buildtype=master,keepbuilds=5
+EXAMPLES TBD
 ```
-
-For any given type of application, you can look at the `main()` function in `fabfile.py` in the appropriate sub-directory, in this case `./drupal/fabfile.py`.
 
 # Known Issues
 
-Drupal scripts are the most mature, as our specialism is as a Drupal development company, though we have WordPress and Symfony projects as well, and we also do some work with [Magento](https://magento.com).
 
 ## General
 
-* our `_sshagent_run()` now supports a path to a private key, however some deploy scripts need updating to allow it to be passed to the `main()` function
 * Nginx is the preferred web server, Apache support isn there and it mostly works, but the initial build parts for WordPress and Drupal may be shaky
 * some manual manipulation of vhosts might be required if you do not like the default URL format
 * we're working around some challenges with regard to supporting [AWS RDS](https://aws.amazon.com/rds/) for MySQL initial builds and initial builds in cluster environments generally
@@ -125,7 +121,5 @@ Drupal scripts are the most mature, as our specialism is as a Drupal development
 
 These scripts are continually improved, specific enhancements on our radar are:
 
-* Magento support
-* unit tests
 * support for front-end framework compilers
 * better microservice support
