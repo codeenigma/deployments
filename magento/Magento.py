@@ -8,7 +8,7 @@ import datetime
 
 # Generate a crontab for running magento2's cron on this site
 @task
-@roles('app_all')
+@roles('app_primary')
 def generate_magento_cron(repo, buildtype, site_link):
   if exists("/etc/cron.d/%s_%s_magento_cron" % (repo, buildtype)):
     print "===> Cron already exists, moving along"
