@@ -14,14 +14,18 @@ def adjust_settings_php(repo, branch, build, buildtype, alias, site):
 
   # Check there is a settings.inc file, there are no cases where there should not be!
   if run("stat /var/www/config/%s_%s.settings.inc" % (alias, branch)):
-    run("ln -s /var/www/config/%s_%s.settings.inc /var/www/%s_%s_%s/www/sites/%s/settings.php" % (alias, branch, repo, branch, build, site))
+    with settings(warn_only=True):
+      if run("stat /var/www/%s_%s_%s/www/sites/%s/settings.php" % (repo, branch, build, site)):
+        run("mv /var/www/%s_%s_%s/www/sites/%s/settings.php /var/www/%s_%s_%s/www/sites/%s/unused.settings.php" % (repo, branch, build, site, repo, branch, build, site))
+
+    if run("ln -s /var/www/config/%s_%s.settings.inc /var/www/%s_%s_%s/www/sites/%s/settings.php" % (alias, branch, repo, branch, build, site)).failed:
+      raise SystemExit("######## Couldn't symlink in settings.inc file! Aborting build.")
   else:
     raise SystemExit("######## Couldn't find any settings.inc! This site probably failed its initial build and needs fixing. Aborting early! TIP: Add a /var/www/config/%s_%s.settings.inc file manually and do a file_exists() check for /var/www/%s_%s_%s/www/sites/%s/%s.settings.php and if it exists, include it. Then symlink that to /var/www/%s_%s_%s/www/sites/%s/settings.php." % (alias, branch, repo, branch, build, site, buildtype, repo, branch, build, site))
 
   with settings(warn_only=True):
     # Let's make sure we're checking for $buildtype.settings.php.
     # If so, we'll update the build number - if not, we'll add the check to the bottom of the file.
-    contain_string = "if (file_exists(\$file))"
     settings_file = "/var/www/config/%s_%s.settings.inc" % (alias, branch)
     if run('grep "\$file = \'\/var\/www\/%s" %s' % (repo, settings_file)).return_code == 0:
       print "===> %s already has a file_exists() check. We need to replace the build number so the newer %s.settings.php file is used." % (settings_file, buildtype)
