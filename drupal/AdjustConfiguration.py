@@ -15,7 +15,7 @@ def adjust_settings_php(repo, branch, build, buildtype, alias, site):
   # Check there is a settings.inc file, there are no cases where there should not be!
   if run("stat /var/www/config/%s_%s.settings.inc" % (alias, branch)):
     with settings(warn_only=True):
-      if run("stat /var/www/%s_%s_%s/www/sites/%s/settings.php" % (repo, branch, build, site)):
+      if run("stat /var/www/%s_%s_%s/www/sites/%s/settings.php" % (repo, branch, build, site)).succeeded:
         run("mv /var/www/%s_%s_%s/www/sites/%s/settings.php /var/www/%s_%s_%s/www/sites/%s/unused.settings.php" % (repo, branch, build, site, repo, branch, build, site))
 
     if run("ln -s /var/www/config/%s_%s.settings.inc /var/www/%s_%s_%s/www/sites/%s/settings.php" % (alias, branch, repo, branch, build, site)).failed:
