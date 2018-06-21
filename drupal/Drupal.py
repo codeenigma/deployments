@@ -118,7 +118,7 @@ def get_db_name(repo, branch, build, buildtype, site, drush_output):
 
 # Generate a crontab for running drush cron on this site
 @task
-@roles('app_all')
+@roles('app_primary')
 def generate_drush_cron(repo, branch):
   if exists("/etc/cron.d/%s_%s_cron" % (repo, branch)):
     print "===> Cron already exists, moving along"
