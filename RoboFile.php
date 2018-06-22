@@ -7,9 +7,6 @@
 class RoboFile extends \Robo\Tasks
 {
   // define public methods as commands
-  function hello($world, $opts = ['silent|s' => false]) {
-    if (!$opts['silent']) $this->say("Hello $world!");
-  }
 
   function build(
           $repo,
