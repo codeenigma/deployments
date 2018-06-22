@@ -1,0 +1,13 @@
+{
+    "name": "codeenigma/deployments",
+    "description": "CI scripts for various applications written for Robo.li.",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "gregharvey",
+            "email": "greg.harvey@gmail.com"
+        }
+    ],
+    "require": {}
+}
