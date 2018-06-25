@@ -107,6 +107,6 @@ ENV/
 .mypy_cache/
 
 # Robo.li
-/robo.yml
+robo.yml
 /hooks/
 /vendor/
