@@ -4,38 +4,62 @@
  *
  * @see http://robo.li/
  */
-class RoboFile extends \Robo\Tasks
+
+use CodeEnigma\Deployments\Robo\common\loadTasks as CommonTasks;
+use Robo\Tasks;
+
+class RoboFile extends Tasks
 {
+  use CommonTasks;
+
   // define public methods as commands
+  public function build(
+    $repo,
+    $repourl,
+    $branch,
+    $buildtype,
+    $build,
+    $keepbuilds = 10,
+    $app_url = null,
+    $cluster = false,
+    $php_ini_file = null
+    ) {
+      # Off we go!
+      $this->yell("Starting a build");
 
-  function build(
-          $repo,
-          $repourl,
-          $branch,
-          $buildtype,
-          $build,
-          $keepbuilds = 10,
-          $app_url = null,
-          $cluster = false,
-          $php_ini_file = null
-  ) {
-    include('./common/Config.php');
-    # Variables that can be set in the YAML file
-    $GLOBALS['ci_user']    = return_config_item($buildtype, 'server', 'ci-user');
-    $www_root              = return_config_item($buildtype, 'server', 'www-root');
-    $ssh_key               = return_config_item($buildtype, 'server', 'ssh-key');
-    $notifications_email   = return_config_item($buildtype, 'app', 'notifications-email');
-    $app_location          = return_config_item($buildtype, 'app', 'location', 'string', 'www');
-    # Fixed variables
-    $GLOBALS['build_path'] = $www_root . '/' . $repo . '_' . $buildtype . '_build_' . $build;
-    $GLOBALS['app_path']   = $GLOBALS['build_path'] . '/' . $app_location;
-    # Debug feedback
-    print "===> Build path set to ". $GLOBALS['build_path'] . "\n";
-    print "===> App path set to ". $GLOBALS['app_path'] . "\n";
+      # Load in our config
+      $this->say("Setting up the environment");
+      $GLOBALS['ci_user']    = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'ci-user');
+      $www_root              = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'www-root');
+      $ssh_key               = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'ssh-key');
+      $notifications_email   = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'notifications-email');
+      $app_location          = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'location', 'string', 'www');
+      # Fixed variables
+      $GLOBALS['build_path'] = $www_root . '/' . $repo . '_' . $buildtype . '_build_' . $build;
+      if ($app_location) {
+        $GLOBALS['app_path'] = $GLOBALS['build_path'] . '/' . $app_location;
+      }
+      else {
+        $GLOBALS['app_path'] = $GLOBALS['build_path'];
+      }
+      # Debug feedback
+      $this->say("Build path set to '". $GLOBALS['build_path'] . "'");
+      $this->say("App path set to '". $GLOBALS['app_path'] . "'");
 
-    include('./common/Utils.php');
-    define_host($buildtype);
-    define_roles($cluster);
-    perform_client_deploy_hook($repo, $build, $buildtype, 'pre', 'app_primary');
+      # Build our host and roles
+      $this->taskDeployUtilsTasks()->defineHost($buildtype);
+      $this->taskDeployUtilsTasks()->defineRoles($cluster);
+
+      # Check out the code
+      # We have to do this before the build hook so it's present on the server
+      $gitTask = $this->taskGitStack()
+       ->cloneRepo($repourl, $GLOBALS['build_path'], $branch);
+      $this->taskSshExec($GLOBALS['host'])
+       ->remoteDir($GLOBALS['build_path'])
+       ->exec($gitTask)
+       ->run();
+
+      # Give developers an opportunity to inject some code
+      $this->taskDeployUtilsTasks()->performClientDeployHook($repo, $build, $buildtype, 'pre', 'app_primary');
   }
 }
