@@ -151,7 +151,7 @@ def initial_build(repo, url, branch, build, site, alias, profile, buildtype, san
     append_string = """$config_directories['sync'] = '../config/sync';
 $file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
 if (file_exists($file)) {
-  include_once($file);
+  include($file);
 }""" % (repo, branch, build, site, buildtype)
     append("settings.php", append_string, use_sudo=True)
 

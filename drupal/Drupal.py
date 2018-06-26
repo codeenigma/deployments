@@ -118,7 +118,7 @@ def get_db_name(repo, branch, build, buildtype, site, drush_output):
 
 # Generate a crontab for running drush cron on this site
 @task
-@roles('app_all')
+@roles('app_primary')
 def generate_drush_cron(repo, branch):
   if exists("/etc/cron.d/%s_%s_cron" % (repo, branch)):
     print "===> Cron already exists, moving along"
@@ -370,8 +370,9 @@ def drush_clear_cache(repo, branch, build, site, drupal_version):
       drush_command = "cr"
     else:
       drush_command = "cc all"
-      drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
-      DrupalUtils.drush_command(drush_command, site, drush_runtime_location, True, None, None, True)
+
+    drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
+    DrupalUtils.drush_command(drush_command, site, drush_runtime_location, True, None, None, True)
 
 
 # Manage or setup the 'environment_indicator' Drupal module, if it exists in the build

@@ -99,7 +99,7 @@ if [ $? -eq 0 ]; then
 \$config_directories['sync'] = '../config/sync';
 \$file = '$SITE_ROOT/sites/$URL/$BRANCH.settings.php';
 if (file_exists(\$file)) {
-  include_once(\$file);
+  include(\$file);
 }
 EOF
 
