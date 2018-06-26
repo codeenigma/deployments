@@ -3,11 +3,13 @@ namespace CodeEnigma\Deployments\Robo\common;
 
 use Robo\Common\TaskIO;
 use Robo\Contract\TaskInterface;
-use Robo\Tasks;
+use Robo\LoadAllTasks;
+use Robo\Task\BaseTask;
 
-class DeployUtilsTasks extends Tasks implements TaskInterface
+class DeployUtilsTasks extends BaseTask implements TaskInterface
 {
   use TaskIO;
+  use LoadAllTasks;
 
   public function __construct() {}
   public function run() {}
