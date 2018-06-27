@@ -13,7 +13,7 @@ def generate_magento_cron(repo, buildtype, site_link, autoscale=None):
   if exists("/etc/cron.d/%s_%s_magento_cron" % (repo, buildtype)):
     print "===> Cron already exists, moving along"
   else:
-    if not autoscale:
+    if autoscale is None:
       print "===> No cron job, creating one now"
       now = datetime.datetime.now()
       sudo("touch /etc/cron.d/%s_%s_magento_cron" % (repo, buildtype))
