@@ -54,12 +54,16 @@ class RoboFile extends Tasks
       $this->taskDeployUtilsTasks()->defineHost($buildtype);
       $this->taskDeployUtilsTasks()->defineRoles($cluster);
 
+      # Create build directory
+      $result = $this->taskSshExec($GLOBALS['host'])
+      ->exec('sudo mkdir -p ' . $GLOBALS['build_path'])
+      ->run();
+
       # Check out the code
       # We have to do this before the build hook so it's present on the server
       $gitTask = $this->taskGitStack()
        ->cloneRepo($repourl, $GLOBALS['build_path'], $branch);
       $result = $this->taskSshExec($GLOBALS['host'])
-       ->exec('sudo mkdir -p ' . $GLOBALS['build_path'])
        ->remoteDir($GLOBALS['build_path'])
        ->exec($gitTask)
        ->run();
