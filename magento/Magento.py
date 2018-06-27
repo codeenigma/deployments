@@ -9,18 +9,21 @@ import datetime
 # Generate a crontab for running magento2's cron on this site
 @task
 @roles('app_primary')
-def generate_magento_cron(repo, buildtype, site_link):
+def generate_magento_cron(repo, buildtype, site_link, autoscale=None):
   if exists("/etc/cron.d/%s_%s_magento_cron" % (repo, buildtype)):
     print "===> Cron already exists, moving along"
   else:
-    print "===> No cron job, creating one now"
-    now = datetime.datetime.now()
-    sudo("touch /etc/cron.d/%s_%s_magento_cron" % (repo, buildtype))
-    append_string = """*/%s * * * * www-data   php %s/www/bin/magento cron:run
+    if not autoscale:
+      print "===> No cron job, creating one now"
+      now = datetime.datetime.now()
+      sudo("touch /etc/cron.d/%s_%s_magento_cron" % (repo, buildtype))
+      append_string = """*/%s * * * * www-data   php %s/www/bin/magento cron:run
 */%s * * * * www-data   php %s/update/cron.php
 */%s * * * * www-data   php %s/www/bin/magento setup:cron:run""" % (now.minute, site_link, now.minute, site_link, now.minute, site_link)
-    append("/etc/cron.d/%s_%s_magento_cron" % (repo, buildtype), append_string, use_sudo=True)
-    print "===> New Magento cron job created at /etc/cron.d/%s_%s_magento_cron" % (repo, buildtype)
+      append("/etc/cron.d/%s_%s_magento_cron" % (repo, buildtype), append_string, use_sudo=True)
+      print "===> New Magento cron job created at /etc/cron.d/%s_%s_magento_cron" % (repo, buildtype)
+    else:
+      print "===> This is an autoscale layout, cron should be handled by another task runner such as Jenkins"
 
 
 # Adjust shared files symlink

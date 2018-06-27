@@ -141,7 +141,7 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
       execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
       execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
 
-      execute(Magento.generate_magento_cron, repo, buildtype, site_link)
+      execute(Magento.generate_magento_cron, repo, buildtype, site_link, autoscale)
 
       # Let's allow developers to perform some post-build actions if they need to
       execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
@@ -179,7 +179,7 @@ def main(repo, repourl, branch, build, buildtype, url=None, magento_email=None, 
       execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
       execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
 
-      execute(Magento.generate_magento_cron, repo, buildtype, site_link)
+      execute(Magento.generate_magento_cron, repo, buildtype, site_link, autoscale)
 
       # Let's allow developers to perform some post-build actions if they need to
       execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
