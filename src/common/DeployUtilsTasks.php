@@ -215,18 +215,18 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
       $this->printTaskSuccess("===> Removing all but the last $keep_builds builds to conserve disk space");
       $latest_keep_build = $build - $keep_builds;
       if ($latest_keep_build > 0) {
-        $targets = glob($GLOBALS['www_root'] . "/$repo'_'$build_type'_build_*");
-        print_r($targets);
-        $servers = $GLOBALS['roles'][$role];
+        #$targets = glob($GLOBALS['www_root'] . "/$repo'_'$build_type'_build_*");
+        #print_r($targets);
+        #$servers = $GLOBALS['roles'][$role];
         foreach ($servers as $server) {
-          #$result = $this->taskSshExec($server, $GLOBALS['ci_user'])
-          #  ->exec("PATTERN=$repo'_'$build_type'_build_*'")
-          #  ->exec("REMAINING=`find " . $GLOBALS['www_root'] . " -maxdepth 1 -type d -name \"\$PATTERN\" | wc -l`")
-          # ->exec("if [ \$REMAINING -eq 0 ]; then exit; fi")
-          #  ->run();
-          #if (!$result->wasSuccessful()) {
-          #  $this->printTaskSuccess("===> No builds to delete on $server");
-          #}
+          $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
+            ->exec("PATTERN=$repo'_'$build_type'_build_*'")
+            ->exec("REMAINING=`find " . $GLOBALS['www_root'] . " -maxdepth 1 -type d -name \"\$PATTERN\" | wc -l`")
+            ->exec("if [ \$REMAINING -eq 0 ]; then exit; fi")
+            ->run();
+          if (!$result->wasSuccessful()) {
+            $this->printTaskSuccess("===> No builds to delete on $server");
+          }
         }
       }
       else{
