@@ -1,12 +1,15 @@
 <?php
 namespace CodeEnigma\Deployments\Robo\common;
 
+# Required for outputting messages from custom tasks
 use Robo\Common\TaskIO;
 use Robo\Contract\TaskInterface;
 use Robo\LoadAllTasks;
-use Robo\Task\BaseTask;
+use Robo\Tasks;
+# Required so Robo::logger() is available
+use Robo\Robo;
 
-class DeployUtilsTasks extends BaseTask implements TaskInterface
+class DeployUtilsTasks extends Tasks implements TaskInterface
 {
   use TaskIO;
   use LoadAllTasks;
@@ -17,6 +20,8 @@ class DeployUtilsTasks extends BaseTask implements TaskInterface
   public function defineHost(
     $buildtype
     ) {
+      # When not extending BaseTask you must define a logger before using TaskIO methods
+      $this->setLogger(Robo::logger());
       $host = \Robo\Robo::Config()->get('command.build.' . $buildtype . '.server.host');
       if ($host) {
         $this->printTaskSuccess("===> Host is $host");
@@ -34,6 +39,7 @@ class DeployUtilsTasks extends BaseTask implements TaskInterface
     $aws_credentials = null,
     $aws_autoscale_group = null
     ) {
+      $this->setLogger(Robo::logger());
       if ($cluster && $autoscale) {
         $this->printTaskError("###### You cannot be both a traditional cluster and an autoscale layout. Aborting!");
         exit();
@@ -74,6 +80,7 @@ class DeployUtilsTasks extends BaseTask implements TaskInterface
         'ssh',
         'taskSshExec',
       );
+      $this->setLogger(Robo::logger());
       $this->printTaskSuccess("===> Looking for custom developer hooks at the $stage stage for $buildtype builds");
       $build_hooks = \Robo\Robo::Config()->get("command.build.$buildtype.hooks.$stage");
       if ($build_hooks) {
@@ -116,4 +123,5 @@ class DeployUtilsTasks extends BaseTask implements TaskInterface
       }
 
   }
+
 }

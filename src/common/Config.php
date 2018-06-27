@@ -22,7 +22,6 @@ class Config extends BaseTask implements TaskInterface
     $deprecate = false,
     $replacement_section = null
     ) {
-      $this->logger();
       $value = \Robo\Robo::Config()->get("command.build.$buildtype.$section.$item");
       if ($value) {
         if ($deprecate) {

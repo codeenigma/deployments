@@ -26,6 +26,8 @@ class RoboFile extends Tasks
     ) {
       # Off we go!
       $this->yell("Starting a build");
+      # We want to stop if this fails anywhere!
+      $this->stopOnFail(true);
 
       # Load in our config
       $this->say("Setting up the environment");
@@ -54,12 +56,15 @@ class RoboFile extends Tasks
       # We have to do this before the build hook so it's present on the server
       $gitTask = $this->taskGitStack()
        ->cloneRepo($repourl, $GLOBALS['build_path'], $branch);
-      $this->taskSshExec($GLOBALS['host'])
+      $result = $this->taskSshExec($GLOBALS['host'])
        ->remoteDir($GLOBALS['build_path'])
        ->exec($gitTask)
        ->run();
+      if ($result->wasSuccessful()) {
+        $this->say("Cloned repository from $repourl to " . $GLOBALS['build_path']);
+      }
 
       # Give developers an opportunity to inject some code
-      $this->taskDeployUtilsTasks()->performClientDeployHook($repo, $build, $buildtype, 'pre', 'app_primary');
+      #$this->taskDeployUtilsTasks()->performClientDeployHook($repo, $build, $buildtype, 'pre', 'app_primary');
   }
 }
