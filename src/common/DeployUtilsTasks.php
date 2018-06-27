@@ -123,4 +123,25 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
 
   }
 
+  public function setLink(
+    $from,
+    $to
+    ) {
+    $this->setLogger(Robo::logger());
+    $this->printTaskSuccess("===> Updating links");
+    $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
+      ->exec("stat $to")
+      ->run();
+    if ($result->wasSuccessful()) {
+      $this->printTaskSuccess("===> Removing existing link");
+      $this->taskSshExec($server, $GLOBALS['ci_user'])
+        ->exec("sudo unlink $to")
+        ->run();
+    }
+    $this->printTaskSuccess("===> Creating new link");
+    $this->taskSshExec($server, $GLOBALS['ci_user'])
+      ->exec("sudo ln -s $from $to")
+      ->run();
+  }
+
 }

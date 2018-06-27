@@ -34,14 +34,9 @@ class RoboFile extends Tasks
       $this->say("Moving our robo.yml file to the Robo.li directory");
       $this->_copy($GLOBALS['build_cwd'] . '/robo.yml', './robo.yml');
 
-      # Load in our config
-      $this->say("Setting up the environment");
-      $GLOBALS['ci_user']    = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'ci-user');
-      $www_root              = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'www-root');
-      $ssh_key               = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'ssh-key');
-      $notifications_email   = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'notifications-email');
+      # Set web server root and app location
+      $www_root              = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'www-root', 'string', '/var/www');
       $app_location          = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'location', 'string', 'www');
-
       # Fixed variables
       $GLOBALS['build_path'] = $www_root . '/' . $repo . '_' . $buildtype . '_build_' . (string)$build;
       if ($app_location) {
@@ -50,6 +45,15 @@ class RoboFile extends Tasks
       else {
         $GLOBALS['app_path'] = $GLOBALS['build_path'];
       }
+
+      # Load in our config
+      $this->say("Setting up the environment");
+      $GLOBALS['ci_user']    = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'ci-user');
+      $ssh_key               = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'ssh-key');
+      $notifications_email   = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'notifications-email');
+      $app_link              = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'link', 'string', $www_root . '/live.' . $repo . '.' . $buildtype);
+
+
       # Debug feedback
       $this->say("Build path set to '". $GLOBALS['build_path'] . "'");
       $this->say("App path set to '". $GLOBALS['app_path'] . "'");
@@ -78,5 +82,7 @@ class RoboFile extends Tasks
 
       # Give developers an opportunity to inject some code
       $this->taskDeployUtilsTasks()->performClientDeployHook($repo, $build, $buildtype, 'pre', 'app_primary');
+      # Adjust links to builds
+      $this->taskDeployUtilsTasks()->setLink($GLOBALS['build_path'], $app_link);
   }
 }
