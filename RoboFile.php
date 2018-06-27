@@ -28,8 +28,8 @@ class RoboFile extends Tasks
       $this->yell("Starting a build");
       # We want to stop if this fails anywhere!
       $this->stopOnFail(true);
+      $this->say("Moving our robo.yml file to the Robo.li directory");
       $this->_copy('../../../robo.yml', './robo.yml');
-      $this->say("Moved our robo.yml file to the right place");
 
       # Load in our config
       $this->say("Setting up the environment");
@@ -73,6 +73,6 @@ class RoboFile extends Tasks
       }
 
       # Give developers an opportunity to inject some code
-      #$this->taskDeployUtilsTasks()->performClientDeployHook($repo, $build, $buildtype, 'pre', 'app_primary');
+      $this->taskDeployUtilsTasks()->performClientDeployHook($repo, $build, $buildtype, 'pre', 'app_primary');
   }
 }

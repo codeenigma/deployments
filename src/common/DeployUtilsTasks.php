@@ -73,6 +73,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
     $stage,
     $role = 'app_primary'
     ) {
+      $this->setLogger(Robo::logger());
       $cwd = getcwd();
       $malicious_commands = array(
         '$GLOBALS',
@@ -80,7 +81,6 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
         'ssh',
         'taskSshExec',
       );
-      $this->setLogger(Robo::logger());
       $this->printTaskSuccess("===> Looking for custom developer hooks at the $stage stage for $buildtype builds");
       $build_hooks = \Robo\Robo::Config()->get("command.build.$buildtype.hooks.$stage");
       if ($build_hooks) {
