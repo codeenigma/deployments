@@ -66,12 +66,24 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
       }
   }
 
+  public function createBuildDirectory(
+    $role = 'app_all'
+    ) {
+      $servers = $GLOBALS['roles'][$role];
+      foreach ($servers as $server) {
+        $this->taskSshExec($GLOBALS['host'], $GLOBALS['ci_user'])
+        ->exec('sudo mkdir -p ' . $GLOBALS['build_path'])
+        ->exec('sudo chown ' . $GLOBALS['ci_user'] . ':' . $GLOBALS['ci_user'] . ' ' . $GLOBALS['build_path'])
+        ->run();
+      }
+  }
+
   public function performClientDeployHook(
     $repo,
     $build,
     $buildtype,
     $stage,
-    $role = 'app_primary'
+    $role = 'app_all'
     ) {
       $this->setLogger(Robo::logger());
       $malicious_commands = array(
@@ -121,6 +133,26 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
         $this->printTaskSuccess("===> No hooks found");
       }
 
+  }
+
+  public function cloneRepo(
+    $repo_url,
+    $branch,
+    $role = 'app_all'
+    ) {
+      $this->setLogger(Robo::logger());
+      $servers = $GLOBALS['roles'][$role];
+      foreach ($servers as $server) {
+        $gitTask = $this->taskGitStack()
+          ->cloneRepo($repo_url, $GLOBALS['build_path'], $branch);
+        $result = $this->taskSshExec($GLOBALS['host'], $GLOBALS['ci_user'])
+          ->remoteDir($GLOBALS['build_path'])
+          ->exec($gitTask)
+          ->run();
+        if ($result->wasSuccessful()) {
+          $this->printTaskSuccess("===> Cloned repository from $repo_url to " . $GLOBALS['build_path'] . " on $server");
+        }
+      }
   }
 
   public function setLink(

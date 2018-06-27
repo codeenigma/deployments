@@ -15,7 +15,7 @@ class RoboFile extends Tasks
   // define public methods as commands
   public function build(
     $repo,
-    $repourl,
+    $repo_url,
     $branch,
     $buildtype,
     $build,
@@ -63,23 +63,10 @@ class RoboFile extends Tasks
       $this->taskDeployUtilsTasks()->defineRoles($cluster);
 
       # Create build directory
-      $result = $this->taskSshExec($GLOBALS['host'], $GLOBALS['ci_user'])
-       ->exec('sudo mkdir -p ' . $GLOBALS['build_path'])
-       ->exec('sudo chown ' . $GLOBALS['ci_user'] . ':' . $GLOBALS['ci_user'] . ' ' . $GLOBALS['build_path'])
-       ->run();
-
+      $this->taskDeployUtilsTasks()->createBuildDirectory();
       # Check out the code
       # We have to do this before the build hook so it's present on the server
-      $gitTask = $this->taskGitStack()
-       ->cloneRepo($repourl, $GLOBALS['build_path'], $branch);
-      $result = $this->taskSshExec($GLOBALS['host'], $GLOBALS['ci_user'])
-       ->remoteDir($GLOBALS['build_path'])
-       ->exec($gitTask)
-       ->run();
-      if ($result->wasSuccessful()) {
-        $this->say("Cloned repository from $repourl to " . $GLOBALS['build_path']);
-      }
-
+      $this->taskDeployUtilsTasks()->cloneRepo($repo_url, $branch);
       # Give developers an opportunity to inject some code
       $this->taskDeployUtilsTasks()->performClientDeployHook($repo, $build, $buildtype, 'pre', 'app_primary');
       # Adjust links to builds
