@@ -28,6 +28,8 @@ class RoboFile extends Tasks
       $this->yell("Starting a build");
       # We want to stop if this fails anywhere!
       $this->stopOnFail(true);
+      $this->_copy('../../../robo.yml', './robo.yml');
+      $this->say("Moved our robo.yml file to the right place");
 
       # Load in our config
       $this->say("Setting up the environment");
@@ -37,7 +39,7 @@ class RoboFile extends Tasks
       $notifications_email   = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'notifications-email');
       $app_location          = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'location', 'string', 'www');
       # Fixed variables
-      $GLOBALS['build_path'] = $www_root . '/' . $repo . '_' . $buildtype . '_build_' . $build;
+      $GLOBALS['build_path'] = $www_root . '/' . $repo . '_' . $buildtype . '_build_' . (string)$build;
       if ($app_location) {
         $GLOBALS['app_path'] = $GLOBALS['build_path'] . '/' . $app_location;
       }
