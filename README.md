@@ -10,6 +10,31 @@ These deployment scripts currently support:
 * [Magento](https://magento.com/)
 * Flat HTML
 
+# Installing
+
+For composer-based projects, simply add this code to your `composer.json` file:
+
+```
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "git@github.com:codeenigma/deployments.git"
+        }
+    ],
+    "require": {
+        "codeenigma/deployments": "dev-robo"
+    }
+
+```
+
+# Usage
+
+From your composer root, run this command to see the available options:
+
+```
+./vendor/consolidation/robo/robo --load-from ./vendor/codeenigma/deployments/ build --help
+```
+
 # Features
 
 Here is an overview of the kinds of things these build scripts allow you to do:
