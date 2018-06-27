@@ -28,8 +28,11 @@ class RoboFile extends Tasks
       $this->yell("Starting a build");
       # We want to stop if this fails anywhere!
       $this->stopOnFail(true);
+      # The actual working directory of our build is a few levels up from where we are
+      $GLOBALS['build_cwd']    = getcwd() . '/../../..';
+      # Move our config to the right place for Robo.li to auto-detect
       $this->say("Moving our robo.yml file to the Robo.li directory");
-      $this->_copy('../../../robo.yml', './robo.yml');
+      $this->_copy($GLOBALS['build_cwd'] . '/robo.yml', './robo.yml');
 
       # Load in our config
       $this->say("Setting up the environment");
@@ -38,6 +41,7 @@ class RoboFile extends Tasks
       $ssh_key               = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'ssh-key');
       $notifications_email   = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'notifications-email');
       $app_location          = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'location', 'string', 'www');
+
       # Fixed variables
       $GLOBALS['build_path'] = $www_root . '/' . $repo . '_' . $buildtype . '_build_' . (string)$build;
       if ($app_location) {

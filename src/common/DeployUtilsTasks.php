@@ -74,7 +74,6 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
     $role = 'app_primary'
     ) {
       $this->setLogger(Robo::logger());
-      $cwd = getcwd();
       $malicious_commands = array(
         '$GLOBALS',
         'rm -rf /',
@@ -86,7 +85,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
       if ($build_hooks) {
         $servers = $GLOBALS['roles'][$role];
         foreach ($build_hooks as $build_hook) {
-          $hook_path = "$cwd/$build_hook";
+          $hook_path = $GLOBALS['build_cwd'] . "/$build_hook";
           $hook_ext = pathinfo($hook_path, PATHINFO_EXTENSION);
           if (file_exists($hook_path)) {
             switch ($hook_ext) {
