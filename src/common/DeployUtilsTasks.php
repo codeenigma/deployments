@@ -232,7 +232,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
               ->exec("PATTERN=$repo'_'$build_type'_build_*'")
               ->exec("REMAINING=`find " . $GLOBALS['www_root'] . " -maxdepth 1 -type d -name \"\$PATTERN\" | wc -l`")
               ->exec("SUFFIX=0")
-              ->exec("while [ \$REMAINING -gt " . $keep_builds . " ]; do REMOVE=" . $GLOBALS['www_root'] . "'/'$repo'_'$build_type'_build_'\$SUFFIX; if [ -d \"\$REMOVE\" ]; rm -rf \$REMOVE || exit 1; fi; REMAINING=`find " . $GLOBALS['www_root'] . " -maxdepth 1 -type d -name \"\$PATTERN\" | wc -l`; let SUFFIX=SUFFIX+1; done")
+              ->exec("while [ \$REMAINING -gt " . $keep_builds . " ]; do REMOVE=" . $GLOBALS['www_root'] . "'/'$repo'_'$build_type'_build_'\$SUFFIX; if [ -d \"\$REMOVE\" ]; then sudo rm -rf \$REMOVE || exit 1; fi; REMAINING=`find " . $GLOBALS['www_root'] . " -maxdepth 1 -type d -name \"\$PATTERN\" | wc -l`; let SUFFIX=SUFFIX+1; done")
               ->run();
             if (!$result->wasSuccessful()) {
               $this->printTaskError("===> Build tidy-up on $server may not have worked");
