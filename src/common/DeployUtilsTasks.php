@@ -207,15 +207,32 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
   public function removeOldBuilds(
     $repo,
     $build_type,
+    $build,
     $keep_builds,
     $role = 'app_all'
     ) {
       $this->setLogger(Robo::logger());
       $this->printTaskSuccess("===> Removing all but the last $keep_builds builds to conserve disk space");
-      $servers = $GLOBALS['roles'][$role];
-      foreach ($servers as $server) {
-
+      $latest_keep_build = $build - $keep_builds;
+      if ($latest_keep_build > 0) {
+        $targets = glob($GLOBALS['www_root'] . "/$repo'_'$build_type'_build_*");
+        print_r($targets);
+        $servers = $GLOBALS['roles'][$role];
+        foreach ($servers as $server) {
+          #$result = $this->taskSshExec($server, $GLOBALS['ci_user'])
+          #  ->exec("PATTERN=$repo'_'$build_type'_build_*'")
+          #  ->exec("REMAINING=`find " . $GLOBALS['www_root'] . " -maxdepth 1 -type d -name \"\$PATTERN\" | wc -l`")
+          # ->exec("if [ \$REMAINING -eq 0 ]; then exit; fi")
+          #  ->run();
+          #if (!$result->wasSuccessful()) {
+          #  $this->printTaskSuccess("===> No builds to delete on $server");
+          #}
+        }
       }
+      else{
+        $this->printTaskSuccess("===> No builds to delete");
+      }
+
   }
 
 }

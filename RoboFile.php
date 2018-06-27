@@ -75,6 +75,6 @@ class RoboFile extends Tasks
       # Wrap it up!
       $this->yell("Build succeeded!");
       # Clean up old builds
-      $this->taskDeployUtilsTasks()->removeOldBuilds($repo, $build_type, $keep_builds);
+      $this->taskDeployUtilsTasks()->removeOldBuilds($repo, $build_type, $build, $keep_builds);
   }
 }
