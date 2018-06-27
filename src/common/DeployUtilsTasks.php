@@ -29,7 +29,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
       }
       else {
         $this->printTaskError("###### No host specified. Aborting!");
-        exit("Aborting build!");
+        exit("Aborting build!\n");
       }
   }
 
@@ -42,7 +42,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
       $this->setLogger(Robo::logger());
       if ($cluster && $autoscale) {
         $this->printTaskError("###### You cannot be both a traditional cluster and an autoscale layout. Aborting!");
-        exit();
+        exit("Aborting build!\n");
       }
       # Build roles for a traditional cluster
       if ($cluster) {
@@ -78,7 +78,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
           ->run();
         if (!$result->wasSuccessful()) {
           $this->printTaskError("###### Could not create build directory on $server");
-          exit("Aborting build!");
+          exit("Aborting build!\n");
         }
       }
   }
@@ -170,7 +170,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
         }
         else {
           $this->printTaskError("###### Could not clone repository from $repo_url to " . $GLOBALS['build_path'] . " on $server");
-          exit("Aborting build!");
+          exit("Aborting build!\n");
         }
       }
   }
@@ -199,7 +199,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
         ->run();
       if (!$result->wasSuccessful()) {
         $this->printTaskError("###### Failed to set link $to on $server");
-        exit("Aborting build!");
+        exit("Aborting build!\n");
       }
     }
   }
