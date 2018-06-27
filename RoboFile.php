@@ -59,6 +59,7 @@ class RoboFile extends Tasks
       $gitTask = $this->taskGitStack()
        ->cloneRepo($repourl, $GLOBALS['build_path'], $branch);
       $result = $this->taskSshExec($GLOBALS['host'])
+       ->exec('sudo mkdir -p ' . $GLOBALS['build_path'])
        ->remoteDir($GLOBALS['build_path'])
        ->exec($gitTask)
        ->run();
