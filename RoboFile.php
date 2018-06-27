@@ -35,8 +35,8 @@ class RoboFile extends Tasks
       $this->_copy($GLOBALS['build_cwd'] . '/robo.yml', './robo.yml');
 
       # Set web server root and app location
-      $www_root              = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'www-root', 'string', '/var/www');
-      $app_location          = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'location', 'string', 'www');
+      $www_root              = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'www-root', '/var/www');
+      $app_location          = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'location', 'www');
       # Fixed variables
       $GLOBALS['build_path'] = $www_root . '/' . $repo . '_' . $buildtype . '_build_' . (string)$build;
       if ($app_location) {
@@ -51,7 +51,7 @@ class RoboFile extends Tasks
       $GLOBALS['ci_user']    = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'ci-user');
       $ssh_key               = $this->taskConfig()->returnConfigItem($buildtype, 'server', 'ssh-key');
       $notifications_email   = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'notifications-email');
-      $app_link              = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'link', 'string', $www_root . '/live.' . $repo . '.' . $buildtype);
+      $app_link              = $this->taskConfig()->returnConfigItem($buildtype, 'app', 'link', $www_root . '/live.' . $repo . '.' . $buildtype);
 
 
       # Debug feedback
