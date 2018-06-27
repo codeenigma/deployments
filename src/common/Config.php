@@ -22,7 +22,7 @@ class Config extends BaseTask implements TaskInterface
     $deprecate = false,
     $replacement_section = null
     ) {
-      $value = \Robo\Robo::Config()->get("command.build.$buildtype.$section.$item");
+      $value = \Robo\Robo::Config()->get("command.build.$buildtype.$section.$item", $default_value);
       if ($value) {
         if ($deprecate) {
           if ($replacement_section) {
@@ -38,8 +38,8 @@ class Config extends BaseTask implements TaskInterface
         if ($cast_value) {
           settype($value, $var_type);
         }
-        return $value;
       }
+      return $value;
   }
 
 }

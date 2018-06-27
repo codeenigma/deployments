@@ -72,9 +72,9 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
       $servers = $GLOBALS['roles'][$role];
       foreach ($servers as $server) {
         $this->taskSshExec($GLOBALS['host'], $GLOBALS['ci_user'])
-        ->exec('sudo mkdir -p ' . $GLOBALS['build_path'])
-        ->exec('sudo chown ' . $GLOBALS['ci_user'] . ':' . $GLOBALS['ci_user'] . ' ' . $GLOBALS['build_path'])
-        ->run();
+          ->exec('sudo mkdir -p ' . $GLOBALS['build_path'])
+          ->exec('sudo chown ' . $GLOBALS['ci_user'] . ':' . $GLOBALS['ci_user'] . ' ' . $GLOBALS['build_path'])
+          ->run();
       }
   }
 
@@ -108,7 +108,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
                   ->exec("php $build_hook $repo $build $buildtype")
                   ->run();
                 }
-                $this->printTaskSuccess("===> PHP build hook '$build_hook' was executed");
+                $this->printTaskSuccess("===> PHP build hook '$build_hook' was executed on $server");
                 break;
               case 'sh':
                 foreach ($servers as $server) {
@@ -118,7 +118,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
                   ->exec("./$build_hook $repo $build $buildtype")
                   ->run();
                 }
-                $this->printTaskSuccess("===> Bash build hook '$build_hook' was executed");
+                $this->printTaskSuccess("===> Bash build hook '$build_hook' was executed on $server");
                 break;
               default:
                 $this->printTaskError("###### Cannot handle hooks of type '$hook_ext', skipping");
