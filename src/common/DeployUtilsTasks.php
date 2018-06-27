@@ -29,7 +29,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
       }
       else {
         $this->printTaskError("###### No host specified. Aborting!");
-        exit();
+        exit("Aborting build!");
       }
   }
 
@@ -69,12 +69,17 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
   public function createBuildDirectory(
     $role = 'app_all'
     ) {
+      $this->setLogger(Robo::logger());
       $servers = $GLOBALS['roles'][$role];
       foreach ($servers as $server) {
-        $this->taskSshExec($GLOBALS['host'], $GLOBALS['ci_user'])
+        $result = $this->taskSshExec($GLOBALS['host'], $GLOBALS['ci_user'])
           ->exec('sudo mkdir -p ' . $GLOBALS['build_path'])
           ->exec('sudo chown ' . $GLOBALS['ci_user'] . ':' . $GLOBALS['ci_user'] . ' ' . $GLOBALS['build_path'])
           ->run();
+        if (!$result->wasSuccessful()) {
+          $this->printTaskError("###### Could not create build directory on $server");
+          exit("Aborting build!");
+        }
       }
   }
 
@@ -103,22 +108,33 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
             switch ($hook_ext) {
               case 'php':
                 foreach ($servers as $server) {
-                  $this->taskSshExec($server, $GLOBALS['ci_user'])
-                  ->remoteDir($GLOBALS['build_path'])
-                  ->exec("php $build_hook $repo $build $buildtype")
-                  ->run();
+                  $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
+                    ->remoteDir($GLOBALS['build_path'])
+                    ->exec("php $build_hook $repo $build $buildtype")
+                    ->run();
+                  if ($result->wasSuccessful()) {
+                    $this->printTaskSuccess("===> PHP build hook '$build_hook' was executed on $server");
+                  }
+                  else {
+                    $this->printTaskError("###### PHP build hook '$build_hook' failed to execute on $server");
+                  }
                 }
-                $this->printTaskSuccess("===> PHP build hook '$build_hook' was executed on $server");
+                $result = null;
                 break;
               case 'sh':
                 foreach ($servers as $server) {
-                  $this->taskSshExec($server, $GLOBALS['ci_user'])
-                  ->remoteDir($GLOBALS['build_path'])
-                  ->exec("chmod +x ./$build_hook")
-                  ->exec("./$build_hook $repo $build $buildtype")
-                  ->run();
+                  $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
+                    ->remoteDir($GLOBALS['build_path'])
+                    ->exec("chmod +x ./$build_hook")
+                    ->exec("./$build_hook $repo $build $buildtype")
+                    ->run();
+                  if ($result->wasSuccessful()) {
+                    $this->printTaskSuccess("===> Bash build hook '$build_hook' was executed on $server");
+                  }
+                  else {
+                    $this->printTaskError("###### Bash build hook '$build_hook' failed to execute on $server");
+                  }
                 }
-                $this->printTaskSuccess("===> Bash build hook '$build_hook' was executed on $server");
                 break;
               default:
                 $this->printTaskError("###### Cannot handle hooks of type '$hook_ext', skipping");
@@ -152,6 +168,10 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
         if ($result->wasSuccessful()) {
           $this->printTaskSuccess("===> Cloned repository from $repo_url to " . $GLOBALS['build_path'] . " on $server");
         }
+        else {
+          $this->printTaskError("###### Could not clone repository from $repo_url to " . $GLOBALS['build_path'] . " on $server");
+          exit("Aborting build!");
+        }
       }
   }
 
@@ -174,9 +194,13 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
           ->run();
       }
       $this->printTaskSuccess("===> Creating new link on $server");
-      $this->taskSshExec($server, $GLOBALS['ci_user'])
+      $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
         ->exec("sudo ln -s $from $to")
         ->run();
+      if (!$result->wasSuccessful()) {
+        $this->printTaskError("###### Failed to set link $to on $server");
+        exit("Aborting build!");
+      }
     }
   }
 

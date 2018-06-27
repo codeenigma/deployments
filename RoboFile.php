@@ -26,8 +26,6 @@ class RoboFile extends Tasks
     ) {
       # Off we go!
       $this->yell("Starting a build");
-      # We want to stop if this fails anywhere!
-      $this->stopOnFail(true);
       # The actual working directory of our build is a few levels up from where we are
       $GLOBALS['build_cwd']    = getcwd() . '/../../..';
       # Move our config to the right place for Robo.li to auto-detect
