@@ -12,7 +12,7 @@ class Config extends BaseTask implements TaskInterface
   public function run() {}
 
   public function returnConfigItem(
-    $buildtype,
+    $build_type,
     $section,
     $item,
     $default_value = null,
@@ -22,7 +22,7 @@ class Config extends BaseTask implements TaskInterface
     $deprecate = false,
     $replacement_section = null
     ) {
-      $value = \Robo\Robo::Config()->get("command.build.$buildtype.$section.$item", $default_value);
+      $value = \Robo\Robo::Config()->get("command.build.$build_type.$section.$item", $default_value);
       if ($value) {
         if ($deprecate) {
           if ($replacement_section) {

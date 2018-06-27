@@ -18,11 +18,11 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
   public function run() {}
 
   public function defineHost(
-    $buildtype
+    $build_type
     ) {
       # When not extending BaseTask you must define a logger before using TaskIO methods
       $this->setLogger(Robo::logger());
-      $host = \Robo\Robo::Config()->get('command.build.' . $buildtype . '.server.host');
+      $host = \Robo\Robo::Config()->get('command.build.' . $build_type . '.server.host');
       if ($host) {
         $this->printTaskSuccess("===> Host is $host");
         $GLOBALS['host'] = $host;
@@ -86,7 +86,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
   public function performClientDeployHook(
     $repo,
     $build,
-    $buildtype,
+    $build_type,
     $stage,
     $role = 'app_all'
     ) {
@@ -97,8 +97,8 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
         'ssh',
         'taskSshExec',
       );
-      $this->printTaskSuccess("===> Looking for custom developer hooks at the $stage stage for $buildtype builds");
-      $build_hooks = \Robo\Robo::Config()->get("command.build.$buildtype.hooks.$stage");
+      $this->printTaskSuccess("===> Looking for custom developer hooks at the $stage stage for $build_type builds");
+      $build_hooks = \Robo\Robo::Config()->get("command.build.$build_type.hooks.$stage");
       if ($build_hooks) {
         $servers = $GLOBALS['roles'][$role];
         foreach ($build_hooks as $build_hook) {
@@ -110,7 +110,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
                 foreach ($servers as $server) {
                   $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
                     ->remoteDir($GLOBALS['build_path'])
-                    ->exec("php $build_hook $repo $build $buildtype")
+                    ->exec("php $build_hook $repo $build $build_type")
                     ->run();
                   if ($result->wasSuccessful()) {
                     $this->printTaskSuccess("===> PHP build hook '$build_hook' was executed on $server");
@@ -126,7 +126,7 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
                   $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
                     ->remoteDir($GLOBALS['build_path'])
                     ->exec("chmod +x ./$build_hook")
-                    ->exec("./$build_hook $repo $build $buildtype")
+                    ->exec("./$build_hook $repo $build $build_type")
                     ->run();
                   if ($result->wasSuccessful()) {
                     $this->printTaskSuccess("===> Bash build hook '$build_hook' was executed on $server");
@@ -202,6 +202,20 @@ class DeployUtilsTasks extends Tasks implements TaskInterface
         exit("Aborting build!");
       }
     }
+  }
+
+  public function removeOldBuilds(
+    $repo,
+    $build_type,
+    $keep_builds,
+    $role = 'app_all'
+    ) {
+      $this->setLogger(Robo::logger());
+      $this->printTaskSuccess("===> Removing all but the last $keep_builds builds to conserve disk space");
+      $servers = $GLOBALS['roles'][$role];
+      foreach ($servers as $server) {
+
+      }
   }
 
 }
