@@ -17,6 +17,11 @@ class ServerTasks extends Tasks implements TaskInterface
   public function __construct() {}
   public function run() {}
 
+  /**
+   * Function to create the target directory for this build
+   *
+   * @param string $role The server role to execute against, as set in ConfigTasks::defineRoles()
+   */
   public function createBuildDirectory(
     $role = 'app_all'
     ) {
@@ -34,6 +39,13 @@ class ServerTasks extends Tasks implements TaskInterface
       }
   }
 
+  /**
+   * Function to clone the repository to the app servers
+   *
+   * @param string $repo_url The URL of the Git repository to clone
+   * @param string $branch Git branch to clone
+   * @param string $role The server role to execute against, as set in ConfigTasks::defineRoles()
+   */
   public function cloneRepo(
     $repo_url,
     $branch,
@@ -58,6 +70,13 @@ class ServerTasks extends Tasks implements TaskInterface
       }
   }
 
+  /**
+   * Helper function to create a symbolic link to a directory
+   *
+   * @param string $from Path of directory to link to
+   * @param string $to Path of link to create
+   * @param string $role The server role to execute against, as set in ConfigTasks::defineRoles()
+   */
   public function setLink(
     $from,
     $to,
