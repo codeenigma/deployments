@@ -13,17 +13,31 @@ class RoboFile extends Tasks
   use CommonTasks;
 
   // define public methods as commands
+  /**
+   * Deploy code to a remote server or servers
+   *
+   * @param string $project_name The short name for this project used in the paths on the server
+   * @param string $repo_url The URL of the Git repository where the code is kept
+   * @param string $branch The branch of the Git repository to build from
+   * @param string $build_type The type of build (can be anything, typically develop, stage, live, etc.)
+   * @param int $build The current build number (should be unique and incremented from the previous build)
+   * @param int $keep_builds The number of builds to retain on the application servers
+   * @param string $app_url The URL of the application being deployed
+   * @param boolean $cluster Flag to tell us if there is more than one server
+   * @param mixed $autoscale For an AWS autoscale layout, an array of application server IP addresses, otherwise null
+   * @param string $php_ini_file The path of the PHP ini file to use
+   */
   public function build(
-    $repo,
+    $project_name,
     $repo_url,
     $branch,
     $build_type,
     $build,
     $keep_builds = 10,
-    $app_url = null,
+    $app_url = "",
     $cluster = false,
     $autoscale = null,
-    $php_ini_file = null
+    $php_ini_file = ""
     ) {
       # Off we go!
       $this->yell("Starting a build");
@@ -34,8 +48,8 @@ class RoboFile extends Tasks
       $this->_copy($GLOBALS['build_cwd'] . '/robo.yml', './robo.yml');
 
       # Set web server root and app location
-      $GLOBALS['www_root']   = $this->taskConfig()->returnConfigItem($build_type, 'server', 'www-root', '/var/www');
-      $app_location          = $this->taskConfig()->returnConfigItem($build_type, 'app', 'location', 'www');
+      $GLOBALS['www_root']   = $this->taskConfigTasks()->returnConfigItem($build_type, 'server', 'www-root', '/var/www');
+      $app_location          = $this->taskConfigTasks()->returnConfigItem($build_type, 'app', 'location', 'www');
       # Fixed variables
       $GLOBALS['build_path'] = $GLOBALS['www_root'] . '/' . $repo . '_' . $build_type . '_build_' . (string)$build;
       if ($app_location) {
@@ -47,10 +61,10 @@ class RoboFile extends Tasks
 
       # Load in our config
       $this->say("Setting up the environment");
-      $GLOBALS['ci_user']    = $this->taskConfig()->returnConfigItem($build_type, 'server', 'ci-user');
-      $ssh_key               = $this->taskConfig()->returnConfigItem($build_type, 'server', 'ssh-key');
-      $notifications_email   = $this->taskConfig()->returnConfigItem($build_type, 'app', 'notifications-email');
-      $app_link              = $this->taskConfig()->returnConfigItem($build_type, 'app', 'link', $GLOBALS['www_root'] . '/live.' . $repo . '.' . $build_type);
+      $GLOBALS['ci_user']    = $this->taskConfigTasks()->returnConfigItem($build_type, 'server', 'ci-user');
+      $ssh_key               = $this->taskConfigTasks()->returnConfigItem($build_type, 'server', 'ssh-key');
+      $notifications_email   = $this->taskConfigTasks()->returnConfigItem($build_type, 'app', 'notifications-email');
+      $app_link              = $this->taskConfigTasks()->returnConfigItem($build_type, 'app', 'link', $GLOBALS['www_root'] . '/live.' . $repo . '.' . $build_type);
 
 
       # Debug feedback
@@ -58,23 +72,23 @@ class RoboFile extends Tasks
       $this->say("App path set to '". $GLOBALS['app_path'] . "'");
 
       # Build our host and roles
-      $this->taskDeployUtilsTasks()->defineHost($build_type);
-      $this->taskDeployUtilsTasks()->defineRoles($cluster);
+      $this->taskConfigTasks()->defineHost($build_type);
+      $this->taskConfigTasks()->defineRoles($cluster);
 
       # Create build directory
-      $this->taskDeployUtilsTasks()->createBuildDirectory();
+      $this->taskServerTasks()->createBuildDirectory();
       # Check out the code
       # We have to do this before the build hook so it's present on the server
-      $this->taskDeployUtilsTasks()->cloneRepo($repo_url, $branch);
+      $this->taskServerTasks()->cloneRepo($repo_url, $branch);
       # Give developers an opportunity to inject some code
-      $this->taskDeployUtilsTasks()->performClientDeployHook($repo, $build, $build_type, 'pre', 'app_primary');
+      $this->taskUtils()->performClientDeployHook($project_name, $build, $build_type, 'pre', 'app_primary');
       # Adjust links to builds
-      $this->taskDeployUtilsTasks()->setLink($GLOBALS['build_path'], $app_link);
+      $this->taskServerTasks()->setLink($GLOBALS['build_path'], $app_link);
       # Give developers an opportunity to inject some code again
-      $this->taskDeployUtilsTasks()->performClientDeployHook($repo, $build, $build_type, 'post', 'app_primary');
+      $this->taskUtils()->performClientDeployHook($project_name, $build, $build_type, 'post', 'app_primary');
       # Wrap it up!
       $this->yell("Build succeeded!");
       # Clean up old builds
-      $this->taskDeployUtilsTasks()->removeOldBuilds($repo, $build_type, $build, $keep_builds);
+      $this->taskUtils()->removeOldBuilds($project_name, $build_type, $build, $keep_builds);
   }
 }

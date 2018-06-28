@@ -7,14 +7,19 @@ namespace CodeEnigma\Deployments\Robo\common;
  */
 trait loadTasks {
 
-  protected function taskConfig()
+  protected function taskConfigTasks()
   {
-    return $this->task(Config::class);
+    return $this->task(ConfigTasks::class);
   }
 
-  protected function taskDeployUtilsTasks()
+  protected function taskUtils()
   {
-    return $this->task(DeployUtilsTasks::class);
+    return $this->task(Utils::class);
+  }
+
+  protected function taskServerTasks()
+  {
+    return $this->task(ServerTasks::class);
   }
 
 }
