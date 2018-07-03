@@ -9,7 +9,6 @@ import common.Services
 import common.Utils
 import common.BuildTeardown
 import FeatureBranches
-from FeatureBranches import *
 
 
 # Override the shell env variable in Fabric, so that we don't see
