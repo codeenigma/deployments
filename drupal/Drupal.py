@@ -176,9 +176,10 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
   # If sync_branch_host and current_env match, we don't need to connect to another
   # server to get the dump
   if sync_branch_host == current_env:
-    # Check a site exists on this server
-    if run('drush sa | grep \'^@\?%s_%s$\' > /dev/null' % (alias, syncbranch)).failed:
-      raise SystemError("######## Cannot find a site with the alias %s_%s. Aborting." % (alias, syncbranch))
+    # Check that the syncbranch site exists on this server
+    syncbranch_site = common.Utils.get_previous_build(repo, syncbranch, None)
+    if syncbranch_site is None:
+      raise SystemError("######## Cannot find a site to sync the database from. Aborting.")
 
     # If freshinstall is True, this occurs during the initial build, so we create a new database
     # dump in the db/ directory which will be imported
@@ -186,7 +187,7 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
       print "===> Database to get a fresh dump from is on the same server. Getting database dump now..."
       # Time to dump the database and save it to db/
       dump_file = "%s_%s.sql.bz2" % (alias, syncbranch)
-      run('drush @%s_%s sql-dump | bzip2 -f > /var/www/%s_%s_%s/db/%s' % (alias, syncbranch, repo, branch, build, dump_file))
+      run('cd /var/www/live.%s.%s/www/%s && drush -y sql-dump | bzip2 -f > /var/www/%s_%s_%s/db/%s' % (repo, syncbranch, site, repo, branch, build, dump_file))
     else:
       # Because freshinstall is False and the site we're syncing from is on the same server,
       # we can use drush sql-sync to sync that database to this one
@@ -205,9 +206,11 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
     env.host_string = '%s@%s' % (env.user, env.host)
     print "===> Switching host to %s to get database dump..." % env.host_string
 
+    # Check that the syncbranch site exists on this server
+    syncbranch_site = common.Utils.get_previous_build(repo, syncbranch, None)
     # Check the site exists on the host server. If not, abort
-    if run('drush sa | grep \'^@\?%s_%s$\' > /dev/null' % (alias, syncbranch)).failed:
-      raise SystemError("######## Cannot find a site with the alias %s_%s. Aborting." % (alias, syncbranch))
+    if syncbranch_site is None:
+      raise SystemError("######## Cannot find a site to sync the database from. Aborting.")
 
     if sanitise == "yes":
       script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -216,13 +219,14 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
       else:
         print "===> Obfuscate script copied to %s:/home/jenkins/drupal-obfuscate.rb - obfuscating data" % env.host
         with settings(hide('running', 'stdout', 'stderr')):
-          dbname = run("drush @%s_%s status  Database\ name | awk {'print $4'} | head -1" % (alias, syncbranch))
-          dbuser = run("drush @%s_%s status  Database\ user | awk {'print $4'} | head -1" % (alias, syncbranch))
-          dbpass = run("drush @%s_%s --show-passwords status  Database\ pass | awk {'print $4'} | head -1" % (alias, syncbranch))
-          dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (alias, syncbranch))
-          run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, alias, now))
+          with cd("/var/www/live.%s.%s/www/%s" % (repo, syncbranch, site)):
+            dbname = run("drush status -l %s  Database\ name | awk {'print $4'} | head -1" % (site))
+            dbuser = run("drush status -l %s  Database\ user | awk {'print $4'} | head -1" % (site))
+            dbpass = run("drush --show-passwords status -l %s  Database\ pass | awk {'print $4'} | head -1" % (site))
+            dbhost = run("drush status -l %s  Database\ host | awk {'print $4'} | head -1" % (site))
+            run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, alias, now))
     else:
-      run('drush @%s_%s sql-dump | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (alias, syncbranch, alias, now))
+      run('cd /var/www/live.%s.%s/www/%s && | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (repo, syncbranch, site, alias, now))
 
     print "===> Fetching the database from the remote server..."
     dump_file = "custombranch_%s_%s_from_%s.sql.bz2" % (alias, now, syncbranch)
