@@ -142,7 +142,7 @@ def configure_teardown_mapping(repo, branch, buildtype, config_filename, mapping
     if run("stat /var/www/live.%s.%s/%s" % (repo, branch, buildtype_config_filename)).succeeded:
       config_filename = buildtype_config_filename
     else:
-      if run("stat /var/www/live.%s.%s/%s" % (repo, build, config_filename)).failed:
+      if run("stat /var/www/live.%s.%s/%s" % (repo, branch, config_filename)).failed:
         raise SystemExit("Could not find any kind of config.ini file on the server the site is been torn down from. Failing the teardown build.")
 
     config_filepath = "/var/www/live.%s.%s/%s" % (repo, branch, config_filename)
