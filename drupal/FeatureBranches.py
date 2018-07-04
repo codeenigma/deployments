@@ -139,7 +139,7 @@ def configure_feature_branch(buildtype, config, branch, alias):
 def configure_teardown_mapping(repo, branch, buildtype, config_filename, mapping):
   with settings(warn_only=True):
     buildtype_config_filename = buildtype + '.' + config_filename
-    if run("stat /var/www/live.%s.%s/%s" % (repo, branch, buildtype_config_filename)).succeeded():
+    if run("stat /var/www/live.%s.%s/%s" % (repo, branch, buildtype_config_filename)).succeeded:
       config_filename = buildtype_config_filename
     else:
       if run("stat /var/www/live.%s.%s/%s" % (repo, build, config_filename)).failed:
