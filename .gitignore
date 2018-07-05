@@ -110,3 +110,4 @@ ENV/
 robo.yml
 /hooks/
 /vendor/
+composer.lock
