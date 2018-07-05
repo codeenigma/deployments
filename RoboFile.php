@@ -72,7 +72,7 @@ class RoboFile extends Tasks
 
       # Build our host and roles
       $this->taskConfigTasks()->defineHost($build_type);
-      $this->taskConfigTasks()->defineRoles($cluster);
+      $this->taskConfigTasks()->defineRoles($cluster, $build_type);
 
       # Create build directory
       $this->taskServerTasks()->createBuildDirectory();

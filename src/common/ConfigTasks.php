@@ -58,6 +58,7 @@ class ConfigTasks extends BaseTask implements TaskInterface
 
   public function defineRoles(
     $cluster,
+    $build_type,
     $autoscale = null,
     $aws_credentials = null,
     $aws_autoscale_group = null
@@ -68,7 +69,17 @@ class ConfigTasks extends BaseTask implements TaskInterface
       }
       # Build roles for a traditional cluster
       if ($cluster) {
-
+        $this->printTaskSuccess("===> This is a cluster, setting up cluster roles");
+        # Reset the $cluster variable as an array of servers
+        $cluster = \Robo\Robo::Config()->get('command.build.' . $build_type . '.server.cluster');
+        $GLOBALS['roles'] = array(
+          'app_all' => $cluster['app-servers'],
+          'db_all' => $cluster['db-servers'],
+          'app_primary' => $cluster['app-servers'][0],
+          'db_primary' => $cluster['db-servers'][0],
+          'cache_all' => $cluster['cache-servers'],
+        );
+        print_r($GLOBALS['roles']);
       }
       # Build roles for an AWS autoscale layout
       elseif ($autoscale) {
