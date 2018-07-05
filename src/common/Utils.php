@@ -122,7 +122,7 @@ class Utils extends Tasks implements TaskInterface
       if (!empty($malicious_strings)) {
         foreach ($malicious_strings as $disallowed) {
           if ($check_location) {
-            $this->printTaskSuccess("===> Checking location $check_location for string $disallowed");
+            $this->printTaskSuccess("===> Checking location $check_location for string '$disallowed'");
             $servers = $GLOBALS['roles'][$role];
             foreach ($servers as $server) {
               $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
@@ -135,7 +135,7 @@ class Utils extends Tasks implements TaskInterface
             }
           }
           if ($input_string) {
-            $this->printTaskSuccess("===> Checking provided string for string $disallowed");
+            $this->printTaskSuccess("===> Checking provided string for string '$disallowed'");
             $servers = $GLOBALS['roles'][$role];
             # We only want to check on a single server, as it's simply a string comparison
             $result = $this->taskSshExec($servers[0], $GLOBALS['ci_user'])

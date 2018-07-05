@@ -51,7 +51,7 @@ class RoboFile extends Tasks
       $GLOBALS['www_root']   = $this->taskConfigTasks()->returnConfigItem($build_type, 'server', 'www-root', '/var/www');
       $app_location          = $this->taskConfigTasks()->returnConfigItem($build_type, 'app', 'location', 'www');
       # Fixed variables
-      $GLOBALS['build_path'] = $GLOBALS['www_root'] . '/' . $repo . '_' . $build_type . '_build_' . (string)$build;
+      $GLOBALS['build_path'] = $GLOBALS['www_root'] . '/' . $project_name . '_' . $build_type . '_build_' . (string)$build;
       if ($app_location) {
         $GLOBALS['app_path'] = $GLOBALS['build_path'] . '/' . $app_location;
       }
@@ -64,7 +64,7 @@ class RoboFile extends Tasks
       $GLOBALS['ci_user']    = $this->taskConfigTasks()->returnConfigItem($build_type, 'server', 'ci-user');
       $ssh_key               = $this->taskConfigTasks()->returnConfigItem($build_type, 'server', 'ssh-key');
       $notifications_email   = $this->taskConfigTasks()->returnConfigItem($build_type, 'app', 'notifications-email');
-      $app_link              = $this->taskConfigTasks()->returnConfigItem($build_type, 'app', 'link', $GLOBALS['www_root'] . '/live.' . $repo . '.' . $build_type);
+      $app_link              = $this->taskConfigTasks()->returnConfigItem($build_type, 'app', 'link', $GLOBALS['www_root'] . '/live.' . $project_name . '.' . $build_type);
 
       # Debug feedback
       $this->say("Build path set to '". $GLOBALS['build_path'] . "'");
