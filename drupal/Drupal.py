@@ -186,7 +186,7 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
       print "===> Database to get a fresh dump from is on the same server. Getting database dump now..."
       # Time to dump the database and save it to db/
       dump_file = "%s_%s.sql" % (alias, syncbranch)
-      run('drush @%s_%s sql-dump --gzip --result-file=/var/www/%s_%s_%s/db/%s' % (alias, syncbranch, repo, branch, build, dump_file))
+      run('drush @%s_%s sql-dump --result-file=/var/www/%s_%s_%s/db/%s | bzip2 -f > /var/www/%s_%s_%s/db/%s.bz2' % (alias, syncbranch, repo, branch, build, dump_file, repo, branch, build, dump_file))
     else:
       # Because freshinstall is False and the site we're syncing from is on the same server,
       # we can use drush sql-sync to sync that database to this one
@@ -211,6 +211,7 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
 
     if sanitise == "yes":
       script_dir = os.path.dirname(os.path.realpath(__file__))
+      dump_file = 'custombranch_%s_%s.sql' % (alias, now)
       if put(script_dir + '/../util/drupal-obfuscate.rb', '/home/jenkins', mode=0755).failed:
         raise SystemExit("######## Could not copy the obfuscate script to the application server, aborting as we cannot safely sanitise the live data")
       else:
@@ -220,9 +221,9 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
           dbuser = run("drush @%s_%s status  Database\ user | awk {'print $4'} | head -1" % (alias, syncbranch))
           dbpass = run("drush @%s_%s --show-passwords status  Database\ pass | awk {'print $4'} | head -1" % (alias, syncbranch))
           dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (alias, syncbranch))
-          run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, alias, now))
+          run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/%s.bz2' % (dbuser, dbpass, dbhost, dbname, dump_file))
     else:
-      run('drush @%s_%s sql-dump --gzip --result-file=~jenkins/dbbackups/custombranch_%s_%s.sql' % (alias, syncbranch, alias, now))
+      run('drush @%s_%s sql-dump --result-file=~jenkins/dbbackups/%s | bzip2 -f > ~jenkins/dbbackups/%s.bz2' % (alias, syncbranch, dump_file, dump_file))
 
     print "===> Fetching the database from the remote server..."
     dump_file = "custombranch_%s_%s_from_%s.sql.bz2" % (alias, now, syncbranch)
