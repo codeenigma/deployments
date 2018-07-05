@@ -123,7 +123,7 @@ class ServerTasks extends Tasks implements TaskInterface
     if ($links_from) {
       foreach ($links_from as $link_index => $link_from) {
         foreach ($servers as $server) {
-          $result = $this->taskServerTasks->setLink($link_from, $links_to[$link_index]);
+          $result = $this->setLink($link_from, $links_to[$link_index]);
           if ($result->wasSuccessful()) {
             $this->printTaskSuccess("===> Link from $link_from to $links_to[$link_index] was created on $server");
           }

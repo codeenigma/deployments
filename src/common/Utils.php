@@ -50,7 +50,7 @@ class Utils extends Tasks implements TaskInterface
           $hook_path = $GLOBALS['build_cwd'] . "/$build_hook";
           $hook_ext = pathinfo($hook_path, PATHINFO_EXTENSION);
           if (file_exists($hook_path)) {
-            $malicious_string_found = $this->taskUtils->detectMaliciousStrings($malicious_commands, "", $hook_path);
+            $malicious_string_found = $this->detectMaliciousStrings($malicious_commands, "", $hook_path);
             if (!$malicious_string_found) {
               switch ($hook_ext) {
                 case 'php':
