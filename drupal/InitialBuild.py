@@ -306,9 +306,6 @@ def initial_build_vhost(repo, url, branch, build, alias, buildtype, ssl_enabled,
         else:
           sudo("sed -i s/drupal_common_config/%s/g /etc/nginx/sites-available/%s.conf" % (drupal_common_config, url))
 
-    # Set the alias in the new vhost - important for multisite feature branch builds
-    sudo("sed -i s/aliasgoeshere/%s/g /etc/%s/sites-available/%s.conf" % (alias, webserver, url))
-
   else:
     sudo("cp /etc/%s/sites-available/dummy.conf /etc/%s/sites-available/%s.conf" % (webserver, webserver, url))
 
