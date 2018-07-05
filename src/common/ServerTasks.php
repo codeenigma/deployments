@@ -116,15 +116,21 @@ class ServerTasks extends Tasks implements TaskInterface
     $build_type,
     $role = 'app_all'
     ) {
+    $this->setLogger(Robo::logger());
     $servers = $GLOBALS['roles'][$role];
     $links_from = \Robo\Robo::Config()->get("command.build.$build_type.app.links.from");
     $links_to = \Robo\Robo::Config()->get("command.build.$build_type.app.links.to");
     if ($links_from) {
+      $this->printTaskSuccess("===> Fetching and setting links defined in YAML for '$build_type'");
       foreach ($links_from as $link_index => $link_from) {
         foreach ($servers as $server) {
           $this->setLink($link_from, $links_to[$link_index]);
         }
       }
+      $this->printTaskSuccess("===> Finished with links defined in YAML");
+    }
+    else {
+      $this->printTaskSuccess("===> No links defined in YAML for the '$build_type' build");
     }
 
   }
