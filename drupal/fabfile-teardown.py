@@ -58,6 +58,8 @@ def main(repo, branch, buildtype, alias=None, url=None, restartvarnish="yes", re
 
   for alias,site in mapping.iteritems():
 
+    print "===> Removing site %s" % site
+
     # Run the tasks.
     # --------------
     # If this is the first build, attempt to install the site for the first time.
