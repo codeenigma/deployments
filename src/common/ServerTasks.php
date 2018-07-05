@@ -106,4 +106,34 @@ class ServerTasks extends Tasks implements TaskInterface
     }
   }
 
+  /**
+   * Helper function wrapping setLink() to parse multiple links in the config YAML
+   *
+   * @param string $build_type
+   * @param string $role The server role to execute against, as set in ConfigTasks::defineRoles()
+   */
+  public function setLinks(
+    $build_type,
+    $role = 'app_all'
+    ) {
+    $this->setLogger(Robo::logger());
+    $servers = $GLOBALS['roles'][$role];
+    $links_from = \Robo\Robo::Config()->get("command.build.$build_type.app.links.from");
+    $links_to = \Robo\Robo::Config()->get("command.build.$build_type.app.links.to");
+    if ($links_from) {
+      foreach ($links_from as $link_index => $link_from) {
+        foreach ($servers as $server) {
+          $result = $this->taskServerTasks->setLink($link_from, $links_to[$link_index]);
+          if ($result->wasSuccessful()) {
+            $this->printTaskSuccess("===> Link from $link_from to $links_to[$link_index] was created on $server");
+          }
+          else {
+            $this->printTaskError("###### Failed to set link $links_to[$link_index] on $server");
+          }
+        }
+      }
+    }
+
+  }
+
 }

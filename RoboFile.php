@@ -66,7 +66,6 @@ class RoboFile extends Tasks
       $notifications_email   = $this->taskConfigTasks()->returnConfigItem($build_type, 'app', 'notifications-email');
       $app_link              = $this->taskConfigTasks()->returnConfigItem($build_type, 'app', 'link', $GLOBALS['www_root'] . '/live.' . $repo . '.' . $build_type);
 
-
       # Debug feedback
       $this->say("Build path set to '". $GLOBALS['build_path'] . "'");
       $this->say("App path set to '". $GLOBALS['app_path'] . "'");
@@ -84,6 +83,8 @@ class RoboFile extends Tasks
       $this->taskUtils()->performClientDeployHook($project_name, $build, $build_type, 'pre', 'app_primary');
       # Adjust links to builds
       $this->taskServerTasks()->setLink($GLOBALS['build_path'], $app_link);
+      # Add any other links specified in the YAML file
+      $this->taskServerTasks()->setLinks($build_type);
       # Give developers an opportunity to inject some code again
       $this->taskUtils()->performClientDeployHook($project_name, $build, $build_type, 'post', 'app_primary');
       # Wrap it up!
