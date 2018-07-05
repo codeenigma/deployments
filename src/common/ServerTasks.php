@@ -116,20 +116,13 @@ class ServerTasks extends Tasks implements TaskInterface
     $build_type,
     $role = 'app_all'
     ) {
-    $this->setLogger(Robo::logger());
     $servers = $GLOBALS['roles'][$role];
     $links_from = \Robo\Robo::Config()->get("command.build.$build_type.app.links.from");
     $links_to = \Robo\Robo::Config()->get("command.build.$build_type.app.links.to");
     if ($links_from) {
       foreach ($links_from as $link_index => $link_from) {
         foreach ($servers as $server) {
-          $result = $this->setLink($link_from, $links_to[$link_index]);
-          if ($result->wasSuccessful()) {
-            $this->printTaskSuccess("===> Link from $link_from to $links_to[$link_index] was created on $server");
-          }
-          else {
-            $this->printTaskError("###### Failed to set link $links_to[$link_index] on $server");
-          }
+          $this->setLink($link_from, $links_to[$link_index]);
         }
       }
     }
