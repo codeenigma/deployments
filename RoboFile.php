@@ -24,7 +24,7 @@ class RoboFile extends Tasks
    * @param int $keep_builds The number of builds to retain on the application servers
    * @param string $app_url The URL of the application being deployed
    * @param boolean $cluster Flag to tell us if there is more than one server
-   * @param mixed $autoscale For an AWS autoscale layout, an array of application server IP addresses, otherwise null
+   * @param boolean $autoscale Flag to tell us if this is an AWS autoscale layout
    * @param string $php_ini_file The path of the PHP ini file to use
    */
   public function build(
@@ -36,7 +36,7 @@ class RoboFile extends Tasks
     $keep_builds = 10,
     $app_url = "",
     $cluster = false,
-    $autoscale = null,
+    $autoscale = false,
     $php_ini_file = ""
     ) {
       # Off we go!
@@ -71,7 +71,7 @@ class RoboFile extends Tasks
       $this->say("App path set to '". $GLOBALS['app_path'] . "'");
 
       # Build our host and roles
-      $this->taskConfigTasks()->defineHost($build_type);
+      $this->taskConfigTasks()->defineHost($build_type, $autoscale);
       $this->taskConfigTasks()->defineRoles($cluster, $build_type);
 
       # Create build directory

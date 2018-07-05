@@ -4,10 +4,14 @@ namespace CodeEnigma\Deployments\Robo\common;
 use Robo\Task\BaseTask;
 use Robo\Common\TaskIO;
 use Robo\Contract\TaskInterface;
+use Aws\AutoScaling\AutoScalingClient;
+use Aws\Ec2;
+
 
 class ConfigTasks extends BaseTask implements TaskInterface
 {
   use TaskIO;
+
   public function __construct() {}
   public function run() {}
 
@@ -43,16 +47,22 @@ class ConfigTasks extends BaseTask implements TaskInterface
   }
 
   public function defineHost(
-    $build_type
+    $build_type,
+    $autoscale
     ) {
-      $host = \Robo\Robo::Config()->get('command.build.' . $build_type . '.server.host');
-      if ($host) {
-        $this->printTaskSuccess("===> Host is $host");
-        $GLOBALS['host'] = $host;
+      if (!$autoscale) {
+        $host = \Robo\Robo::Config()->get('command.build.' . $build_type . '.server.host');
+        if ($host) {
+          $this->printTaskSuccess("===> Host is $host");
+          $GLOBALS['host'] = $host;
+        }
+        else {
+          $this->printTaskError("###### No host specified. Aborting!");
+          exit("Aborting build!\n");
+        }
       }
       else {
-        $this->printTaskError("###### No host specified. Aborting!");
-        exit("Aborting build!\n");
+        $this->printTaskSuccess("===> We cannot get a host address for autoscale, it will be set when roles are defined");
       }
   }
 
@@ -82,7 +92,50 @@ class ConfigTasks extends BaseTask implements TaskInterface
       }
       # Build roles for an AWS autoscale layout
       elseif ($autoscale) {
-
+        $aws = \Robo\Robo::Config()->get('command.build.' . $build_type . '.aws');
+        if ($aws) {
+          # New AWS autoscaling client, assumes CI server/container has an AWS profile in a credentials file
+          $client = AutoScalingClient::factory(array(
+            'profile' => $aws['profile'],
+            'region'  => $aws['region']
+          ));
+          $result = $client->describeAutoScalingGroups();
+          # Cycle through autoscale groups available for this account
+          foreach ($result['AutoScalingGroups'] as $group) {
+            # Find the matching group
+            if ($group['AutoScalingGroupName'] == $aws['group-name']) {
+              # Cycle through the instances in that group and grab the instance IDs
+              foreach ($group['Instances'] as $instance) {
+                $instance_ids[] = $instance['InstanceId'];
+              }
+            }
+          }
+          # Moving on, for each instance ID we got, use Ec2 to describe them and grab the private IP address
+          $instance_client = Ec2::factory(array(
+            'profile' => $aws['profile'],
+            'region'  => $aws['region']
+          ));
+          foreach ($instance_ids as $instance_id) {
+            $instance_data = $instance_client->describeInstances(['InstanceIds' => [$instance_id]]);
+            $instance_ips[] = $instance_data['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]['PrivateIpAddress'];
+          }
+          # Sort the resulting array of IPs so they're in order
+          asort($instance_ips);
+          # Set the roles
+          $GLOBALS['roles'] = array(
+            'app_all' => $instance_ips,
+            //'db_all' => array($host), @TODO: what about RDS?
+            'app_primary' => array($instance_ips[0]),
+            //'db_primary' => array($host),
+            //'cache_all' => array($host), @TODO: and Elasticache?
+          );
+          # Set 'host' as well
+          $GLOBALS['host'] = array($instance_ips[0]);
+        }
+        else {
+          $this->printTaskError("###### No AWS config found in the YAML file. Aborting!");
+          exit("Aborting build!\n");
+        }
       }
       # Build roles for a single server
       else {

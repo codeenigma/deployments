@@ -82,28 +82,28 @@ class ServerTasks extends Tasks implements TaskInterface
     $to,
     $role = 'app_all'
     ) {
-    $this->setLogger(Robo::logger());
-    $servers = $GLOBALS['roles'][$role];
-    foreach ($servers as $server) {
-      $this->printTaskSuccess("===> Updating links on $server");
-      $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
-        ->exec("stat $to")
-        ->run();
-      if ($result->wasSuccessful()) {
-        $this->printTaskSuccess("===> Removing existing link on $server");
-        $this->taskSshExec($server, $GLOBALS['ci_user'])
-          ->exec("sudo unlink $to")
+      $this->setLogger(Robo::logger());
+      $servers = $GLOBALS['roles'][$role];
+      foreach ($servers as $server) {
+        $this->printTaskSuccess("===> Updating links on $server");
+        $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
+          ->exec("stat $to")
           ->run();
+        if ($result->wasSuccessful()) {
+          $this->printTaskSuccess("===> Removing existing link on $server");
+          $this->taskSshExec($server, $GLOBALS['ci_user'])
+            ->exec("sudo unlink $to")
+            ->run();
+        }
+        $this->printTaskSuccess("===> Creating new link on $server");
+        $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
+          ->exec("sudo ln -s $from $to")
+          ->run();
+        if (!$result->wasSuccessful()) {
+          $this->printTaskError("###### Failed to set link $to on $server");
+          exit("Aborting build!\n");
+        }
       }
-      $this->printTaskSuccess("===> Creating new link on $server");
-      $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
-        ->exec("sudo ln -s $from $to")
-        ->run();
-      if (!$result->wasSuccessful()) {
-        $this->printTaskError("###### Failed to set link $to on $server");
-        exit("Aborting build!\n");
-      }
-    }
   }
 
   /**
@@ -116,23 +116,22 @@ class ServerTasks extends Tasks implements TaskInterface
     $build_type,
     $role = 'app_all'
     ) {
-    $this->setLogger(Robo::logger());
-    $servers = $GLOBALS['roles'][$role];
-    $links_from = \Robo\Robo::Config()->get("command.build.$build_type.app.links.from");
-    $links_to = \Robo\Robo::Config()->get("command.build.$build_type.app.links.to");
-    if ($links_from) {
-      $this->printTaskSuccess("===> Fetching and setting links defined in YAML for '$build_type'");
-      foreach ($links_from as $link_index => $link_from) {
-        foreach ($servers as $server) {
-          $this->setLink($link_from, $links_to[$link_index]);
+      $this->setLogger(Robo::logger());
+      $servers = $GLOBALS['roles'][$role];
+      $links_from = \Robo\Robo::Config()->get("command.build.$build_type.app.links.from");
+      $links_to = \Robo\Robo::Config()->get("command.build.$build_type.app.links.to");
+      if ($links_from) {
+        $this->printTaskSuccess("===> Fetching and setting links defined in YAML for '$build_type'");
+        foreach ($links_from as $link_index => $link_from) {
+          foreach ($servers as $server) {
+            $this->setLink($link_from, $links_to[$link_index]);
+          }
         }
+        $this->printTaskSuccess("===> Finished with links defined in YAML");
       }
-      $this->printTaskSuccess("===> Finished with links defined in YAML");
+      else {
+        $this->printTaskSuccess("===> No links defined in YAML for the '$build_type' build");
+      }
     }
-    else {
-      $this->printTaskSuccess("===> No links defined in YAML for the '$build_type' build");
-    }
-
-  }
 
 }
