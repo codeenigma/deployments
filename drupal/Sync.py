@@ -17,7 +17,8 @@ def backup_db(shortname, staging_branch):
   print "===> Ensuring backup directory exists"
   run("mkdir -p ~jenkins/dbbackups")
   print "===> Taking a database backup of the Drupal database..."
-  run("drush @%s_%s sql-dump | bzip2 -f > ~jenkins/dbbackups/%s_%s_prior_to_sync_%s.sql.bz2" % (shortname, staging_branch, shortname, staging_branch, now))
+  dump_file = "%s_%s_prior_to_sync_%s.sql" % (shortname, staging_branch, now)
+  run('drush @%s_%s sql-dump --result-file=%s | bzip2 -f > ~jenkins/dbbackups/%s.bz2' % (shortname, staging_branchbranch, dump_file, dump_file))
 
 
 # Sync uploaded assets from production to staging
@@ -30,7 +31,7 @@ def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_br
 
   if sync_dir is None:
     sync_dir = '/tmp'
- 
+
   # Sync down the assets to the Jenkins machine, before sending them upstream to the staging server.
   print "===> Finding the remote files directories to rsync from..."
   if run('drush @%s_%s dd files' % (shortname, prod_branch)).failed:
@@ -39,7 +40,7 @@ def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_br
     if remote_files_dir is None:
       remote_files_dir = run("drush @%s_%s dd files" % (shortname, prod_branch))
     local("rsync -e 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' -aHPv %s@%s:%s/ %s/%s_drupal_files/" % (env.user, env.host, remote_files_dir, sync_dir, shortname))
-  
+
   # Switch the host to the staging server, it's time to send the assets upstream
   env.host_string = orig_host
 
@@ -51,7 +52,7 @@ def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_br
     with settings(warn_only=True):
       if sudo("readlink /var/www/shared/%s_%s_files" % (staging_shortname, staging_branch)).return_code == 0:
         staging_files_dir = sudo("readlink /var/www/shared/%s_%s_files" % (staging_shortname, staging_branch))
-  
+
   sudo("chown -R jenkins %s" % staging_files_dir)
   # Rsync up the files
   local("rsync -aHPv %s/%s_drupal_files/ %s:%s" % (sync_dir, shortname, env.host_string, staging_files_dir))
@@ -148,7 +149,8 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
           dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (shortname, prod_branch))
           run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, shortname, now))
     else:
-      run('drush @%s_%s sql-dump | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (shortname, prod_branch, shortname, now))
+        dump_file = "drupal_%s_%s.sql" % (shortname, now)
+        run('drush @%s_%s sql-dump --result-file=%s | bzip2 -f > ~jenkins/dbbackups/%s.bz2' % (shortname, prod_branch, dump_file, dump_file))
     print "===> Fetching the drupal database backup from production..."
 
   # Fetch the database backup from prod
