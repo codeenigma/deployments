@@ -12,8 +12,12 @@ def remove_vhost(repo, branch, webserver, alias):
     conf_file = sudo("find /etc/%s/sites-enabled/ -name '*%s*' -print0 | xargs -r -0 grep -H 'live.%s.%s' | head -1 | awk '{print $1}' | cut -d '/' -f 5 | cut -d ':' -f 1" % (webserver, alias, repo, branch))
 
     print "%s conf file is: %s" % (webserver, conf_file)
-    sudo("unlink /etc/%s/sites-enabled/%s" % (webserver, conf_file))
-    sudo("rm /etc/%s/sites-available/%s" % (webserver, conf_file))
+
+    if sudo("stat /etc/%s/sites-available/%s" % (webserver, conf_file)).failed:
+      print "===> Could not find a vhost! Don't try to remove anything this time."
+    else:
+      sudo("unlink /etc/%s/sites-enabled/%s" % (webserver, conf_file))
+      sudo("rm /etc/%s/sites-available/%s" % (webserver, conf_file))
 
 
 @task
