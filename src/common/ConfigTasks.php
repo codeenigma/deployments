@@ -79,7 +79,6 @@ class ConfigTasks extends BaseTask implements TaskInterface
           'db_primary' => array($cluster['db-servers'][0]),
           'cache_all' => $cluster['cache-servers'],
         );
-        print_r($GLOBALS['roles']);
       }
       # Build roles for an AWS autoscale layout
       elseif ($autoscale) {
