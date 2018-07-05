@@ -159,6 +159,8 @@ def configure_teardown_mapping(repo, branch, buildtype, config_filename, mapping
         else:
           alias = "%s_%s" % (repo, each_site)
         mapping.update({alias:each_site})
+
+      print "Final mapping is: %s" % mapping
       return mapping
 
 
