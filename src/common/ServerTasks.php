@@ -28,7 +28,7 @@ class ServerTasks extends Tasks implements TaskInterface
       $this->setLogger(Robo::logger());
       $servers = $GLOBALS['roles'][$role];
       foreach ($servers as $server) {
-        $result = $this->taskSshExec($GLOBALS['host'], $GLOBALS['ci_user'])
+        $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
           ->exec('sudo mkdir -p ' . $GLOBALS['build_path'])
           ->exec('sudo chown ' . $GLOBALS['ci_user'] . ':' . $GLOBALS['ci_user'] . ' ' . $GLOBALS['build_path'])
           ->run();
@@ -56,7 +56,7 @@ class ServerTasks extends Tasks implements TaskInterface
       foreach ($servers as $server) {
         $gitTask = $this->taskGitStack()
           ->cloneRepo($repo_url, $GLOBALS['build_path'], $branch);
-        $result = $this->taskSshExec($GLOBALS['host'], $GLOBALS['ci_user'])
+        $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
           ->remoteDir($GLOBALS['build_path'])
           ->exec($gitTask)
           ->run();

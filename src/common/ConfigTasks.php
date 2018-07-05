@@ -75,8 +75,8 @@ class ConfigTasks extends BaseTask implements TaskInterface
         $GLOBALS['roles'] = array(
           'app_all' => $cluster['app-servers'],
           'db_all' => $cluster['db-servers'],
-          'app_primary' => $cluster['app-servers'][0],
-          'db_primary' => $cluster['db-servers'][0],
+          'app_primary' => array($cluster['app-servers'][0]),
+          'db_primary' => array($cluster['db-servers'][0]),
           'cache_all' => $cluster['cache-servers'],
         );
         print_r($GLOBALS['roles']);
