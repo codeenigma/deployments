@@ -187,7 +187,7 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
       print "===> Database to get a fresh dump from is on the same server. Getting database dump now..."
       # Time to dump the database and save it to db/
       dump_file = "%s_%s.sql.bz2" % (alias, syncbranch)
-      run('cd /var/www/live.%s.%s/www/%s && drush -y sql-dump | bzip2 -f > /var/www/%s_%s_%s/db/%s' % (repo, syncbranch, site, repo, branch, build, dump_file))
+      run('cd /var/www/live.%s.%s/www/sites/%s && drush -y sql-dump | bzip2 -f > /var/www/%s_%s_%s/db/%s' % (repo, syncbranch, site, repo, branch, build, dump_file))
     else:
       # Because freshinstall is False and the site we're syncing from is on the same server,
       # we can use drush sql-sync to sync that database to this one
@@ -219,14 +219,14 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
       else:
         print "===> Obfuscate script copied to %s:/home/jenkins/drupal-obfuscate.rb - obfuscating data" % env.host
         with settings(hide('running', 'stdout', 'stderr')):
-          with cd("/var/www/live.%s.%s/www/%s" % (repo, syncbranch, site)):
+          with cd("/var/www/live.%s.%s/www/sites/%s" % (repo, syncbranch, site)):
             dbname = run("drush status -l %s  Database\ name | awk {'print $4'} | head -1" % (site))
             dbuser = run("drush status -l %s  Database\ user | awk {'print $4'} | head -1" % (site))
             dbpass = run("drush --show-passwords status -l %s  Database\ pass | awk {'print $4'} | head -1" % (site))
             dbhost = run("drush status -l %s  Database\ host | awk {'print $4'} | head -1" % (site))
             run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, alias, now))
     else:
-      run('cd /var/www/live.%s.%s/www/%s && | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (repo, syncbranch, site, alias, now))
+      run('cd /var/www/live.%s.%s/www/sites/%s && | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (repo, syncbranch, site, alias, now))
 
     print "===> Fetching the database from the remote server..."
     dump_file = "custombranch_%s_%s_from_%s.sql.bz2" % (alias, now, syncbranch)
