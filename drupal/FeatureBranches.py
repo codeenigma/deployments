@@ -147,7 +147,7 @@ def configure_teardown_mapping(repo, branch, buildtype, config_filename, mapping
 
     config_filepath = "/var/www/live.%s.%s/%s" % (repo, branch, config_filename)
 
-    if run("grep \"[Sites]\" %s" % config_filepath).return_code != 0:
+    if run("grep \"\[Sites\]\" %s" % config_filepath).return_code != 0:
       print "###### Didn't find a [Sites] section in %s, so assume this is NOT a multisite build. In which case, we just need to teardown the default site."
       mapping.update({repo:"default"})
       return mapping
