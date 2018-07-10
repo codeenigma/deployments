@@ -24,10 +24,7 @@ def _revert_db(repo, branch, build, buildtype, site):
 def _revert_settings(repo, branch, build, buildtype, site, alias):
   print "===> Reverting the settings..."
   with settings(warn_only=True):
-    settings_file = "/var/www/config/%s_%s.settings.inc" % (alias, branch)
-    stable_build = run("readlink /var/www/live.%s.%s" % (repo, branch))
-    replace_string = "/var/www/.*\.settings\.php"
-    replace_with = "%s/www/sites/%s/%s.settings.php" % (stable_build, site, buildtype)
-    sed(settings_file, replace_string, replace_with, limit='', use_sudo=True, backup='', flags="i", shell=True)
-    print "===> Reverted settings.php"
-
+    if sudo('sed -i.bak "s:/var/www/.*\.settings\.php:%s/www/sites/%s/%s.settings.php:g" %s' % (stable_build, site, buildtype, settings_file)).failed:
+      print "===> Could not revert settings.php. Manual intervention required."
+    else:
+      print "===> Reverted settings.php"
