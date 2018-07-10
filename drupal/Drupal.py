@@ -185,8 +185,9 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
     if freshinstall:
       print "===> Database to get a fresh dump from is on the same server. Getting database dump now..."
       # Time to dump the database and save it to db/
-      dump_file = "%s_%s.sql" % (alias, syncbranch)
-      run('drush @%s_%s sql-dump --result-file=/var/www/%s_%s_%s/db/%s | bzip2 -f > /var/www/%s_%s_%s/db/%s.bz2' % (alias, syncbranch, repo, branch, build, dump_file, repo, branch, build, dump_file))
+      file_name = "%s_%s.sql" % (alias, syncbranch)
+      run('drush @%s_%s sql-dump --result-file=/var/www/%s_%s_%s/db/%s | bzip2 -f > /var/www/%s_%s_%s/db/%s.bz2' % (alias, syncbranch, repo, branch, build, file_name, repo, branch, build, file_name))
+      dump_file = "%s.bz2" % (file_name)
     else:
       # Because freshinstall is False and the site we're syncing from is on the same server,
       # we can use drush sql-sync to sync that database to this one
