@@ -293,7 +293,7 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
     # Do some final Drupal config tweaking
     execute(InitialBuild.generate_drush_alias, repo, url, branch, alias)
     execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
-    execute(Drupal.generate_drush_cron, repo, branch, autoscale)
+    execute(Drupal.generate_drush_cron, alias, branch, autoscale)
 
     # If this is a custom/feature branch deployment, we want to run drush updb. If it fails,
     # the build will fail, but because this is being run at the end, there shouldn't need to be
@@ -400,7 +400,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
     # Final clean up and run tests, if applicable
     execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
     execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
-    execute(Drupal.generate_drush_cron, repo, branch, autoscale)
+    execute(Drupal.generate_drush_cron, alias, branch, autoscale)
 
     # Let's allow developers to perform some post-build actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
