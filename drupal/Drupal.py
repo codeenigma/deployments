@@ -287,7 +287,7 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
 # Run a drush status against that build
 @task
 @roles('app_primary')
-def drush_status(repo, branch, build, buildtype, site, drush_runtime_location=None, alias=None, revert=False, revert_settings=False):
+def drush_status(repo, branch, build, buildtype, site, drush_runtime_location=None, alias=None, revert=False, revert_settings=False, sites_deployed=None):
   print "===> Running a drush status test"
   if not drush_runtime_location:
     drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
@@ -295,17 +295,13 @@ def drush_status(repo, branch, build, buildtype, site, drush_runtime_location=No
   if run("echo \"%s\" | egrep 'Connected|Successful'" % drush_output).failed:
     print "###### Could not bootstrap the database!"
     if revert == False and revert_settings == True:
-      if alias:
-        execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
-      else:
-        print "###### Could not revert settings, no alias provided"
+      for revert_alias,revert_site in sites_deployed.iteritems():
+        execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
     else:
-      if revert == True:
-        execute(Revert._revert_db, repo, branch, build, buildtype, site)
-        if alias:
-          execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
-        else:
-          print "###### Could not revert settings, no alias provided"
+      if revert:
+        for revert_alias,revert_site in sites_deployed.iteritems():
+          execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
+          execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
     raise SystemExit("###### Could not bootstrap the database on this build! Aborting")
   else:
     # Send back the drush output in case we need it
@@ -315,7 +311,7 @@ def drush_status(repo, branch, build, buildtype, site, drush_runtime_location=No
 # Run drush updatedb to apply any database changes from hook_update's
 @task
 @roles('app_primary')
-def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version):
+def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version, sites_deployed=None):
   print "===> Running any database hook updates"
   with settings(warn_only=True):
     # Clear the Drupal cache before running database updates, as sometimes there can be unexpected results
@@ -327,8 +323,9 @@ def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version):
     drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
     if DrupalUtils.drush_command("updatedb", site, drush_runtime_location, True, None, None, True).failed:
       print "###### Could not apply database updates! Reverting this database"
-      execute(Revert._revert_db, repo, branch, build, buildtype, site)
-      execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
+      for revert_alias,revert_site in sites_deployed.iteritems():
+        execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
+        execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
       raise SystemExit("###### Could not apply database updates! Reverted database. Site remains on previous build")
     if drupal_version > 7:
       if DrupalUtils.drush_command("entity-updates", site, drush_runtime_location, True, None, None, True).failed:
@@ -340,7 +337,7 @@ def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version):
 # Function to revert all features using --force
 @task
 @roles('app_primary')
-def drush_fra(repo, branch, build, buildtype, site, alias, drupal_version):
+def drush_fra(repo, branch, build, buildtype, site, alias, drupal_version, sites_deployed=None):
   # Set drush variables
   drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   drush_command = "pm-list --pipe --type=module --status=enabled --no-core"
@@ -352,8 +349,9 @@ def drush_fra(repo, branch, build, buildtype, site, alias, drupal_version):
     with settings(warn_only=True):
       if DrupalUtils.drush_command("fra", site, drush_runtime_location, True, None, None, True).failed:
         print "###### Could not revert features! Reverting database and settings..."
-        execute(Revert._revert_db, repo, branch, build, buildtype, site)
-        execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
+        for revert_alias,revert_site in sites_deployed.iteritems():
+          execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
+          execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
         raise SystemExit("###### Could not revert features! Site remains on previous build")
       else:
         drush_clear_cache(repo, branch, build, site, drupal_version)
@@ -466,7 +464,7 @@ def environment_indicator(www_root, repo, branch, build, buildtype, alias, site,
 # Function used by Drupal 8 builds to import site config
 @task
 @roles('app_primary')
-def config_import(repo, branch, build, buildtype, site, alias, drupal_version, previous_build):
+def config_import(repo, branch, build, buildtype, site, alias, drupal_version, previous_build, sites_deployed=None):
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version > 7:
@@ -476,8 +474,9 @@ def config_import(repo, branch, build, buildtype, site, alias, drupal_version, p
         print "###### Could not import configuration! Reverting this database and settings"
         sudo("unlink /var/www/live.%s.%s" % (repo, branch))
         sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-        execute(Revert._revert_db, repo, branch, build, buildtype, site)
-        execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
+        for revert_alias,revert_site in sites_deployed.iteritems():
+          execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
+          execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
         raise SystemExit("###### Could not import configuration! Reverted database and settings. Site remains on previous build")
       else:
         print "===> Configuration imported. Running a cache rebuild..."
@@ -545,7 +544,7 @@ def go_offline(repo, branch, site, alias, readonlymode, drupal_version):
 # Take the site online (after drush updatedb)
 @task
 @roles('app_primary')
-def go_online(repo, branch, build, buildtype, alias, site, previous_build, readonlymode, drupal_version):
+def go_online(repo, branch, build, buildtype, alias, site, previous_build, readonlymode, drupal_version, sites_deployed=None):
   drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   # readonlymode can either be 'maintenance' (the default) or 'readonlymode', which uses the readonlymode module
   # If readonlymode is 'readonlymode', check that it exists
@@ -562,8 +561,9 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
           print "###### Could not set the site out of read only mode! Reverting this build and database."
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-          execute(Revert._revert_db, repo, branch, build, buildtype, site)
-          execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
+          for revert_alias,revert_site in sites_deployed.iteritems():
+            execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
+            execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
       else:
         print "###### The readonly flag in config.ini was set to readonly, yet the readonlymode module does not exist. We'll revert to normal maintenance mode..."
         readonlymode = 'maintenance'
@@ -576,15 +576,17 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
           print "###### Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-          execute(Revert._revert_db, repo, branch, build, buildtype, site)
-          execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
+          for revert_alias,revert_site in sites_deployed.iteritems():
+            execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
+            execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
       else:
         if DrupalUtils.drush_command("vset site_offline 0", site, drush_runtime_location).failed:
           print "###### Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
-          execute(Revert._revert_db, repo, branch, build, buildtype, site)
-          execute(Revert._revert_settings, repo, branch, build, buildtype, site, alias)
+          for revert_alias,revert_site in sites_deployed.iteritems():
+            execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
+            execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
         else:
           DrupalUtils.drush_command("vset maintenance_mode 0", site, drush_runtime_location)
 
