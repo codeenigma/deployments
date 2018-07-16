@@ -472,8 +472,6 @@ def config_import(repo, branch, build, buildtype, site, alias, drupal_version, p
       drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
       if DrupalUtils.drush_command("cim", site, drush_runtime_location, True, None, None, True).failed:
         print "###### Could not import configuration! Reverting this database and settings"
-        sudo("unlink /var/www/live.%s.%s" % (repo, branch))
-        sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
         for revert_alias,revert_site in sites_deployed.iteritems():
           execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
           execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
@@ -564,6 +562,7 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
           for revert_alias,revert_site in sites_deployed.iteritems():
             execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
             execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
+          raise SystemExit("###### Could not bring the sties back online! Reverted database and settings and repointed live symlink to previous build.")
       else:
         print "###### The readonly flag in config.ini was set to readonly, yet the readonlymode module does not exist. We'll revert to normal maintenance mode..."
         readonlymode = 'maintenance'
@@ -579,6 +578,7 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
           for revert_alias,revert_site in sites_deployed.iteritems():
             execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
             execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
+          raise SystemExit("###### Could not bring the sties back online! Reverted database and settings and repointed live symlink to previous build.")
       else:
         if DrupalUtils.drush_command("vset site_offline 0", site, drush_runtime_location).failed:
           print "###### Could not set the site back online! Reverting this build and database"
@@ -587,6 +587,7 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
           for revert_alias,revert_site in sites_deployed.iteritems():
             execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
             execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
+          raise SystemExit("###### Could not bring the sties back online! Reverted database and settings and repointed live symlink to previous build.")
         else:
           DrupalUtils.drush_command("vset maintenance_mode 0", site, drush_runtime_location)
 
