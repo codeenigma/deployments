@@ -111,7 +111,7 @@ def check_site_exists(previous_build, site):
     print "###### No live symlink at all, so this is a totally new initial build."
     return False
   else:
-    if run("stat %s/www/%s/settings.php" % (previous_build, site)).return_code == 0:
+    if run("stat %s/www/sites/%s/settings.php" % (previous_build, site)).return_code == 0:
       print "###### %s site exists." % site
       return True
     else:
