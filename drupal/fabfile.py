@@ -239,7 +239,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       # Because this runs in Jenkins home directory, it will use 'system' drush
       if not site_exists:
         print "===> Didn't find a previous build so we'll install this new site %s" % url
-        initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale, php_ini_file)
+        initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale, php_ini_file, previous_build)
       else:
         # Otherwise it's an existing build
         sites_deployed[alias] = site
@@ -255,7 +255,8 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     site_exists = None
 
   # Adjust the live symlink now that all sites have been deployed. Bring them online after this has happened.
-  execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
+  if previous_build is not None:
+    execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
 
   # This will revert the database if fails
   live_build = run("readlink %s/live.%s.%s" % (www_root, repo, branch))
@@ -269,7 +270,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
     raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
-  if do_updates:
+  if do_updates and previous_build is not None:
     for online_alias,online_site in sites_deployed.iteritems():
       execute(Drupal.go_online, repo, branch, build, buildtype, online_alias, online_site, previous_build, readonlymode, drupal_version, sites_deployed=sites_deployed) # This will revert the database and switch the symlink back if it fails
 
@@ -311,7 +312,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
 # Wrapper function for carrying out a first build of a site
 @task
-def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale, php_ini_file):
+def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale, php_ini_file, previous_build):
   print "===> URL is http://%s" % url
 
   print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
@@ -320,7 +321,8 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
     # Check for expected shared directories
     execute(common.Utils.create_config_directory, hosts=env.roledefs['app_all'])
     execute(common.Utils.create_shared_directory, hosts=env.roledefs['app_all'])
-    execute(common.Utils.initial_build_create_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
+    if previous_build is None:
+      execute(common.Utils.initial_build_create_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
     # Build out Drupal
     execute(InitialBuild.initial_build, repo, url, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds)
     execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build, site, alias)
