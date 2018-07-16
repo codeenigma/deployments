@@ -53,6 +53,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   www_root = "/var/www"
   site_root = www_root + '/%s_%s_%s' % (repo, branch, build)
   site_link = www_root + '/live.%s.%s' % (repo, branch)
+  site_exists = None
 
   # Set our host_string based on user@host
   env.host_string = '%s@%s' % (user, env.host)
@@ -205,6 +206,8 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     print "featurebranch_url: %s" % FeatureBranches.featurebranch_url
     print "featurebranch_vhost: %s" % FeatureBranches.featurebranch_vhost
 
+    site_exists = DrupalUtils.check_site_exists(previous_build, site)
+
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
       dump_file = Drupal.prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, env.host_string, sanitise, sanitised_password, sanitised_email)
@@ -216,7 +219,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Now check if we have a Drush alias with that name. If not, run an install
     with settings(hide('warnings', 'stderr'), warn_only=True):
       # Because this runs in Jenkins home directory, it will use 'system' drush
-      if previous_build is None:
+      if not site_exists:
         print "===> Didn't find a previous build so we'll install this new site %s" % url
         initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale, php_ini_file)
       else:
@@ -233,6 +236,8 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # If this is a single site, we're done with the 'url' variable anyway
     # If this is a multisite, we have to set it to None so a new 'url' gets generated on the next pass
     url = None
+
+    site_exists = None
 
   # Unset CLI PHP version if we need to
   if php_ini_file:
