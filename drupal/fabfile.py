@@ -269,8 +269,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
     raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
-  for online_alias,online_site in sites_deployed.iteritems():
-    execute(Drupal.go_online, repo, branch, build, buildtype, online_alias, online_site, previous_build, readonlymode, drupal_version, sites_deployed=sites_deployed) # This will revert the database and switch the symlink back if it fails
+  if do_updates:
+    for online_alias,online_site in sites_deployed.iteritems():
+      execute(Drupal.go_online, repo, branch, build, buildtype, online_alias, online_site, previous_build, readonlymode, drupal_version, sites_deployed=sites_deployed) # This will revert the database and switch the symlink back if it fails
 
   for test_alias,test_site in sites_deployed.iteritems():
     # After any build we want to run all the available automated tests
