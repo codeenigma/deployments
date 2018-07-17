@@ -562,7 +562,7 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
           for revert_alias,revert_site in sites_deployed.iteritems():
             execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
             execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
-          raise SystemExit("###### Could not bring the sties back online! Reverted database and settings and repointed live symlink to previous build.")
+          raise SystemExit("###### Could not bring the sites back online! Reverted database and settings and repointed live symlink to previous build.")
       else:
         print "###### The readonly flag in config.ini was set to readonly, yet the readonlymode module does not exist. We'll revert to normal maintenance mode..."
         readonlymode = 'maintenance'
@@ -578,7 +578,7 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
           for revert_alias,revert_site in sites_deployed.iteritems():
             execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
             execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
-          raise SystemExit("###### Could not bring the sties back online! Reverted database and settings and repointed live symlink to previous build.")
+          raise SystemExit("###### Could not bring the sites back online! Reverted database and settings and repointed live symlink to previous build.")
       else:
         if DrupalUtils.drush_command("vset site_offline 0", site, drush_runtime_location).failed:
           print "###### Could not set the site back online! Reverting this build and database"
@@ -587,7 +587,7 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
           for revert_alias,revert_site in sites_deployed.iteritems():
             execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
             execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
-          raise SystemExit("###### Could not bring the sties back online! Reverted database and settings and repointed live symlink to previous build.")
+          raise SystemExit("###### Could not bring the sites back online! Reverted database and settings and repointed live symlink to previous build.")
         else:
           DrupalUtils.drush_command("vset maintenance_mode 0", site, drush_runtime_location)
 
