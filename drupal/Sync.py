@@ -149,8 +149,8 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
           dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (shortname, prod_branch))
           run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, shortname, now))
     else:
-        dump_file = "drupal_%s_%s.sql" % (shortname, now)
-        run('drush @%s_%s sql-dump --result-file=%s | bzip2 -f > ~jenkins/dbbackups/%s.bz2' % (shortname, prod_branch, dump_file, dump_file))
+      dump_file = "drupal_%s_%s.sql" % (shortname, now)
+      run('drush @%s_%s sql-dump --result-file=%s | bzip2 -f > ~jenkins/dbbackups/%s.bz2' % (shortname, prod_branch, dump_file, dump_file))
     print "===> Fetching the drupal database backup from production..."
 
   # Fetch the database backup from prod
