@@ -10,7 +10,7 @@ use Robo\Tasks;
 
 class RoboFile extends Tasks
 {
-  #use CommonTasks;
+  use CommonTasks;
 
   // define public methods as commands
   /**
