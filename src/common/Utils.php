@@ -13,6 +13,7 @@ class Utils extends Tasks implements TaskInterface
 {
   use TaskIO;
   use LoadAllTasks;
+  use loadTasks;
 
   public function __construct() {}
   public function run() {}
@@ -25,14 +26,12 @@ class Utils extends Tasks implements TaskInterface
    * @param int $build
    * @param string $build_type
    * @param string $stage The stage of the build the hooks are being executed at
-   * @param string $role The server role to execute against, as set in ConfigTasks::defineRoles()
    */
   public function performClientDeployHook(
     $project_name,
     $build,
     $build_type,
-    $stage,
-    $role = 'app_all'
+    $stage
     ) {
       # When not extending BaseTask you must define a logger before using TaskIO methods
       $this->setLogger(Robo::logger());
@@ -43,7 +42,8 @@ class Utils extends Tasks implements TaskInterface
         'taskSshExec',
       );
       $this->printTaskSuccess("===> Looking for custom developer hooks at the $stage stage for $build_type builds");
-      $build_hooks = \Robo\Robo::Config()->get("command.build.$build_type.hooks.$stage");
+      $build_hooks = $this->taskConfigTasks()->returnConfigItem($build_type, 'hooks', $stage);
+      $role = $this->taskConfigTasks()->returnConfigItem($build_type, 'hooks', $stage . '-role', 'app_all');
       if ($build_hooks) {
         $servers = $GLOBALS['roles'][$role];
         foreach ($build_hooks as $build_hook) {

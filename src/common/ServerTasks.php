@@ -13,6 +13,7 @@ class ServerTasks extends Tasks implements TaskInterface
 {
   use TaskIO;
   use LoadAllTasks;
+  use loadTasks;
 
   public function __construct() {}
   public function run() {}
@@ -118,8 +119,9 @@ class ServerTasks extends Tasks implements TaskInterface
     ) {
       $this->setLogger(Robo::logger());
       $servers = $GLOBALS['roles'][$role];
-      $links_from = \Robo\Robo::Config()->get("command.build.$build_type.app.links.from");
-      $links_to = \Robo\Robo::Config()->get("command.build.$build_type.app.links.to");
+      $links = $links_from = $this->taskConfigTasks()->returnConfigItem($build_type, 'app', 'links');
+      $links_from = $links['from'];
+      $links_to = $links['to'];
       if ($links_from) {
         $this->printTaskSuccess("===> Fetching and setting links defined in YAML for '$build_type'");
         foreach ($links_from as $link_index => $link_from) {
@@ -132,6 +134,88 @@ class ServerTasks extends Tasks implements TaskInterface
       else {
         $this->printTaskSuccess("===> No links defined in YAML for the '$build_type' build");
       }
+  }
+
+  /**
+   * Function for creating a virtual host for the web server on each server in the 'app_all' role
+   *
+   * Note, this function assumes a template vhost has been provided in the project repository
+   * This template vhost will be iterated over replacing token values with actual environment data
+   * Those tokens are:
+   *
+   *  - app_url  - replaced with the contents of the $app_url variable
+   *  - app_port - replaced with the contents of the $app_port variable
+   *  - app_id   - replaced with the contents of the $app_id variable
+   *  - app_link - replaced with the contents of the $app_link variable
+   *  - app_ip   - replaced with the contents of the $app_id variable, generated in ConfigTasks::defineRoles()
+   *
+   *  You may disregard these replacement patterns if you do not need them, they are optional
+   *
+   * @param string $project_name
+   * @param string $build_type
+   * @param string $app_url
+   * @param string $app_link
+   * @param string $app_port The port the application should be served from
+   * @param string $web_server_restart The command to execute to restart the web server
+   * @param string $vhost_base_location The location the template should be copied to if no vhost exists yet
+   * @param string $vhost_link_location The location the copied template should be linked to
+   * @param string $role The server role to execute against, as set in ConfigTasks::defineRoles()
+   */
+  public function createVhost(
+    $project_name,
+    $build_type,
+    $app_url,
+    $app_link,
+    $app_port,
+    $web_server_restart,
+    $vhost_base_location,
+    $vhost_link_location,
+    $role = 'app_all'
+    ) {
+      $this->setLogger(Robo::logger());
+      $servers = $GLOBALS['roles'][$role];
+      $app_id = "$project_name.$build_type";
+      # Check we have a template before continuing
+      $vhost_template = $this->taskConfigTasks->returnConfigItem($build_type, 'server', 'vhost-template');
+      if (!$vhost_template) {
+        $this->printTaskError("###### No template found in config, aborting vhost creation");
+        return;
+      }
+      # We do have a template, so let's try and use it
+      foreach ($servers as $server_index => $server) {
+        $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
+          ->exec("stat $vhost_base_location/$app_url.conf")
+          ->run();
+        if ($result->wasSuccessful()) {
+          $this->printTaskSuccess("===> The vhost $vhost_base_location/$app_url.conf already exists on $server, moving on");
+        }
+        else {
+          $this->printTaskSuccess("===> Making a new vhost at $vhost_base_location/$app_url.conf on $server");
+          # In case the replacement pattern is necessary, look up the IP of this server, if available
+          $app_ip = $GLOBALS['roles']['app_ips'][$server_index];
+          $app_ip_string = "$app_ip:443";
+          # Copy the vhost template from the project and replace tokens with environment data
+          # Note, even if 'sed' doesn't find the string it's still a bash 'success'
+          $result = $this->taskSshExec($server, $GLOBALS['ci_user'])
+            ->exec("sudo cp $app_link/$vhost_template $vhost_base_location/$app_url.conf")
+            ->exec("sudo sed -i s/app_url/$app_url/g $vhost_base_location/$app_url.conf")
+            ->exec("sudo sed -i s/app_port/$app_port/g $vhost_base_location/$app_url.conf")
+            ->exec("sudo sed -i s/app_id/$app_id/g $vhost_base_location/$app_url.conf")
+            ->exec("sudo sed -i s/app_link/$app_link/g $vhost_base_location/$app_url.conf")
+            ->exec("sudo sed -i s/app_ip:443/$app_ip_string/g $vhost_base_location/$app_url.conf")
+            ->exec("sudo ln -s $vhost_base_location/$app_url.conf $vhost_link_location/$app_url.conf")
+            ->exec("cat $vhost_link_location/$app_url.conf")
+            ->exec("sudo $web_server_restart")
+            ->run();
+          if ($result->wasSuccessful()) {
+            $this->printTaskSuccess("===> The vhost $vhost_base_location/$app_url.conf created on $server");
+          }
+          else {
+            $this->printTaskError("###### Failed to create $vhost_base_location/$app_url.conf created on $server, please fix manually");
+          }
+        }
+      }
+
     }
 
 }
