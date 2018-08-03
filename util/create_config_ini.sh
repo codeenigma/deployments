@@ -25,7 +25,7 @@ OPTIONS
 EOF
 }
 
-while getopts "a:d:m:i:f:p:A:" OPTION
+while getopts "a:d:m:i:f:A:p:" OPTION
 do
   case $OPTION in
     a)
