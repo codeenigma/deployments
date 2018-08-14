@@ -7,6 +7,7 @@ import common.Services
 import common.Utils
 import common.PHP
 import AdjustConfiguration
+import Drupal
 import DrupalUtils
 
 
