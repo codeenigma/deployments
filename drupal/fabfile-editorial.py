@@ -17,6 +17,17 @@ env.shell = '/bin/bash -c'
 global config
 
 
+# Here, an editorial site is a copy of the production site, which hooks into
+# the same database and files directory as the production site, but is
+# hosted on a different server.
+#
+# As a result, this script assumes an editorial site already exists. It does
+# not handle creating a new editorial site.
+#
+# This script simply sets up some variables from config.ini, clones down the
+# repository, adjusts the settings.php and files symlinks, then adjust the live
+# symlink, all on the editorial server. Lastly, it clears opcache and purges
+# Varnish cache.
 @task
 def main(repo, repourl, build, branch, buildtype, keepbuilds=10, config_filename='config.ini'):
 
