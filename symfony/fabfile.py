@@ -28,7 +28,7 @@ config = common.ConfigFile.read_config_file()
 
 
 @task
-def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=None, buildtype_override=False, ckfinder=False, keepbackup=False, migrations=False, cluster=False, with_no_dev=True, php_ini_file=None):
+def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=None, buildtype_override=False, ckfinder=False, keepbackup=False, migrations=False, cluster=False, with_no_dev=True, php_ini_file=None, parameters_yml=True, env_file=False):
 
   # Set some default config options and variables
   user = "jenkins"
@@ -109,8 +109,12 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   if ckfinder:
     execute(Symfony.symlink_ckfinder_files, repo, buildtype, build)
   execute(Symfony.set_symfony_env, repo, buildtype, build, console_buildtype)
-  # Do not use console_buildtype here, we desire a different parameters.yml in shared for each env
-  execute(AdjustConfiguration.adjust_parameters_yml, repo, buildtype, build)
+  if parameters_yml:
+    # Do not use console_buildtype here, we desire a different parameters.yml in shared for each env
+    execute(AdjustConfiguration.adjust_parameters_yml, repo, buildtype, build)
+  if env_file:
+    # Use a .env file to source parameters for web and console controllers (likely instead of a parameters.yml)
+    execute(AdjustConfiguration.adjust_env_file, repo, buildtype, build)
 
   # Let's allow developers to perform some actions right after the app is built
   execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
