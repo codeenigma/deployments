@@ -39,9 +39,17 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   site_root = www_root + '/%s_%s_%s' % (repo, buildtype, build)
   site_link = www_root + '/live.%s.%s' % (repo, buildtype)
 
-  # For reasons known only to Python, it evaluates with_no_dev=False as the string "False"
+  # Jenkins treats parameters as strings. Convert them back to booleans for Python
   if with_no_dev == "False":
     with_no_dev = False
+  if parameters_yml == "True":
+    parameters_yml = True
+  if parameters_yml == "False":
+    parameters_yml = False
+  if env_file == "True":
+    env_file = True
+  if env_file == "False":
+    env_file = False
 
   # Can be set in the config.ini [Build] section
   ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
