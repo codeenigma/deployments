@@ -28,7 +28,7 @@ config = common.ConfigFile.read_config_file()
 
 
 @task
-def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=None, buildtype_override=False, ckfinder=False, keepbackup=False, migrations=False, cluster=False, with_no_dev=True, php_ini_file=None):
+def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=None, buildtype_override=False, ckfinder=False, keepbackup=False, migrations=False, cluster=False, with_no_dev=True, php_ini_file=None, parameters_yml=True, env_file=False):
 
   # Set some default config options and variables
   user = "jenkins"
@@ -39,9 +39,17 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   site_root = www_root + '/%s_%s_%s' % (repo, buildtype, build)
   site_link = www_root + '/live.%s.%s' % (repo, buildtype)
 
-  # For reasons known only to Python, it evaluates with_no_dev=False as the string "False"
+  # Jenkins treats parameters as strings. Convert them back to booleans for Python
   if with_no_dev == "False":
     with_no_dev = False
+  if parameters_yml == "True":
+    parameters_yml = True
+  if parameters_yml == "False":
+    parameters_yml = False
+  if env_file == "True":
+    env_file = True
+  if env_file == "False":
+    env_file = False
 
   # Can be set in the config.ini [Build] section
   ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
@@ -109,8 +117,12 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   if ckfinder:
     execute(Symfony.symlink_ckfinder_files, repo, buildtype, build)
   execute(Symfony.set_symfony_env, repo, buildtype, build, console_buildtype)
-  # Do not use console_buildtype here, we desire a different parameters.yml in shared for each env
-  execute(AdjustConfiguration.adjust_parameters_yml, repo, buildtype, build)
+  if parameters_yml:
+    # Do not use console_buildtype here, we desire a different parameters.yml in shared for each env
+    execute(AdjustConfiguration.adjust_parameters_yml, repo, buildtype, build)
+  if env_file:
+    # Use a .env file to source parameters for web and console controllers (likely instead of a parameters.yml)
+    execute(AdjustConfiguration.adjust_env_file, repo, buildtype, build)
 
   # Let's allow developers to perform some actions right after the app is built
   execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
