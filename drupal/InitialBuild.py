@@ -131,6 +131,9 @@ def initial_build(repo, url, branch, build, site, alias, profile, buildtype, san
   # We'll get back db_name, db_username, db_password and db_host from this call as a list in new_database
   new_database = common.MySQL.mysql_new_database(alias, buildtype, rds, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
 
+  print "===> Waiting 10 seconds to let MySQL internals catch up"
+  time.sleep(10)
+
   # Set the buildtype back to the original buildtype
   buildtype = preserve_buildtype
 
