@@ -33,7 +33,7 @@ def adjust_env_file(repo, buildtype, build):
       # We copy .env.dist, which is a template, to /var/www/config/ ready to take secret data.
       # Note, we cannot move the file because Symfony3+ expects it to exist, so we must copy.
       # This should be loaded in the front controller and console in the repository.
-      sudo("cp /var/www/%s_%s_%s/app/config/.env.dist /var/www/config/%s_%s.env" % (repo, buildtype, build, repo, buildtype))
+      sudo("cp /var/www/%s_%s_%s/.env.dist /var/www/config/%s_%s.env" % (repo, buildtype, build, repo, buildtype))
       sudo("chown jenkins:www-data /var/www/config/%s_%s.env" % (repo, buildtype))
       sudo("chmod 664 /var/www/config/%s_%s.env" % (repo, buildtype))
       run("ln -s /var/www/config/%s_%s.env /var/www/%s_%s_%s/.env" % (repo, buildtype, repo, buildtype, build))
