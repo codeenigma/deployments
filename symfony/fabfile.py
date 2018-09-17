@@ -28,7 +28,7 @@ config = common.ConfigFile.read_config_file()
 
 
 @task
-def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, buildtype_override=False, ckfinder=False, keepbackup=False, migrations=False, cluster=False, with_no_dev=True):
+def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=None, buildtype_override=False, ckfinder=False, keepbackup=False, migrations=False, cluster=False, with_no_dev=True, php_ini_file=None, parameters_yml=True, env_file=False):
 
   # Set some default config options and variables
   user = "jenkins"
@@ -39,9 +39,24 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
   site_root = www_root + '/%s_%s_%s' % (repo, buildtype, build)
   site_link = www_root + '/live.%s.%s' % (repo, buildtype)
 
-  # For reasons known only to Python, it evaluates with_no_dev=False as the string "False"
+  # Jenkins treats parameters as strings. Convert them back to booleans for Python
   if with_no_dev == "False":
     with_no_dev = False
+  if parameters_yml == "True":
+    parameters_yml = True
+  if parameters_yml == "False":
+    parameters_yml = False
+  if env_file == "True":
+    env_file = True
+  if env_file == "False":
+    env_file = False
+
+  # Can be set in the config.ini [Build] section
+  ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
+  notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
+  # Need to keep potentially passed in 'url' value as default
+  url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
+  php_ini_file = common.ConfigFile.return_config_item(config, "Build", "php_ini_file", "string", php_ini_file)
 
   # Can be set in the config.ini [Composer] section
   composer = common.ConfigFile.return_config_item(config, "Composer", "composer", "boolean", True)
@@ -72,6 +87,13 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
   else:
     console_buildtype = buildtype
 
+  # Check the php_ini_file string isn't doing anything naughty
+  malicious_code = False
+  malicious_code = common.Utils.detect_malicious_strings([';', '&&'], php_ini_file)
+  # Set CLI PHP version, if we need to
+  if php_ini_file and not malicious_code:
+    run("export PHPRC='%s'" % php_ini_file)
+
   # Let's allow developers to perform some early actions if they need to
   execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
 
@@ -95,8 +117,12 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
   if ckfinder:
     execute(Symfony.symlink_ckfinder_files, repo, buildtype, build)
   execute(Symfony.set_symfony_env, repo, buildtype, build, console_buildtype)
-  # Do not use console_buildtype here, we desire a different parameters.yml in shared for each env
-  execute(AdjustConfiguration.adjust_parameters_yml, repo, buildtype, build)
+  if parameters_yml:
+    # Do not use console_buildtype here, we desire a different parameters.yml in shared for each env
+    execute(AdjustConfiguration.adjust_parameters_yml, repo, buildtype, build)
+  if env_file:
+    # Use a .env file to source parameters for web and console controllers (likely instead of a parameters.yml)
+    execute(AdjustConfiguration.adjust_env_file, repo, buildtype, build)
 
   # Let's allow developers to perform some actions right after the app is built
   execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
@@ -113,12 +139,15 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, build
   if ckfinder:
     execute(Symfony.ckfinder_install, repo, buildtype, build, console_buildtype)
 
+  # Unset CLI PHP version if we need to
+  if php_ini_file:
+    run("export PHPRC=''")
+
 # Probably obsolete, parameters_BUILDTYPE.yml files should autoload
 # @TODO: delete post testing
 #  update_local_parameters(repo, buildtype, build)
 
   execute(Symfony.clear_cache, repo, buildtype, build, console_buildtype)
-  # @TODO - this is Drupal specific. Oops!
   execute(common.Utils.adjust_live_symlink, repo, branch, build, buildtype, hosts=env.roledefs['app_all'])
   execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
   execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])

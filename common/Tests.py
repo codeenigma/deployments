@@ -88,3 +88,20 @@ def run_codesniffer(path_to_app, extensions="php,inc,txt,md", install=True, stan
   # Run CodeSniffer itself
   with cd("%s" % path_to_app):
     run("/home/jenkins/.composer/vendor/bin/phpcs %s --extensions=%s %s %s" % (standard, extensions, ignore, paths_to_test))
+
+
+# Run a regex check of the site we're building
+@task
+def run_regex_check(url_to_check, string_to_check, check_protocol="https", curl_options="sL", notifications_email=None):
+  print "===> Checking the site is up"
+  if local("curl -%s %s://%s | grep '%s'" % (curl_options, check_protocol, url_to_check, string_to_check)).failed:
+    print "  ################################"
+    print "  ################################"
+    print "    REGEX CHECK FAILED!!"
+    print "  ################################"
+    print "  ################################"
+    if notifications_email:
+      local("echo 'Your regex check for the URL %s  with string check for '%s' has failed, the site may be down. Please check it immediately!' | mail -s 'Site down following deploy' %s" % (url_to_check, string_to_check, notifications_email))
+      print "===> Sent warning email to %s" % notifications_email
+  else:
+    print "===> Site is up"

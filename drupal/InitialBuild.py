@@ -3,7 +3,9 @@ from fabric.operations import put
 from fabric.contrib.files import *
 import random
 import string
+import time
 # Custom Code Enigma modules
+import DrupalUtils
 import common.Utils
 import common.MySQL
 
@@ -27,13 +29,6 @@ $aliases['%s_%s'] = array(
 );""" % (alias, branch, repo, branch, url)
   append("/etc/drush/%s_%s.alias.drushrc.php" % (alias, branch), append_string, use_sudo=True)
 
-
-@task
-@roles('app_all')
-def initial_build_create_live_symlink(repo, branch, build):
-  print "===> Setting the live document root symlink"
-  # We need to force this to avoid a repeat of https://redmine.codeenigma.net/issues/20779
-  sudo("ln -nsf /var/www/%s_%s_%s /var/www/live.%s.%s" % (repo, branch, build, repo, branch))
 
 # If composer was run beforehand because the site is Drupal 8, it will have created a
 # files directory for the site with 777 perms. Move it aside and fix perms.
@@ -59,11 +54,13 @@ def initial_build_create_files_symlink(repo, branch, build, site, alias):
 def initial_build_updatedb(repo, branch, build, site, drupal_version):
   print "===> Running any database hook updates"
   with settings(warn_only=True):
-    if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y updatedb'" % (repo, branch, build, site)).failed:
-      raise SystemExit("Could not apply database updates! Everything else has been done, but failing the build to alert to the fact database updates could not be run.")
+    # Set drush location
+    drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
+    if DrupalUtils.drush_command("updatedb", site, drush_runtime_location, True, None, None, True).failed:
+      raise SystemExit("###### Could not apply database updates! Everything else has been done, but failing the build to alert to the fact database updates could not be run.")
     if drupal_version > 7:
-      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y entity-updates'" % (repo, branch, build, site)).failed:
-        print "Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
+      if DrupalUtils.drush_command("entity-updates", site, drush_runtime_location, True, None, None, True).failed:
+        print "###### Could not carry out entity updates! Continuing anyway, as this probably isn't a major issue."
   print "===> Database updates applied"
 
 
@@ -74,9 +71,11 @@ def initial_build_config_import(repo, branch, build, site, drupal_version):
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version > 7:
+      # Set drush location
+      drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
       print "===> Importing configuration for Drupal 8 site..."
-      if sudo("su -s /bin/bash www-data -c 'cd /var/www/%s_%s_%s/www/sites/%s && drush -y cim'" % (repo, branch, build, site)).failed:
-        raise SystemExit("Could not import configuration! Failing the initial build.")
+      if DrupalUtils.drush_command("cim", site, drush_runtime_location, True, None, None, True).failed:
+        raise SystemExit("###### Could not import configuration! Failing the initial build.")
       else:
         print "===> Configuration imported."
 
@@ -133,6 +132,9 @@ def initial_build(repo, url, branch, build, site, alias, profile, buildtype, san
   # We'll get back db_name, db_username, db_password and db_host from this call as a list in new_database
   new_database = common.MySQL.mysql_new_database(alias, buildtype, rds, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
 
+  print "===> Waiting 10 seconds to let MySQL internals catch up"
+  time.sleep(10)
+
   # Set the buildtype back to the original buildtype
   buildtype = preserve_buildtype
 
@@ -145,19 +147,24 @@ def initial_build(repo, url, branch, build, site, alias, profile, buildtype, san
     run("cp default.settings.php settings.php")
     db_url = "mysql://%s:%s@%s/%s" % (new_database[1], new_database[2], new_database[3], new_database[0])
     print "===> Installing Drupal with MySQL string of %s" % db_url
-    run ("drush si %s -y --db-url=%s" % (profile, db_url))
+    # Set drush location
+    drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
+    drush_command = "si %s --db-url=%s"  % (profile, db_url)
+    DrupalUtils.drush_command(drush_command, site, drush_runtime_location)
     # Append the necessary include and other settings
     append_string = """$config_directories['sync'] = '../config/sync';
 $file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
 if (file_exists($file)) {
-  include_once($file);
+  include($file);
 }""" % (repo, branch, build, site, buildtype)
     append("settings.php", append_string, use_sudo=True)
 
   # Now if we have a database to import we can do that
   if db_dir and dump_file:
     with cd("%s/sites/%s" % (site_root, site)):
-      sudo("drush -y sql-drop")
+      # Set drush location
+      drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
+      DrupalUtils.drush_command("sql-drop", site, drush_runtime_location, True)
       site_root = "/var/www/%s_%s_%s" % (repo, branch, build)
       common.MySQL.mysql_import_dump(site_root, new_database[0], dump_file, new_database[3], rds, mysql_config)
       site_root = "/var/www/%s_%s_%s/www" % (repo, branch, build)
@@ -175,12 +182,13 @@ if (file_exists($file)) {
       sanitised_email = 'example.com'
     with cd("%s/sites/%s" % (site_root, site)):
       with settings(warn_only=True):
-        if run("drush -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (alias, sanitised_email, sanitised_password)).failed:
-          print "Could not sanitise database. Aborting this build."
-          raise SystemError("Could not sanitise database. Aborting this build.")
+        # Set drush variables
+        drush_command = "sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (alias, sanitised_email, sanitised_password)
+        drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
+        if DrupalUtils.drush_command(drush_command, site, drush_runtime_location).failed:
+          raise SystemError("###### Could not sanitise database. Aborting this build.")
         else:
           print "===> Data sanitised, email domain set to %s+%%uid@%s, passwords set to %s" % (alias, sanitised_email, sanitised_password)
-          print "Sanitised database."
 
   print "===> Correcting files directory permissions and ownership..."
   sudo("chown -R jenkins:www-data /var/www/shared/%s_%s_files" % (alias, branch))
@@ -206,7 +214,7 @@ def initial_build_move_settings(alias, branch):
 # Copy the dummy vhost and change values.
 @task
 @roles('app_all')
-def initial_build_vhost(repo, url, branch, build, alias, buildtype, ssl_enabled, ssl_cert, ssl_ip, httpauth_pass, drupal_common_config, webserverport):
+def initial_build_vhost(repo, url, branch, build, alias, buildtype, ssl_enabled, ssl_cert, ssl_ip, httpauth_pass, drupal_common_config, featurebranch_vhost, webserverport):
   # Some quick clean-up from earlier, delete the 'shared' settings.inc
   with settings(warn_only=True):
     if run("stat /var/www/shared/%s_%s.settings.inc" % (alias, branch)).return_code == 0:
@@ -226,7 +234,7 @@ def initial_build_vhost(repo, url, branch, build, alias, buildtype, ssl_enabled,
   # perhaps we shouldn't have been doing a fresh install at all
   with settings(warn_only=True):
     if run("stat /etc/%s/sites-available/%s.conf" % (webserver, url)).return_code == 0:
-      raise SystemError("The VirtualHost config file /etc/%s/sites-available/%s.conf already existed! Aborting." % (webserver, url))
+      raise SystemError("###### The VirtualHost config file /etc/%s/sites-available/%s.conf already existed! Aborting." % (webserver, url))
 
   # Copy webserver dummy vhosts to server
   print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
@@ -248,8 +256,7 @@ def initial_build_vhost(repo, url, branch, build, alias, buildtype, ssl_enabled,
         if ssl_cert is None:
           # If ssl_enabled is True in config.ini, ssl_cert MUST contain the name of the ssl cert
           # and key to be used, otherwise the job will fail.
-          print "What? SSL is enabled for this feature branch build, but the SSL file name hasn't been passed. We cannot proceed. Abort build."
-          raise SystemError("What? SSL is enabled for this feature branch build, but the SSL file name hasn't been passed. We cannot proceed. Abort build.")
+          raise SystemError("###### What? SSL is enabled for this feature branch build, but the SSL file name hasn't been passed. We cannot proceed. Abort build.")
         else:
           # Set which dummy vhost file to use.
           dummy_file = 'dummy_feature_branch_ssl.conf'
@@ -261,8 +268,7 @@ def initial_build_vhost(repo, url, branch, build, alias, buildtype, ssl_enabled,
             if run("stat /etc/%s/ssl/%s.crt" % (webserver, ssl_cert)).failed or run("stat /etc/%s/ssl/%s.key" % (webserver, ssl_cert)).failed:
               print "Could not find a crt or key for %s. Let's search for wildcard.codeenigma.net instead." % ssl_cert
               if run("stat /etc/%s/ssl/wildcard.codeenigma.net.crt" % (webserver, ssl_cert)).failed:
-                print "Could not find /etc/%s/ssl/wildcard.codeenigma.net.crt either. Aborting build, as there are no SSL certificates to use." % webserver
-                raise SystemError("Could not find /etc/%s/ssl/wildcard.codeenigma.net.crt either. Aborting build, as there are no SSL certificates to use." % webserver)
+                raise SystemError("###### Could not find /etc/%s/ssl/wildcard.codeenigma.net.crt either. Aborting build, as there are no SSL certificates to use." % webserver)
               else:
                 print "Found wildcard.codeenigma.net. We'll use that as the SSL certificate, even though there may be some SSL errors."
                 ssl_cert = "wildcard.codeenigma.net"
@@ -273,6 +279,12 @@ def initial_build_vhost(repo, url, branch, build, alias, buildtype, ssl_enabled,
         dummy_file = 'dummy_feature_branch.conf'
     else:
       dummy_file = 'dummy.conf'
+
+    if featurebranch_vhost is not None:
+      print "A dummy feature branch vhost is set, so copy /var/www/%s_%s_%s/vhosts/%s to /etc/%s/sites-available." % (repo, branch, build, featurebranch_vhost, webserver)
+      sudo("mv /var/www/%s_%s_%s/vhosts/%s /etc/%s/sites-available/" % (repo, branch, build, featurebranch_vhost, webserver))
+      sudo("chown root:root /etc/%s/sites-available/%s" % (webserver, featurebranch_vhost))
+      dummy_file = featurebranch_vhost
 
     sudo("cp /etc/%s/sites-available/%s /etc/%s/sites-available/%s.conf" % (webserver, dummy_file, webserver, url))
 
@@ -307,7 +319,7 @@ def initial_build_vhost(repo, url, branch, build, alias, buildtype, ssl_enabled,
   sudo("ln -s /etc/%s/sites-available/%s.conf /etc/%s/sites-enabled/%s.conf" % (webserver, url, webserver, url))
   print "Tidy up and remove the dummy vhosts. Don't fail the build if they can't be removed."
   with settings(warn_only=True):
-    sudo("rm /etc/%s/sites-available/dummy*.conf" % webserver)
+    sudo("rm /etc/%s/sites-available/*dummy*.conf" % webserver)
 
   url_output = url.lower()
   print "***** Your URL is http://%s *****" % url_output
