@@ -199,6 +199,9 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
       else:
         print "===> %s database synced successfully." % syncbranch
 
+      # For cases where we processed the import, we do not want to send dump_file back
+      dump_file = None
+
   # If sync_branch_host and current_env don't match, the database to fetch to on another server
   else:
     env.host = sync_branch_host
@@ -271,14 +274,14 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
             print "===> Data sanitised, email domain set to %s+%%uid@%s, passwords set to %s" % (alias, sanitised_email, sanitised_password)
           print "===> %s database imported." % syncbranch
 
+      # For cases where we processed the import, we do not want to send dump_file back
+      dump_file = None
+
       # Tidying up on host server
       run("rm ~/dbbackups/%s" % dump_file)
 
     # Tidying up on Jenkins server
     local('rm /tmp/dbbackups/%s' % dump_file)
-
-    # For cases where we processed the import, we do not want to send dump_file back
-    dump_file = None
 
   # Send the dump_file back for later use
   return dump_file
