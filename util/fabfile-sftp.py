@@ -25,7 +25,7 @@ def put_files(orig_host, source_dir, dest_dir, dest_user, dest_group, copy_user,
       print "Could not set ownership to %s on destination directory %s correctly." % (copy_user, dest_dir)
       return "fail"
 
-    if local("rsync -aHPv %s/copy_%s/ %s:%s/" % (copy_dir, now, env.host_string, dest_dir)).failed:
+    if local("rsync -e 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' -aHPv %s/copy_%s/ %s:%s/" % (copy_dir, now, env.host_string, dest_dir)).failed:
       print "Could not copy %s files to destination %s. Aborting." % (source_dir, dest_dir)
       return "fail"
 
