@@ -5,8 +5,8 @@ DBS=
 MEMCACHES=
 IP=localhost
 CONFFILE=
-APPIPS=
 PRODFILE=
+APPIPS=
 
 usage() {
 cat << EOF
@@ -20,12 +20,12 @@ OPTIONS
    -m   Memcache servers in a list,like,this
    -i   IP address of the MySQL server that Drupal should connect to
    -f   File to write the config.ini to. Typically WORKSPACE/config.ini where WORKSPACE is that of the Jenkins job.
-   -A   App server IPs in a list,like,this. They should in the same order as the -a option.
    -p   Optional prod file to include when writing to config.ini file in -f, typically WORKSPACE/prod.config.ini where WORKSPACE is that of the Jenkins job.
+   -A   Optional app server IPs in a list,like,this. They should in the same order as the -a option.
 EOF
 }
 
-while getopts "a:d:m:i:f:A:p:" OPTION
+while getopts "a:d:m:i:f:p:A:" OPTION
 do
   case $OPTION in
     a)
@@ -43,11 +43,11 @@ do
     f)
       CONFFILE=$OPTARG
       ;;
-    A)
-      APPIPS=$OPTARG
-      ;;
     p)
       PRODFILE=$OPTARG
+      ;;
+    A)
+      APPIPS=$OPTARG
       ;;
     ?)
       exit
@@ -55,7 +55,7 @@ do
   esac
 done
 
-if [[ -z $APPS || -z $DBS || -z $MEMCACHES || -z $CONFFILE || -z $APPIPS ]]; then
+if [[ -z $APPS || -z $DBS || -z $MEMCACHES || -z $CONFFILE ]]; then
   echo "Missing arguments!"
   usage
   exit 1

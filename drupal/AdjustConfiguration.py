@@ -29,7 +29,9 @@ def adjust_settings_php(repo, branch, build, buildtype, alias, site):
     settings_file = "/var/www/config/%s_%s.settings.inc" % (alias, branch)
     if run('grep "\$file = \'\/var\/www\/%s" %s' % (repo, settings_file)).return_code == 0:
       print "===> %s already has a file_exists() check. We need to replace the build number so the newer %s.settings.php file is used." % (settings_file, buildtype)
-      sudo('sed -i.bak "s:/var/www/.\+_.\+_build_[0-9]\+/.\+/.\+\.settings\.php:/var/www/%s_%s_%s/www/sites/%s/%s.settings.php:g" %s' % (repo, branch, build, site, buildtype, settings_file))
+      replace_string = "/var/www/.+_.+_build_[0-9]+/.+\.settings\.php"
+      replace_with = "/var/www/%s_%s_%s/www/sites/%s/%s.settings.php" % (repo, branch, build, site, buildtype)
+      sed(settings_file, replace_string, replace_with, limit='', use_sudo=False, backup='.bak', flags="i", shell=False)
     else:
       append_string = """$file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
 if (file_exists($file)) {
