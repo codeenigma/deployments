@@ -54,7 +54,7 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   composer = common.ConfigFile.return_config_item(config, "Composer", "composer", "boolean", True)
   composer_lock = common.ConfigFile.return_config_item(config, "Composer", "composer_lock", "boolean", True)
   no_dev = common.ConfigFile.return_config_item(config, "Composer", "no_dev", "boolean", with_no_dev)
-  optimize_autoloader = common.ConfigFile.return_config_item(config, "Composer", "optimize_autoloader", "boolean", True)
+  optimize_autoloader = common.ConfigFile.return_config_item(config, "Composer", "optimize_autoloader", "boolean", no_dev)
 
   # Set SSH key if needed
   ssh_key = None
