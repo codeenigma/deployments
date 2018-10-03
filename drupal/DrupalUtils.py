@@ -103,3 +103,18 @@ def get_database(shortname, branch, santise):
   # Remove database dump from target server
   print "===> Removing database dump from target server..."
   run('rm ~/client-db-dumps/%s-%s_database_dump.sql.bz2' % (shortname, branch))
+
+
+@task
+def check_site_exists(previous_build, site):
+  if previous_build is None:
+    print "###### No live symlink at all, so this is a totally new initial build."
+    return False
+  else:
+    with settings(warn_only=True):
+      if run("stat %s/www/sites/%s/settings.php" % (previous_build, site)).return_code == 0:
+        print "###### %s site exists." % site
+        return True
+      else:
+        print "###### %s site does not exist." % site
+        return False
