@@ -99,8 +99,7 @@ def update_resources(repo, buildtype, build):
   # Assuming Symfony 3 or higher
   else:
     with settings(warn_only=True):
-      print "===> Removing cache, logs and session directories..."
-      sudo("rm -r /var/www/%s_%s_%s/var/cache" % (repo, buildtype, build))
+      print "===> Removing logs and session directories..."
       sudo("rm -r /var/www/%s_%s_%s/var/sessions" % (repo, buildtype, build))
       
       if(exists("/var/www/%s_%s_%s/var/log" % (repo, buildtype, build))):
@@ -110,7 +109,6 @@ def update_resources(repo, buildtype, build):
         sudo("rm -r /var/www/%s_%s_%s/var/logs" % (repo, buildtype, build))
         log_dir = "logs"
 
-      print "===> Ensuring permissions are correct on cache, logs and session directories are correct..."
       fix_perms_ownership(repo, buildtype, build)
 
 
@@ -119,10 +117,7 @@ def update_resources(repo, buildtype, build):
 @roles('app_all')
 def symlink_resources(repo, buildtype, build):
   with settings(warn_only=True):
-    print "===> Symlinking in cache, logs and sessions directories..."
-    if run("ln -s /var/www/%s_%s_%s/app/cache /var/www/%s_%s_%s/var/cache" % (repo, buildtype, build, repo, buildtype, build)).failed:
-      print "Could not symlink in cache directory."
-      raise SystemExit("Could not symlink in cache directory.")
+    print "===> Symlinking in logs, sessions and uploads directories..."
     if run("ln -s /var/www/shared/%s_%s_logs /var/www/%s_%s_%s/var/%s" % (repo, buildtype, repo, buildtype, build, log_dir)).failed:
       print "Could not symlink in %s directory." % (log_dir)
       raise SystemExit("Could not symlink in %s directory." % (log_dir))
@@ -214,13 +209,14 @@ def clear_cache(repo, buildtype, build, console_buildtype):
 @roles('app_all')
 def fix_perms_ownership(repo, buildtype, build):
   with settings(warn_only=True):
-    if symfony_version == "2":
-      if sudo("chown -R www-data:jenkins /var/www/%s_%s_%s/app/cache" % (repo, buildtype, build)).failed:
-        print "Could not set cache ownership."
-        raise SystemExit("Could not set cache ownership.")
-      else:
-        sudo("find /var/www/%s_%s_%s/app/cache -type d -print0 | xargs -r -0 chmod 775" % (repo, buildtype, build))
-        sudo("find /var/www/%s_%s_%s/app/cache -type f -print0 | xargs -r -0 chmod 664" % (repo, buildtype, build))
+    print "===> Ensuring permissions are correct on cache, logs, session and uploads directories are correct..."
+      
+    if sudo("chown -R www-data:jenkins /var/www/%s_%s_%s/var/cache" % (repo, buildtype, build)).failed:
+      print "Could not set cache ownership."
+      raise SystemExit("Could not set cache ownership.")
+    else:
+      sudo("find /var/www/%s_%s_%s/var/cache -type d -print0 | xargs -r -0 chmod 775" % (repo, buildtype, build))
+      sudo("find /var/www/%s_%s_%s/var/cache -type f -print0 | xargs -r -0 chmod 664" % (repo, buildtype, build))
 
     if sudo("chown -R www-data:jenkins /var/www/shared/%s_%s_logs" % (repo, buildtype)).failed:
       print "Could not set logs ownership."
