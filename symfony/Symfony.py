@@ -157,10 +157,10 @@ def set_symfony_env(repo, buildtype, build, console_buildtype):
     if run("find /var/www/%s_%s_%s/web/index.php" % (repo, buildtype, build, console_buildtype)).return_code == 0: 
       
     # Symfony 4 (or upgraded Symfony 3)
-    if run("find /var/www/%s_%s_%s/public/index.php" % (repo, buildtype, build, console_buildtype)).return_code == 0: 
+    elif run("find /var/www/%s_%s_%s/public/index.php" % (repo, buildtype, build, console_buildtype)).return_code == 0: 
     
     # Symfony 3 and below
-    if run("find /var/www/%s_%s_%s/web/app_%s.php" % (repo, buildtype, build, console_buildtype)).return_code == 0:
+    elif run("find /var/www/%s_%s_%s/web/app_%s.php" % (repo, buildtype, build, console_buildtype)).return_code == 0:
       print "Moving app_%s.php to app.php." % console_buildtype
       sudo("rm /var/www/%s_%s_%s/web/app.php" % (repo, buildtype, build))
       sudo("mv /var/www/%s_%s_%s/web/app_%s.php /var/www/%s_%s_%s/web/app.php" % (repo, buildtype, build, console_buildtype, repo, buildtype, build))
