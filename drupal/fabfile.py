@@ -237,7 +237,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
   # If this is autoscale at AWS, let's update the tarball in S3
   if autoscale:
-    execute(common.Utils.tarball_up_to_s3, www_root, repo, buildtype, build, autoscale)
+    execute(common.Utils.tarball_up_to_s3, www_root, repo, branch, build, autoscale)
 
   #commit_new_db(repo, repourl, url, build, branch)
   execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, hosts=env.roledefs['app_all'])
