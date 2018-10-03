@@ -10,7 +10,7 @@ import common.Utils
 # Run a composer command
 @task
 @roles('app_all')
-def composer_command(site_root, composer_command="install", package_to_install=None, install_no_dev=True, composer_lock=True, composer_global=False, composer_sudo=False, symfony_environment=None):
+def composer_command(site_root, composer_command="install", package_to_install=None, install_no_dev=True, composer_lock=True, composer_global=False, composer_sudo=False, symfony_environment=None, optimize_autoloader=False):
   # Make sure no one passed anything nasty from a build hook
   malicious_code = False
   malicious_code = common.Utils.detect_malicious_strings([';', '&&'], composer_command)
@@ -44,6 +44,9 @@ def composer_command(site_root, composer_command="install", package_to_install=N
   elif composer_command == "install" and not install_no_dev:
     this_command = this_command + " --dev --no-interaction"
 
+  if composer_command == "install" and optimize_autoloader:
+    this_command = this_command + " --optimize-autoloader"
+    
   if package_to_install:
     this_command = this_command + " " + package_to_install
 
