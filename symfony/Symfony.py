@@ -10,6 +10,7 @@ from common.ConfigFile import *
 
 symfony_version = ''
 console_location = ''
+log_dir = ''
 
 @task
 @roles('app_primary')
@@ -64,6 +65,8 @@ def determine_symfony_version(repo, buildtype, build):
 @task
 @roles('app_all')
 def update_resources(repo, buildtype, build):
+  global log_dir
+  
   if symfony_version == "2":
     print "===> Symlinking in cache, log directories"
     with settings(warn_only=True):
@@ -98,15 +101,14 @@ def update_resources(repo, buildtype, build):
     with settings(warn_only=True):
       print "===> Removing cache, logs and session directories..."
       sudo("rm -r /var/www/%s_%s_%s/var/cache" % (repo, buildtype, build))
-      sudo("rm -r /var/www/%s_%s_%s/var/logs" % (repo, buildtype, build))
       sudo("rm -r /var/www/%s_%s_%s/var/sessions" % (repo, buildtype, build))
-
-      if run("mkdir /var/www/%s_%s_%s/app/cache" % (repo, buildtype, build)).failed:
-        raise SystemExit("Could not create cache directory")
-      if sudo("chown -R www-data:jenkins /var/www/%s_%s_%s/app/cache" % (repo, buildtype, build)).failed:
-        raise SystemExit("Could not set cache ownership")
-      if sudo("chmod -R g+w /var/www/%s_%s_%s/app/cache" % (repo, buildtype, build)).failed:
-        raise SystemExit("Could not set cache permissions")
+      
+      if(exists("/var/www/%s_%s_%s/var/log" % (repo, buildtype, build))):
+        sudo("rm -r /var/www/%s_%s_%s/var/log" % (repo, buildtype, build))
+        log_dir = "log"
+      else:
+        sudo("rm -r /var/www/%s_%s_%s/var/logs" % (repo, buildtype, build))
+        log_dir = "logs"
 
       print "===> Ensuring permissions are correct on cache, logs and session directories are correct..."
       fix_perms_ownership(repo, buildtype, build)
@@ -121,9 +123,9 @@ def symlink_resources(repo, buildtype, build):
     if run("ln -s /var/www/%s_%s_%s/app/cache /var/www/%s_%s_%s/var/cache" % (repo, buildtype, build, repo, buildtype, build)).failed:
       print "Could not symlink in cache directory."
       raise SystemExit("Could not symlink in cache directory.")
-    if run("ln -s /var/www/shared/%s_%s_logs /var/www/%s_%s_%s/var/logs" % (repo, buildtype, repo, buildtype, build)).failed:
-      print "Could not symlink in logs directory."
-      raise SystemExit("Could not symlink in logs directory.")
+    if run("ln -s /var/www/shared/%s_%s_logs /var/www/%s_%s_%s/var/%s" % (repo, buildtype, repo, buildtype, build, log_dir)).failed:
+      print "Could not symlink in %s directory." % (log_dir)
+      raise SystemExit("Could not symlink in %s directory." % (log_dir))
     if run("ln -s /var/www/shared/%s_%s_sessions /var/www/%s_%s_%s/var/sessions" % (repo, buildtype, repo, buildtype, build)).failed:
       print "Could not symlink in sessions directory."
       raise SystemExit("Could not symlink in sessions directory.")
@@ -147,15 +149,22 @@ def ckfinder_install(repo, buildtype, build, console_buildtype):
   if run("cd /var/www/%s_%s_%s; php %s/console --env=%s ckfinder:download" % (repo, buildtype, build, console_location, console_buildtype)).failed:
     raise SystemExit("Could not download CKFinder! Aborting!")
   if run("cd /var/www/%s_%s_%s; php %s/console --env=%s assets:install" % (repo, buildtype, build, console_location, console_buildtype)).failed:
-    raise SystemExit("Could not install CKFinder! Aborting!")
+    raise SystemExit("Could not install assets! Aborting!")
 
 
 @task
 @roles('app_all')
 def set_symfony_env(repo, buildtype, build, console_buildtype):
-  print "===> Setting symfony environment..."
+  print "===> Setting symfony controller for environment..."
 
   with settings(warn_only=True):
+    # Symfony 3 upgrade to Symfony 4 prep
+    if run("find /var/www/%s_%s_%s/web/index.php" % (repo, buildtype, build, console_buildtype)).return_code == 0: 
+      
+    # Symfony 4 (or upgraded Symfony 3)
+    if run("find /var/www/%s_%s_%s/public/index.php" % (repo, buildtype, build, console_buildtype)).return_code == 0: 
+    
+    # Symfony 3 and below
     if run("find /var/www/%s_%s_%s/web/app_%s.php" % (repo, buildtype, build, console_buildtype)).return_code == 0:
       print "Moving app_%s.php to app.php." % console_buildtype
       sudo("rm /var/www/%s_%s_%s/web/app.php" % (repo, buildtype, build))
@@ -164,7 +173,7 @@ def set_symfony_env(repo, buildtype, build, console_buildtype):
     else:
       print "Could not find an app.php file for this environment, checking there's a default app.php."
       if run("stat /var/www/%s_%s_%s/web/app.php" % (repo, buildtype, build)).failed:
-        raise SystemExit("We don't appear to have any valid app.php files. Aborting!")
+        raise SystemExit("We don't appear to have any valid index.php or app.php files. Aborting!")
 
 
 @task
@@ -205,12 +214,14 @@ def clear_cache(repo, buildtype, build, console_buildtype):
 @roles('app_all')
 def fix_perms_ownership(repo, buildtype, build):
   with settings(warn_only=True):
-    if sudo("chown -R www-data:jenkins /var/www/%s_%s_%s/app/cache" % (repo, buildtype, build)).failed:
-      print "Could not set cache ownership."
-      raise SystemExit("Could not set cache ownership.")
-    else:
-      sudo("find /var/www/%s_%s_%s/app/cache -type d -print0 | xargs -r -0 chmod 775" % (repo, buildtype, build))
-      sudo("find /var/www/%s_%s_%s/app/cache -type f -print0 | xargs -r -0 chmod 664" % (repo, buildtype, build))
+    if symfony_version == "2":
+      if sudo("chown -R www-data:jenkins /var/www/%s_%s_%s/app/cache" % (repo, buildtype, build)).failed:
+        print "Could not set cache ownership."
+        raise SystemExit("Could not set cache ownership.")
+      else:
+        sudo("find /var/www/%s_%s_%s/app/cache -type d -print0 | xargs -r -0 chmod 775" % (repo, buildtype, build))
+        sudo("find /var/www/%s_%s_%s/app/cache -type f -print0 | xargs -r -0 chmod 664" % (repo, buildtype, build))
+
     if sudo("chown -R www-data:jenkins /var/www/shared/%s_%s_logs" % (repo, buildtype)).failed:
       print "Could not set logs ownership."
       raise SystemExit("Could not set logs ownership.")
