@@ -17,7 +17,7 @@ def backup_db(shortname, staging_branch):
   print "===> Ensuring backup directory exists"
   run("mkdir -p ~jenkins/dbbackups")
   print "===> Taking a database backup of the Drupal database..."
-  run("drush @%s_%s sql-dump | bzip2 -f > ~jenkins/dbbackups/%s_%s_prior_to_sync_%s.sql.bz2" % (shortname, staging_branch, shortname, staging_branch, now))
+  run("drush @%s_%s sql-dump --result-file=/dev/stdout | bzip2 -f > ~jenkins/dbbackups/%s_%s_prior_to_sync_%s.sql.bz2" % (shortname, staging_branch, shortname, staging_branch, now))
 
 
 # Sync uploaded assets from production to staging
@@ -148,7 +148,7 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
           dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (shortname, prod_branch))
           run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, shortname, now))
     else:
-      run('drush @%s_%s sql-dump | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (shortname, prod_branch, shortname, now))
+      run('drush @%s_%s sql-dump --result-file=/dev/stdout | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (shortname, prod_branch, shortname, now))
     print "===> Fetching the drupal database backup from production..."
 
   # Fetch the database backup from prod
