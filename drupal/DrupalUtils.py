@@ -91,7 +91,7 @@ def get_database(shortname, branch, santise):
       dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (shortname, branch))
       run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /usr/local/bin/drupal-obfuscate.rb | bzip2 -f > ~jenkins/client-db-dumps/%s-%s_database_dump.sql.bz2' % (dbuser, dbpass, dbhost, dbname, shortname, branch))
   else:
-    run('drush @%s_%s sql-dump | bzip2 -f > ~jenkins/client-db-dumps/%s-%s_database_dump.sql.bz2' % (shortname, branch, shortname, branch))
+    run('drush @%s_%s sql-dump --result-file=/dev/stdout | bzip2 -f > ~jenkins/client-db-dumps/%s-%s_database_dump.sql.bz2' % (shortname, branch, shortname, branch))
 
   # Make sure a directory exists for database dumps to be downloaded to
   local('mkdir -p /tmp/client-db-dumps')

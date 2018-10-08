@@ -69,7 +69,7 @@ def wp_updatedb(repo, branch, build):
 #  _sshagent_run("cd /var/www/%s_%s_%s && git branch -f dbbackups && git push origin dbbackups" % (repo, branch, build))
   # If it *did* already exist, we need to pull the latest changes or else we'll get a conflict if we do this after we make a new dump
 #  _sshagent_run("cd /var/www/%s_%s_%s && git pull origin dbbackups" % (repo, branch, build))
-#  run("drush @%s_%s sql-dump | bzip2 -f > /var/www/%s_%s_%s/db/%s.%s.sql.bz2" % (repo, branch, repo, branch, build, repo, branch))
+#  run("drush @%s_%s sql-dump --result-file=/dev/stdout | bzip2 -f > /var/www/%s_%s_%s/db/%s.%s.sql.bz2" % (repo, branch, repo, branch, build, repo, branch))
 #  with cd("/var/www/live.%s.%s" % (repo, branch)):
 #    run("git add db/%s.%s.sql.bz2" % (repo, branch))
 #    run("git commit -m \"New database dump taken after successful %s build %s\"" % (branch, build))
