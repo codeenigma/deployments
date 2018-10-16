@@ -74,7 +74,8 @@ def get_previous_build(repo, branch, build):
     if run("readlink /var/www/live.%s.%s" % (repo, branch)).failed:
       return None
     else:
-      return run("readlink /var/www/live.%s.%s" % (repo, branch))
+      with cd("/var/www/live.%s.%s" % (repo, branch)):
+        return run("pwd -P")
 
 @task
 def get_previous_db(repo, branch, build):
