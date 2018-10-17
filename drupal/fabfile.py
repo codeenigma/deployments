@@ -274,7 +274,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     for online_alias,online_site in sites_deployed.iteritems():
       execute(Drupal.go_online, repo, branch, build, buildtype, online_alias, online_site, previous_build, readonlymode, drupal_version, sites_deployed=sites_deployed) # This will revert the database and switch the symlink back if it fails
 
-  for test_alias,test_site in sites_deployed.iteritems():
+  for test_alias,test_site in mapping.iteritems():
     # After any build we want to run all the available automated tests
     test_runner(www_root, repo, branch, build, test_alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, test_site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, sites_deployed)
 
