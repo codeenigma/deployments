@@ -235,7 +235,7 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
 
           run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, alias, now))
     else:
-      run('cd /var/www/live.%s.%s/www/sites/%s && | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (repo, syncbranch, site, alias, now))
+      run('cd /var/www/live.%s.%s/www/sites/%s && drush -l %s -y sql-dump | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (repo, syncbranch, site, site, alias, now))
 
     print "===> Fetching the database from the remote server..."
     dump_file = "custombranch_%s_%s_from_%s.sql.bz2" % (alias, now, syncbranch)
