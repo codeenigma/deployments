@@ -11,6 +11,7 @@ from common.ConfigFile import *
 symfony_version = ''
 console_location = ''
 log_dir = ''
+public_dir = ''
 
 @task
 @roles('app_primary')
@@ -66,6 +67,7 @@ def determine_symfony_version(repo, buildtype, build):
 @roles('app_all')
 def update_resources(repo, buildtype, build):
   global log_dir
+  global public_dir
   
   if symfony_version == "2":
     print "===> Symlinking in cache, log directories"
@@ -108,6 +110,11 @@ def update_resources(repo, buildtype, build):
       else:
         sudo("rm -r /var/www/%s_%s_%s/var/logs" % (repo, buildtype, build))
         log_dir = "logs"
+        
+      if(exists("/var/www/%s_%s_%s/web" % (repo, buildtype, build))):
+        public_dir = "web"
+      else:
+        public_dir = "public"
 
       fix_perms_ownership(repo, buildtype, build)
 
@@ -124,17 +131,17 @@ def symlink_resources(repo, buildtype, build):
     if run("ln -s /var/www/shared/%s_%s_sessions /var/www/%s_%s_%s/var/sessions" % (repo, buildtype, repo, buildtype, build)).failed:
       print "Could not symlink in sessions directory."
       raise SystemExit("Could not symlink in sessions directory.")
-    if run("ln -s /var/www/shared/%s_%s_uploads /var/www/%s_%s_%s/web/uploads" % (repo, buildtype, repo, buildtype, build)).failed:
-      print "Could not symlink in uploads directory."
-      raise SystemExit("Could not symlink in uploads directory.")
+    if run("ln -s /var/www/shared/%s_%s_uploads /var/www/%s_%s_%s/%s/uploads" % (repo, buildtype, repo, buildtype, build, public_dir)).failed:
+      print "Could not symlink uploads directory in %s." % (public_dir)
+      raise SystemExit("Could not symlink uploads directory in %s." % (public_dir))
 
 
 # TODO: This should be a build hook example
 @task
 @roles('app_all')
 def symlink_ckfinder_files(repo, buildtype, build):
-  print "===> Symlinking in ckfinder files directory, /var/www/shared/%s_%s_userfiles, to web/userfiles" % (repo, buildtype)
-  sudo("ln -s /var/www/shared/%s_%s_userfiles /var/www/%s_%s_%s/web/userfiles" % (repo, buildtype, repo, buildtype, build))
+  print "===> Symlinking in ckfinder files directory, /var/www/shared/%s_%s_userfiles, to %s/userfiles" % (repo, buildtype, public_dir)
+  sudo("ln -s /var/www/shared/%s_%s_userfiles /var/www/%s_%s_%s/%s/userfiles" % (repo, buildtype, repo, buildtype, build, public_dir))
 
 # TODO: This should be a build hook example
 @task
@@ -153,21 +160,18 @@ def set_symfony_env(repo, buildtype, build, console_buildtype):
   print "===> Setting symfony controller for environment..."
 
   with settings(warn_only=True):
-    # Symfony 3 upgrade to Symfony 4 prep
-    if run("find /var/www/%s_%s_%s/web/index.php" % (repo, buildtype, build, console_buildtype)).return_code == 0: 
-      
     # Symfony 4 (or upgraded Symfony 3)
-    elif run("find /var/www/%s_%s_%s/public/index.php" % (repo, buildtype, build, console_buildtype)).return_code == 0: 
+    elif run("find /var/www/%s_%s_%s/%s/index.php" % (repo, buildtype, build, public_dir)).return_code == 0: 
     
     # Symfony 3 and below
-    elif run("find /var/www/%s_%s_%s/web/app_%s.php" % (repo, buildtype, build, console_buildtype)).return_code == 0:
+    elif run("find /var/www/%s_%s_%s/%s/app_%s.php" % (repo, buildtype, build, public_dir, console_buildtype)).return_code == 0:
       print "Moving app_%s.php to app.php." % console_buildtype
-      sudo("rm /var/www/%s_%s_%s/web/app.php" % (repo, buildtype, build))
-      sudo("mv /var/www/%s_%s_%s/web/app_%s.php /var/www/%s_%s_%s/web/app.php" % (repo, buildtype, build, console_buildtype, repo, buildtype, build))
+      sudo("rm /var/www/%s_%s_%s/%s/app.php" % (repo, buildtype, build, public_dir))
+      sudo("mv /var/www/%s_%s_%s/%s/app_%s.php /var/www/%s_%s_%s/%s/app.php" % (repo, buildtype, build, public_dir, console_buildtype, repo, buildtype, build, public_dir))
 
     else:
       print "Could not find an app.php file for this environment, checking there's a default app.php."
-      if run("stat /var/www/%s_%s_%s/web/app.php" % (repo, buildtype, build)).failed:
+      if run("stat /var/www/%s_%s_%s/%s/app.php" % (repo, buildtype, build, public_dir)).failed:
         raise SystemExit("We don't appear to have any valid index.php or app.php files. Aborting!")
 
 
