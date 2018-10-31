@@ -113,9 +113,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   phpunit_group = common.ConfigFile.return_config_item(config, "Testing", "phpunit_group", "string", "unit")
   phpunit_test_directory = common.ConfigFile.return_config_item(config, "Testing", "phpunit_test_directory", "string", "www/modules/custom")
   phpunit_path = common.ConfigFile.return_config_item(config, "Testing", "phpunit_path", "string", "vendor/phpunit/phpunit/phpunit")
-  # Behat config file location
-  behat_config_file_default = "/var/www/%s_%s_%s/tests/behat/behat.yml" % (repo, branch, build)
-  behat_config_file = common.ConfigFile.return_config_item(config, "Behat", "behat_config_file", "string", behat_config_file_default)
   # CodeSniffer itself is in common/Tests, but standards used here are Drupal specific, see drupal/DrupalTests.py for the wrapper to apply them
   codesniffer = common.ConfigFile.return_config_item(config, "Testing", "codesniffer", "boolean")
   codesniffer_extensions = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_extensions", "string", "php,module,inc,install,test,profile,theme,info,txt,md")
@@ -428,7 +425,7 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
   # Run behat tests
   if behat_config:
     if buildtype in behat_config['behat_buildtypes']:
-      behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config_file, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+      behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
   else:
     print "===> No behat tests."
 

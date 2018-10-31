@@ -98,7 +98,7 @@ def run_tests(repo, branch, build, config, drupal_version, codesniffer=False, ex
 # Run behat tests, if present
 @task
 @roles('app_primary')
-def run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config_file, junit, drupal_version, tags = [], disable_modules = []):
+def run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, junit, drupal_version, tags = [], disable_modules = []):
   cwd = os.getcwd()
   continue_tests = True
   tests_failed = False
@@ -174,7 +174,7 @@ def run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enable
           test_method = '-f progress -o std -f junit -o xml'
         else:
           test_method = '-f pretty -o std'
-        if run("/var/www/%s_%s_%s/vendor/bin/behat --config=%s -v --tags=\"%s\" %s" % (repo, branch, build, behat_config_file, test_tags, test_method)).failed:
+        if run("/var/www/%s_%s_%s/vendor/bin/behat --config=/var/www/%s_%s_%s/tests/behat/behat.yml -v --tags=\"%s\" %s" % (repo, branch, build, repo, branch, build, test_tags, test_method)).failed:
           print "Behat tests seem to have failed!"
           tests_failed = True
         else:
