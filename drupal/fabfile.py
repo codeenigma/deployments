@@ -54,6 +54,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   site_root = www_root + '/%s_%s_%s' % (repo, branch, build)
   site_link = www_root + '/live.%s.%s' % (repo, branch)
   site_exists = None
+  behat_config_file_default = "/var/www/%s_%s_%s/tests/behat/behat.yml" % (repo, branch, build)
 
   # Set our host_string based on user@host
   env.host_string = '%s@%s' % (user, env.host)
@@ -123,6 +124,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   curl_options = common.ConfigFile.return_config_item(config, "Testing", "curl_options", "string", "sL")
   check_protocol = common.ConfigFile.return_config_item(config, "Testing", "check_protocol", "string", "https")
 
+  # Behat config file location
+  behat_config_file = common.ConfigFile.return_config_item(config, "Behat", "behat_config_file", "string", behat_config_file_default)
+
   # Set SSH key if needed
   # @TODO: this needs to be moved to config.ini for Code Enigma GitHub projects
   if "git@github.com" in repourl:
@@ -190,6 +194,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # build.
   sites_deployed = {}
 
+  # Empty directory for site URLs that have been deployed. The structure will be
+  # alias: url
+  site_urls = {}
+
   # Record the link to the previous build
   previous_build = common.Utils.get_previous_build(repo, branch, build)
 
@@ -248,6 +256,8 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Now everything should be in a good state, let's enable environment indicator for this site, if present
     execute(Drupal.environment_indicator, www_root, repo, branch, build, buildtype, alias, site, drupal_version)
 
+    site_urls[alias] = url
+
     # If this is a single site, we're done with the 'url' variable anyway
     # If this is a multisite, we have to set it to None so a new 'url' gets generated on the next pass
     url = None
@@ -275,8 +285,12 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       execute(Drupal.go_online, repo, branch, build, buildtype, online_alias, online_site, previous_build, readonlymode, drupal_version, sites_deployed=sites_deployed) # This will revert the database and switch the symlink back if it fails
 
   for test_alias,test_site in mapping.iteritems():
+    behat_url = site_urls[test_alias]
+
     # After any build we want to run all the available automated tests
-    test_runner(www_root, repo, branch, build, test_alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, test_site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, sites_deployed)
+    test_runner(www_root, repo, branch, build, test_alias, buildtype, behat_url, ssl_enabled, config, behat_config, behat_config_file, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, test_site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, sites_deployed)
+
+    behat_url = None
 
   # Unset CLI PHP version if we need to
   if php_ini_file:
@@ -418,14 +432,14 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
 
 # Wrapper function for runnning automated tests on a site
 @task
-def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, sites_deployed):
+def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, behat_config_file, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, sites_deployed):
   # Run simpletest tests
   execute(DrupalTests.run_tests, repo, branch, build, config, drupal_version, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, www_root)
 
   # Run behat tests
   if behat_config:
     if buildtype in behat_config['behat_buildtypes']:
-      behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+      behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config_file, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
   else:
     print "===> No behat tests."
 
