@@ -51,6 +51,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   previous_db = ""
   statuscake_paused = False
   www_root = "/var/www"
+  application_directory = "www"
   site_root = www_root + '/%s_%s_%s' % (repo, branch, build)
   site_link = www_root + '/live.%s.%s' % (repo, branch)
   site_exists = None
@@ -112,13 +113,13 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   phpunit_run = common.ConfigFile.return_config_item(config, "Testing", "phpunit_run", "boolean", False)
   phpunit_fail_build = common.ConfigFile.return_config_item(config, "Testing", "phpunit_fail_build", "boolean", False)
   phpunit_group = common.ConfigFile.return_config_item(config, "Testing", "phpunit_group", "string", "unit")
-  phpunit_test_directory = common.ConfigFile.return_config_item(config, "Testing", "phpunit_test_directory", "string", "www/modules/custom")
+  phpunit_test_directory = common.ConfigFile.return_config_item(config, "Testing", "phpunit_test_directory", "string", "%s/modules/custom" % application_directory)
   phpunit_path = common.ConfigFile.return_config_item(config, "Testing", "phpunit_path", "string", "vendor/phpunit/phpunit/phpunit")
   # CodeSniffer itself is in common/Tests, but standards used here are Drupal specific, see drupal/DrupalTests.py for the wrapper to apply them
   codesniffer = common.ConfigFile.return_config_item(config, "Testing", "codesniffer", "boolean")
   codesniffer_extensions = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_extensions", "string", "php,module,inc,install,test,profile,theme,info,txt,md")
   codesniffer_ignore = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_ignore", "string", "node_modules,bower_components,vendor")
-  codesniffer_paths = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_paths", "string", "www/modules/custom www/themes/custom")
+  codesniffer_paths = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_paths", "string", "%s/modules/custom %s/themes/custom" % (application_directory, application_directory))
   # Regex check
   string_to_check = common.ConfigFile.return_config_item(config, "Testing", "string_to_check", "string")
   curl_options = common.ConfigFile.return_config_item(config, "Testing", "curl_options", "string", "sL")
@@ -180,7 +181,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         if run("find %s/composer.json" % site_root).return_code == 0:
           path = site_root
         else:
-          path = site_root + "/www"
+          path = site_root + "/" + application_directory
       execute(common.PHP.composer_command, path, "install", None, no_dev, composer_lock)
 
   # Compile a site mapping, which is needed if this is a multisite build
@@ -209,7 +210,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       offline_site_exists = DrupalUtils.check_site_exists(previous_build, offline_site)
 
       if offline_site_exists:
-        drush_runtime_location = "%s/www/sites/%s" % (previous_build, offline_site)
+        drush_runtime_location = "%s/%s/sites/%s" % (previous_build, application_directory, offline_site)
         drush_output = Drupal.drush_status(repo, branch, build, buildtype, offline_site, drush_runtime_location)
         db_name = Drupal.get_db_name(repo, branch, build, buildtype, offline_site, drush_output)
         # Backup database
@@ -342,7 +343,7 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
     execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build, site, alias)
     execute(InitialBuild.initial_build_move_settings, alias, branch)
     # Configure the server
-    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
+    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site, application_directory)
     execute(InitialBuild.initial_build_vhost, repo, url, branch, build, alias, buildtype, FeatureBranches.ssl_enabled, FeatureBranches.ssl_cert, FeatureBranches.ssl_ip, FeatureBranches.httpauth_pass, FeatureBranches.drupal_common_config, FeatureBranches.featurebranch_vhost, webserverport)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
     # Restart services
@@ -377,7 +378,7 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
 def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file, sites_deployed):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   with shell_env(PHPRC='%s' % php_ini_file):
-    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
+    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site, application_directory)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
     execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build, alias, site)
 

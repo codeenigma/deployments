@@ -40,6 +40,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, config_filename
   common.Utils.define_roles(config, False, None)
 
   user = "jenkins"
+  application_directory = "www"
   www_root = "/var/www"
   site_root = www_root + '/%s_%s_%s' % (repo, branch, build)
   site_link = www_root + '/live.%s.%s' % (repo, branch)
@@ -82,7 +83,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, config_filename
       if run("find %s/composer.json" % site_root).return_code == 0:
         path = site_root
       else:
-        path = site_root + "/www"
+        path = site_root + "/" + application_directory
     execute(common.PHP.composer_command, path, "install", None, no_dev, composer_lock)
 
   # Compile a site mapping, which is needed if this is a multisite build
@@ -92,7 +93,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, config_filename
 
 
   for alias,site in mapping.iteritems():
-    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
+    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site, application_directory)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
     execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build, alias, site)
 
