@@ -169,9 +169,11 @@ def configure_teardown_mapping(repo, branch, buildtype, config_filename, mapping
 def remove_site(repo, branch, alias, site, mysql_config):
   # Drop DB...
   # 'build' and 'buildtype' can be none because only needed for revert which isn't relevant
-  drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
-  drush_output = Drupal.drush_status(repo, branch, None, None, site, drush_runtime_location)
-  dbname = Drupal.get_db_name(repo, branch, None, None, site, drush_output)
+  # This needs to be in a with settings(warn_only=True) to prevent the build from failing if the site is broken
+  with settings(warn_only=True):
+    drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
+    drush_output = Drupal.drush_status(repo, branch, None, None, site, drush_runtime_location)
+    dbname = Drupal.get_db_name(repo, branch, None, None, site, drush_output)
 
   # If the dbname variable is still empty, fail the build early
   if not dbname:
