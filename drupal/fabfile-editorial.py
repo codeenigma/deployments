@@ -93,9 +93,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, config_filename
 
 
   for alias,site in mapping.iteritems():
-    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site, application_directory)
-    execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
-    execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build, alias, site)
+    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site, www_root, application_directory)
+    execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site, www_root, application_directory)
+    execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build, alias, site, www_root, application_directory)
 
   execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
 

@@ -55,7 +55,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   site_root = www_root + '/%s_%s_%s' % (repo, branch, build)
   site_link = www_root + '/live.%s.%s' % (repo, branch)
   site_exists = None
-  behat_config_file_default = "/var/www/%s_%s_%s/tests/behat/behat.yml" % (repo, branch, build)
+  behat_config_file_default = "%s/%s_%s_%s/tests/behat/behat.yml" % (www_root, repo, branch, build)
 
   # Set our host_string based on user@host
   env.host_string = '%s@%s' % (user, env.host)
@@ -275,7 +275,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # The above paths should match - something is wrong if they don't!
   if not this_build == live_build:
     # Make sure the live symlink is pointing at the previous working build.
-    sudo("ln -nsf %s /var/www/live.%s.%s" % (previous_build, repo, branch))
+    sudo("ln -nsf %s %s/live.%s.%s" % (www_root, previous_build, repo, branch))
     for revert_alias,revert_site in sites_deployed.iteritems():
       common.MySQL.mysql_revert_db(db_name, build)
       execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
@@ -312,7 +312,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   if put(script_dir + '/../util/revert', '/home/jenkins', mode=0755).failed:
     print "####### BUILD COMPLETE. Could not copy the revert script to the application server, revert will need to be handled manually"
   else:
-    print "####### BUILD COMPLETE. If you need to revert this build, run the following command: sudo /home/jenkins/revert -b %s -d %s -s /var/www/live.%s.%s -a %s_%s" % (previous_build, previous_db, repo, branch, repo, branch)
+    print "####### BUILD COMPLETE. If you need to revert this build, run the following command: sudo /home/jenkins/revert -b %s -d %s -s %s/live.%s.%s -a %s_%s" % (previous_build, previous_db, www_root, repo, branch, repo, branch)
   # If any of our tests failed, abort the job
   # r23697
   if behat_tests_failed:
@@ -343,9 +343,9 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
     execute(InitialBuild.initial_build_create_files_symlink, repo, branch, build, site, alias)
     execute(InitialBuild.initial_build_move_settings, alias, branch)
     # Configure the server
-    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site, application_directory)
+    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site, www_root, application_directory)
     execute(InitialBuild.initial_build_vhost, repo, url, branch, build, alias, buildtype, FeatureBranches.ssl_enabled, FeatureBranches.ssl_cert, FeatureBranches.ssl_ip, FeatureBranches.httpauth_pass, FeatureBranches.drupal_common_config, FeatureBranches.featurebranch_vhost, webserverport)
-    execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
+    execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site, www_root, application_directory)
     # Restart services
     execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
     execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
@@ -378,9 +378,9 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
 def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file, sites_deployed):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   with shell_env(PHPRC='%s' % php_ini_file):
-    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site, application_directory)
-    execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site)
-    execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build, alias, site)
+    execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site, www_root, application_directory)
+    execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site, www_root, application_directory)
+    execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build, alias, site, www_root, application_directory)
 
     # Let's allow developers to perform some actions right after Drupal is built
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
