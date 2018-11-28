@@ -465,4 +465,4 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
   if url and string_to_check:
     common.Tests.run_regex_check(url, string_to_check, check_protocol, curl_options, notifications_email)
 
-  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', build_hook_version=build_hook_version, alias=alias, site=None, hosts=env.roledefs['app_all'])
+  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
