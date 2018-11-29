@@ -239,6 +239,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       # For now custombranch builds to clusters cannot work
       dump_file = Drupal.prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, env.host_string, sanitise, sanitised_password, sanitised_email)
 
+      # Need to make sure the env.host variable is set correctly, after potentially fetching a database dump from production
+      env.host = env.roledefs['app_primary']
+
     if FeatureBranches.featurebranch_url is not None:
       url = FeatureBranches.featurebranch_url
 
