@@ -31,10 +31,15 @@ global config
 
 # Main build script
 @task
-def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", import_config=False, statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', php_ini_file=None):
+def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", import_config=False, statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', config_fullpath=False, php_ini_file=None):
+
+  if config_fullpath == "False":
+    config_fullpath = False
+  if config_fullpath == "True":
+    config_fullpath = True
 
   # Read the config.ini file from repo, if it exists
-  config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
+  config = common.ConfigFile.buildtype_config_file(buildtype, config_filename, fullpath=config_fullpath)
 
   # Now we need to figure out what server(s) we're working with
   # Define primary host
