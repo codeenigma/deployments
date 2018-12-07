@@ -4,16 +4,16 @@ import common.ConfigFile
 import common.Utils
 
 @task
-def configure_cimy_params(config, buildtype):
+def configure_cimy_params(config, site):
   cimy_mapping = {}
 
   cimy_source_default = "../config/sync"
   cimy_delete_default = "../drush/config-delete.yml"
   cimy_install_default = "../config_install/"
 
-  cimy_mapping['source'] = common.ConfigFile.return_config_item(config, "Drupal", "%s_cimy_source" % buildtype, "string", cimy_source_default)
-  cimy_mapping['delete'] = common.ConfigFile.return_config_item(config, "Drupal", "%s_cimy_delete" % buildtype, "string", cimy_delete_default)
-  cimy_mapping['install'] = common.ConfigFile.return_config_item(config, "Drupal", "%s_cimy_install" % buildtype, "string", cimy_install_default)
+  cimy_mapping['source'] = common.ConfigFile.return_config_item(config, "Drupal", "%s_cimy_source" % site, "string", cimy_source_default)
+  cimy_mapping['delete'] = common.ConfigFile.return_config_item(config, "Drupal", "%s_cimy_delete" % site, "string", cimy_delete_default)
+  cimy_mapping['install'] = common.ConfigFile.return_config_item(config, "Drupal", "%s_cimy_install" % site, "string", cimy_install_default)
 
   print "Final cimy_mapping is: %s" % cimy_mapping
 

@@ -193,9 +193,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
           path = site_root + "/www"
       execute(common.PHP.composer_command, path, "install", None, no_dev, composer_lock)
 
-  if drupal_version > 7 and import_config_method == "cimy":
-    cimy_mapping = {}
-    cimy_mapping = DrupalConfig.configure_cimy_params(config, buildtype)
 
   # Compile a site mapping, which is needed if this is a multisite build
   # Just sets to 'default' if it is not
@@ -247,6 +244,10 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     print "featurebranch_vhost: %s" % FeatureBranches.featurebranch_vhost
 
     site_exists = DrupalUtils.check_site_exists(previous_build, site)
+
+    cimy_mapping = {}
+    if drupal_version > 7 and import_config_method == "cimy":
+      cimy_mapping = DrupalConfig.configure_cimy_params(config, site)
 
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
