@@ -467,13 +467,18 @@ def environment_indicator(www_root, repo, branch, build, buildtype, alias, site,
 # Function used by Drupal 8 builds to import site config
 @task
 @roles('app_primary')
-def config_import(repo, branch, build, buildtype, site, alias, drupal_version, previous_build, sites_deployed=None):
+def config_import(repo, branch, build, buildtype, site, alias, drupal_version, import_config_method, cimy_mapping, previous_build, sites_deployed=None):
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version > 7:
+      if import_config_method == "cimy":
+        import_config_command = "cimy --source=%s --delete-list=%s --install=%s" % (cimy_mapping['source'], cimy_mapping['delete'], cimy_mapping['install'])
+      else:
+        import_config_command = "cim"
+
       print "===> Importing configuration for Drupal 8 site..."
       drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
-      if DrupalUtils.drush_command("cim", site, drush_runtime_location, True, None, None, True).failed:
+      if DrupalUtils.drush_command("%s" % import_config_command, site, drush_runtime_location, True, None, None, True).failed:
         print "###### Could not import configuration! Reverting this database and settings"
         for revert_alias,revert_site in sites_deployed.iteritems():
           execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)

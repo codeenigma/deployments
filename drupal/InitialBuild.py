@@ -67,14 +67,19 @@ def initial_build_updatedb(repo, branch, build, site, drupal_version):
 # Function used by Drupal 8 builds to import site config
 @task
 @roles('app_primary')
-def initial_build_config_import(repo, branch, build, site, drupal_version):
+def initial_build_config_import(repo, branch, build, site, drupal_version, import_config_method, cimy_mapping):
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version > 7:
+      if import_config_method == "cimy":
+        import_config_command = "cimy --source=%s --delete-list=%s --install=%s" % (cimy_mapping['source'], cimy_mapping['delete'], cimy_mapping['install'])
+      else:
+        import_config_command = "cim"
+
       # Set drush location
       drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
       print "===> Importing configuration for Drupal 8 site..."
-      if DrupalUtils.drush_command("cim", site, drush_runtime_location, True, None, None, True).failed:
+      if DrupalUtils.drush_command("%s" % import_config_command, site, drush_runtime_location, True, None, None, True).failed:
         raise SystemExit("###### Could not import configuration! Failing the initial build.")
       else:
         print "===> Configuration imported."

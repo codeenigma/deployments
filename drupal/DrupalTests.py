@@ -98,7 +98,7 @@ def run_tests(repo, branch, build, config, drupal_version, codesniffer=False, ex
 # Run behat tests, if present
 @task
 @roles('app_primary')
-def run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config_file, junit, drupal_version, tags = [], disable_modules = []):
+def run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config_file, junit, import_config, import_config_method, cimy_mapping, drupal_version, tags = [], disable_modules = []):
   cwd = os.getcwd()
   continue_tests = True
   tests_failed = False
@@ -198,26 +198,33 @@ def run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enable
 
     # Re-enable modules
     if disable_modules:
-      reenable_modules(repo, alias, branch, build, site, buildtype, drupal_version, disable_modules)
+      reenable_modules(repo, alias, branch, build, site, buildtype, import_config, import_config_method, cimy_mapping, drupal_version, disable_modules)
 
     # Send test status back to main fabfile
     return tests_failed
 
 
 @task
-def reenable_modules(repo, alias, branch, build, site, buildtype, drupal_version, enable_modules = []):
+def reenable_modules(repo, alias, branch, build, site, buildtype, import_config, import_config_method, cimy_mapping, drupal_version, enable_modules = []):
   drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   with settings(warn_only=True):
     if drupal_version > 7:
-      if DrupalUtils.drush_command("cim", site, drush_runtime_location).failed:
-        print "###### Cannot import config to enable modules. Manual investigation is required."
+      if import_config:
+        if import_config_method == "cimy":
+          import_config_command = "cimy --source=%s --delete-list=%s --install=%s" % (cimy_mapping['source'], cimy_mapping['delete'], cimy_mapping['install'])
+        else:
+          import_config_command = "cim"
+        if DrupalUtils.drush_command("%s" % import_config_command, site, drush_runtime_location).failed:
+          print "###### Cannot import config to enable modules. Manual investigation is required."
+        else:
+          print " ===> Modules re-enabled via config import."
       else:
-        print " ===> Modules re-enabled via config import."
-    else:
-      if enable_modules:
-        for module in enable_modules:
-          drush_command = "pm-enable %s" % module
-          if DrupalUtils.drush_command(drush_command, site, drush_runtime_location).failed:
-            print "###### Cannot enable %s. Manual investigation is required." % module
-          else:
-            print "===> %s re-enabled." % module
+        print "Enable modules using pm-enable instead."
+
+    if enable_modules and not import_config:
+      for module in enable_modules:
+        drush_command = "pm-enable %s" % module
+        if DrupalUtils.drush_command(drush_command, site, drush_runtime_location).failed:
+          print "###### Cannot enable %s. Manual investigation is required." % module
+        else:
+          print "===> %s re-enabled." % module
