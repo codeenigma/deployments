@@ -1,5 +1,4 @@
 from fabric.api import *
-import DrupalUtils
 import common.ConfigFile
 import common.Utils
 
@@ -23,12 +22,11 @@ def configure_cimy_params(config, site):
 @task
 def check_cmi_tools_exists(repo, branch, build, site):
   with settings(warn_only=True):
-    drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
-    cmi_tools_exists_output = DrupalUtils.drush_command("pm-list", drush_site=None, drush_runtime_location=drush_runtime_location)
+    with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):
 
-    if run("grep \"drush_cmi_tools\" %s" % cmi_tools_exists_output).return_code == 0:
-      print "##### CMI Tools is installed, so we'll use it."
-      return True
-    else:
-      print "##### CMI Tools is not installed, so we'll need to revert back to using the default config import tool."
-      return False
+      if run("drush | grep \"drush_cmi_tools\"").return_code == 0:
+        print "##### CMI Tools is installed, so we'll use it."
+        return True
+      else:
+        print "##### CMI Tools is not installed, so we'll need to revert back to using the default config import tool."
+        return False
