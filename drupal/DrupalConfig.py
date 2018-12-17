@@ -20,6 +20,20 @@ def configure_cimy_params(config, site):
 
 
 @task
+def import_config_command(repo, branch, build, site, import_config_method, cimy_mapping):
+  if import_config_method == "cimy":
+    if not check_cmi_tools_exists(repo, branch, build, site):
+      import_config_method = "cim"
+
+  if import_config_method == "cimy":
+    return_command = "cimy --source=%s --delete-list=%s --install=%s" % (cimy_mapping['source'], cimy_mapping['delete'], cimy_mapping['install'])
+  else:
+    return_command = "cim"
+
+  return return_command
+
+
+@task
 def check_cmi_tools_exists(repo, branch, build, site):
   with settings(warn_only=True):
     with cd("/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)):

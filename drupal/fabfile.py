@@ -382,10 +382,6 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
       execute(InitialBuild.initial_build_updatedb, repo, branch, build, site, drupal_version)
       execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
       if import_config:
-        if import_config_method == "cimy":
-          cmi_tools = DrupalConfig.check_cmi_tools_exists(repo, branch, build, site)
-          if not cmi_tools:
-            import_config_method = "cim"
         execute(InitialBuild.initial_build_config_import, repo, branch, build, site, drupal_version, import_config_method, cimy_mapping)
         execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
 
@@ -423,10 +419,6 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
       execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, revert=True, sites_deployed=sites_deployed) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       if import_config:
-        if import_config_method == "cimy":
-          cmi_tools = DrupalConfig.check_cmi_tools_exists(repo, branch, build, site)
-          if not cmi_tools:
-            import_config_method = "cim"
         execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, import_config_method, cimy_mapping, previous_build, sites_deployed=sites_deployed) # This will revert database and settings if it fails.
 
       # Let's allow developers to use other config management for imports, such as CMI
@@ -440,10 +432,6 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
       execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, revert=True, sites_deployed=sites_deployed) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       if import_config:
-        if import_config_method == "cimy":
-          cmi_tools = DrupalConfig.check_cmi_tools_exists(repo, branch, build, site)
-          if not cmi_tools:
-            import_config_method = "cim"
         execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, import_config_method, cimy_mapping, previous_build, sites_deployed=sites_deployed) # This will revert database and settings if it fails.
 
       # Let's allow developers to use other config management for imports, such as CMI

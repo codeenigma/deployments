@@ -33,15 +33,7 @@ def initial_db_and_config(repo, branch, build, site, import_config, import_confi
 
     # Import config
     if drupal_version > 7 and import_config:
-      if import_config_method == "cimy":
-        cmi_tools = DrupalConfig.check_cmi_tools_exists(repo, branch, build, site)
-        if not cmi_tools:
-          import_config_method = "cim"
-
-      if import_config_method == "cimy":
-        import_config_command = "cimy --source=%s --delete-list=%s --install=%s" % (cimy_mapping['source'], cimy_mapping['delete'], cimy_mapping['install'])
-      else:
-        import_config_command = "cim"
+      import_config_command = DrupalConfig.import_config_command(repo, branch, build, site, import_config_method, cimy_mapping)
 
       print "===> Importing configuration for Drupal 8 site..."
       if DrupalUtils.drush_command("%s" % import_config_command, site, drush_runtime_location, True, None, None, True).failed:

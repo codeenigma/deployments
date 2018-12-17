@@ -5,6 +5,7 @@ import string
 import datetime
 # Custom Code Enigma modules
 import DrupalUtils
+import DrupalConfig
 import common.ConfigFile
 import common.Services
 import common.Utils
@@ -471,10 +472,7 @@ def config_import(repo, branch, build, buildtype, site, alias, drupal_version, i
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version > 7:
-      if import_config_method == "cimy":
-        import_config_command = "cimy --source=%s --delete-list=%s --install=%s" % (cimy_mapping['source'], cimy_mapping['delete'], cimy_mapping['install'])
-      else:
-        import_config_command = "cim"
+      import_config_command = DrupalConfig.import_config_command(repo, branch, build, site, import_config_method, cimy_mapping)
 
       print "===> Importing configuration for Drupal 8 site..."
       drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)

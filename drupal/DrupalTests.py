@@ -5,6 +5,7 @@ import os
 import common.Tests
 import common.PHP
 import DrupalUtils
+import DrupalConfig
 
 
 # Builds the variables needed to carry out Behat testing later
@@ -210,10 +211,7 @@ def reenable_modules(repo, alias, branch, build, site, buildtype, import_config,
   with settings(warn_only=True):
     if drupal_version > 7:
       if import_config:
-        if import_config_method == "cimy":
-          import_config_command = "cimy --source=%s --delete-list=%s --install=%s" % (cimy_mapping['source'], cimy_mapping['delete'], cimy_mapping['install'])
-        else:
-          import_config_command = "cim"
+        import_config_command = DrupalConfig.import_config_command(repo, branch, build, site, import_config_method, cimy_mapping)
         if DrupalUtils.drush_command("%s" % import_config_command, site, drush_runtime_location).failed:
           print "###### Cannot import config to enable modules. Manual investigation is required."
         else:

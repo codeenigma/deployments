@@ -6,6 +6,7 @@ import string
 import time
 # Custom Code Enigma modules
 import DrupalUtils
+import DrupalConfig
 import common.Utils
 import common.MySQL
 
@@ -71,10 +72,7 @@ def initial_build_config_import(repo, branch, build, site, drupal_version, impor
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version > 7:
-      if import_config_method == "cimy":
-        import_config_command = "cimy --source=%s --delete-list=%s --install=%s" % (cimy_mapping['source'], cimy_mapping['delete'], cimy_mapping['install'])
-      else:
-        import_config_command = "cim"
+      import_config_command = DrupalConfig.import_config_command(repo, branch, build, site, import_config_method, cimy_mapping)
 
       # Set drush location
       drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
