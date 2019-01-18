@@ -15,12 +15,14 @@ import AdjustConfiguration
 import Drupal
 import DrupalTests
 import DrupalUtils
+import DrupalConfig
 import FeatureBranches
 import InitialBuild
 import Revert
 # Needed to get variables set in modules back into the main script
 from DrupalTests import *
 from FeatureBranches import *
+from DrupalConfig import *
 
 # Override the shell env variable in Fabric, so that we don't see
 # pesky 'stdin is not a tty' messages when using sudo
@@ -31,10 +33,15 @@ global config
 
 # Main build script
 @task
-def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", import_config=False, statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', php_ini_file=None):
+def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", import_config=False, statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', config_fullpath=False, php_ini_file=None):
+
+  if config_fullpath == "False":
+    config_fullpath = False
+  if config_fullpath == "True":
+    config_fullpath = True
 
   # Read the config.ini file from repo, if it exists
-  config = common.ConfigFile.buildtype_config_file(buildtype, config_filename)
+  config = common.ConfigFile.buildtype_config_file(buildtype, config_filename, fullpath=config_fullpath)
 
   # Now we need to figure out what server(s) we're working with
   # Define primary host
@@ -63,6 +70,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
   notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
   php_ini_file = common.ConfigFile.return_config_item(config, "Build", "php_ini_file", "string", php_ini_file)
+  build_hook_version = common.ConfigFile.return_config_item(config, "Build", "build_hook_version", "string", "1")
   # If this is a multisite build, set the url to None so one is generated for every site in the multisite setup. This particular line will ensure the *first* site has its url generated.
   if config.has_section("Sites"):
     print "===> Config file has a [Sites] section, so we'll assume this is a multisite build and set url to None"
@@ -89,6 +97,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   do_updates = common.ConfigFile.return_config_item(config, "Drupal", "do_updates", "boolean", True)
   run_cron = common.ConfigFile.return_config_item(config, "Drupal", "run_cron", "boolean", False)
   import_config = common.ConfigFile.return_config_item(config, "Drupal", "import_config", "boolean", import_config)
+  import_config_method = common.ConfigFile.return_config_item(config, "Drupal", "import_config_method", "string", "cim")
   ### @TODO: deprecated, can be removed later
   fra = common.ConfigFile.return_config_item(config, "Features", "fra", "boolean", False, True, True, replacement_section="Drupal")
   # This is the correct location for 'fra' - note, respect the deprecated value as default
@@ -167,12 +176,13 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   print "===> the drupal_version variable is set to %s" % drupal_version
 
   # Let's allow developers to perform some early actions if they need to
-  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
+  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', build_hook_version="1", hosts=env.roledefs['app_all'])
 
   # @TODO: This will be a bug when Drupal 9 comes out!
   # We need to cast version as an integer and use < 8
   if drupal_version < 8:
     import_config = False
+    import_config_method = "cim"
   if drupal_version > 7 and composer is True:
     # Sometimes people use the Drupal Composer project which puts Drupal 8's composer.json file in repo root.
     with shell_env(PHPRC='%s' % php_ini_file):
@@ -182,6 +192,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         else:
           path = site_root + "/www"
       execute(common.PHP.composer_command, path, "install", None, no_dev, composer_lock)
+
 
   # Compile a site mapping, which is needed if this is a multisite build
   # Just sets to 'default' if it is not
@@ -234,9 +245,16 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
     site_exists = DrupalUtils.check_site_exists(previous_build, site)
 
+    cimy_mapping = {}
+    if drupal_version > 7 and import_config_method == "cimy":
+      cimy_mapping = DrupalConfig.configure_cimy_params(config, site)
+
     if freshdatabase == "Yes" and buildtype == "custombranch":
       # For now custombranch builds to clusters cannot work
       dump_file = Drupal.prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, env.host_string, sanitise, sanitised_password, sanitised_email)
+
+      # Need to make sure the env.host variable is set correctly, after potentially fetching a database dump from production
+      env.host = env.roledefs['app_primary'][0]
 
     if FeatureBranches.featurebranch_url is not None:
       url = FeatureBranches.featurebranch_url
@@ -247,11 +265,11 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       # Because this runs in Jenkins home directory, it will use 'system' drush
       if not site_exists:
         print "===> Didn't find a previous build so we'll install this new site %s" % url
-        initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale, php_ini_file, previous_build)
+        initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_config_method, cimy_mapping, webserverport, behat_config, autoscale, php_ini_file, build_hook_version, previous_build)
       else:
         # Otherwise it's an existing build
         sites_deployed[alias] = site
-        existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file, sites_deployed)
+        existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, sites_deployed)
 
     # Now everything should be in a good state, let's enable environment indicator for this site, if present
     execute(Drupal.environment_indicator, www_root, repo, branch, build, buildtype, alias, site, drupal_version)
@@ -288,7 +306,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     behat_url = site_urls[test_alias]
 
     # After any build we want to run all the available automated tests
-    test_runner(www_root, repo, branch, build, test_alias, buildtype, behat_url, ssl_enabled, config, behat_config, behat_config_file, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, test_site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, sites_deployed)
+    test_runner(www_root, repo, branch, build, test_alias, buildtype, behat_url, ssl_enabled, config, behat_config, behat_config_file, import_config, import_config_method, cimy_mapping, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, test_site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, build_hook_version, sites_deployed)
 
     behat_url = None
 
@@ -326,7 +344,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
 # Wrapper function for carrying out a first build of a site
 @task
-def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, webserverport, behat_config, autoscale, php_ini_file, previous_build):
+def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_config_method, cimy_mapping, webserverport, behat_config, autoscale, php_ini_file, build_hook_version, previous_build):
   print "===> URL is http://%s" % url
 
   print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
@@ -359,22 +377,22 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
     # any manual clean-up first. Everything else will have run, such as generate drush alias and
     # webserver vhost, so the issue can be fixed and the job re-run.
     if buildtype == "custombranch":
-      FeatureBranches.initial_db_and_config(repo, branch, build, site, import_config, drupal_version)
+      FeatureBranches.initial_db_and_config(repo, branch, build, site, import_config, import_config_method, cimy_mapping, drupal_version)
     else:
       execute(InitialBuild.initial_build_updatedb, repo, branch, build, site, drupal_version)
       execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
       if import_config:
-        execute(InitialBuild.initial_build_config_import, repo, branch, build, site, drupal_version)
+        execute(InitialBuild.initial_build_config_import, repo, branch, build, site, drupal_version, import_config_method, cimy_mapping)
         execute(Drupal.drush_clear_cache, repo, branch, build, site, drupal_version)
 
     # Let's allow developers to perform some post-build actions if they need to
-    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
-    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-initial', hosts=env.roledefs['app_all'])
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-initial', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
 
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, fra, run_cron, feature_branches, php_ini_file, sites_deployed):
+def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, sites_deployed):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   with shell_env(PHPRC='%s' % php_ini_file):
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
@@ -382,7 +400,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
     execute(AdjustConfiguration.adjust_files_symlink, repo, branch, build, alias, site)
 
     # Let's allow developers to perform some actions right after Drupal is built
-    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
 
     # Export the config if we need to (Drupal 8+)
     if config_export:
@@ -401,10 +419,10 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
       execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, revert=True, sites_deployed=sites_deployed) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       if import_config:
-        execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, previous_build, sites_deployed=sites_deployed) # This will revert database and settings if it fails.
+        execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, import_config_method, cimy_mapping, previous_build, sites_deployed=sites_deployed) # This will revert database and settings if it fails.
 
       # Let's allow developers to use other config management for imports, such as CMI
-      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', hosts=env.roledefs['app_primary'])
+      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_primary'])
 
       execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
       execute(Drupal.check_node_access, repo, alias, branch, build, site, notifications_email)
@@ -414,10 +432,10 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
       execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, revert=True, sites_deployed=sites_deployed) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       if import_config:
-        execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, previous_build, sites_deployed=sites_deployed) # This will revert database and settings if it fails.
+        execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, import_config_method, cimy_mapping, previous_build, sites_deployed=sites_deployed) # This will revert database and settings if it fails.
 
       # Let's allow developers to use other config management for imports, such as CMI
-      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', hosts=env.roledefs['app_primary'])
+      execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_primary'])
 
       execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
 
@@ -427,19 +445,19 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
     execute(Drupal.generate_drush_cron, alias, branch, autoscale)
 
     # Let's allow developers to perform some post-build actions if they need to
-    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
 
 
 # Wrapper function for runnning automated tests on a site
 @task
-def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, behat_config_file, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, sites_deployed):
+def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, config, behat_config, behat_config_file, import_config, import_config_method, cimy_mapping, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, build_hook_version, sites_deployed):
   # Run simpletest tests
   execute(DrupalTests.run_tests, repo, branch, build, config, drupal_version, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, www_root)
 
   # Run behat tests
   if behat_config:
     if buildtype in behat_config['behat_buildtypes']:
-      behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config_file, behat_config['behat_junit'], drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+      behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config_file, behat_config['behat_junit'], import_config, import_config_method, cimy_mapping, drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
   else:
     print "===> No behat tests."
 
@@ -464,4 +482,4 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
   if url and string_to_check:
     common.Tests.run_regex_check(url, string_to_check, check_protocol, curl_options, notifications_email)
 
-  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', hosts=env.roledefs['app_all'])
+  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-tests', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])

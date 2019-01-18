@@ -3,6 +3,7 @@ from fabric.contrib.files import sed
 import string
 # Custom Code Enigma modules
 import DrupalUtils
+import DrupalConfig
 import Drupal
 
 
@@ -16,7 +17,7 @@ drupal_common_config = None
 # Feature branches only, preparing database
 # Assumes single server, cannot work on a cluster
 @task
-def initial_db_and_config(repo, branch, build, site, import_config, drupal_version):
+def initial_db_and_config(repo, branch, build, site, import_config, import_config_method, cimy_mapping, drupal_version):
   with settings(warn_only=True):
     # Run database updates
     drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
@@ -32,8 +33,10 @@ def initial_db_and_config(repo, branch, build, site, import_config, drupal_versi
 
     # Import config
     if drupal_version > 7 and import_config:
+      import_config_command = DrupalConfig.import_config_command(repo, branch, build, site, import_config_method, cimy_mapping)
+
       print "===> Importing configuration for Drupal 8 site..."
-      if DrupalUtils.drush_command("cim", site, drush_runtime_location, True, None, None, True).failed:
+      if DrupalUtils.drush_command("%s" % import_config_command, site, drush_runtime_location, True, None, None, True).failed:
         raise SystemExit("###### Could not import configuration! Failing build.")
       else:
         print "===> Configuration imported. Running a cache rebuild..."
