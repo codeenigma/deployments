@@ -56,4 +56,4 @@ def composer_command(site_root, composer_command="install", package_to_install=N
 
   with cd(site_root):
     print "===> Running the composer command `%s` in the directory %s" % (this_command, site_root)
-    run(this_command)
+    common.Utils._sshagent_run(this_command)
