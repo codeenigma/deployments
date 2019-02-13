@@ -177,6 +177,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
   # Let's allow developers to perform some early actions if they need to
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', build_hook_version="1", hosts=env.roledefs['app_all'])
+  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre-prim', build_hook_version="1", hosts=env.roledefs['app_primary'])
 
   # @TODO: This will be a bug when Drupal 9 comes out!
   # We need to cast version as an integer and use < 8
@@ -387,6 +388,7 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
 
     # Let's allow developers to perform some post-build actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-prim', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_primary'])
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-initial', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
 
 
@@ -401,6 +403,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
 
     # Let's allow developers to perform some actions right after Drupal is built
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid-prim', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_primary'])
 
     # Export the config if we need to (Drupal 8+)
     if config_export:
@@ -446,6 +449,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
 
     # Let's allow developers to perform some post-build actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-prim', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_primary'])
 
 
 # Wrapper function for runnning automated tests on a site
