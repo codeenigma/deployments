@@ -94,6 +94,8 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   if php_ini_file and not malicious_code:
     run("export PHPRC='%s'" % php_ini_file)
 
+  execute(common.Utils.clone_repo, repo, repourl, branch, build, buildtype, ssh_key, hosts=env.roledefs['app_all'])
+
   # Let's allow developers to perform some early actions if they need to
   execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
 
@@ -107,7 +109,6 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
       if keepbackup:
         execute(Symfony.backup_db, repo, console_buildtype, build)
 
-  execute(common.Utils.clone_repo, repo, repourl, branch, build, buildtype, ssh_key, hosts=env.roledefs['app_all'])
   symfony_version = Symfony.determine_symfony_version(repo, buildtype, build)
   print "===> Checking symfony_version: %s" % symfony_version
   execute(Symfony.update_resources, repo, buildtype, build)
