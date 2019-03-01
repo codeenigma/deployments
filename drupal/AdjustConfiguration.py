@@ -4,6 +4,7 @@ import Revert
 
 
 # Adjust settings.php. Copy the relevant file based on the branch, delete the rest.
+# Failures here should be reverting the build entirely. If it fails to find settings.inc, or symlink in the file, the build will fail and the site being deployed and all sites that have been deployed will remain offline. All sites that have been deployed should have their databases reverted, as they could have had database updates applied.
 @task
 @roles('app_all')
 def adjust_settings_php(repo, branch, build, buildtype, alias, site):
