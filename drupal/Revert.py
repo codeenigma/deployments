@@ -61,7 +61,7 @@ def _revert_go_online(repo, branch, build, site, drupal_version=None):
       drupal_version = drupal_version.strip("'")
 
     if drupal_version > 7:
-      online_command = "state-set system.maintenancemode 0"
+      online_command = "state-set system.maintenance_mode 0"
     else:
       online_command = "vset site_offline 0"
 
