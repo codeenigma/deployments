@@ -302,7 +302,7 @@ def drush_status(repo, branch, build, buildtype, site, drush_runtime_location=No
     if revert == False and revert_settings == True:
       for revert_alias,revert_site in sites_deployed.iteritems():
         execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
-        execute(Revert._revert_go_online, repo, branch, build, site)
+        execute(Revert._revert_go_online, repo, branch, build, buildtype, site)
     else:
       if revert:
         for revert_alias,revert_site in sites_deployed.iteritems():

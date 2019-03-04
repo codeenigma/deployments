@@ -25,7 +25,7 @@ def _revert_db(repo, branch, build, buildtype, site):
 
   common.MySQL.mysql_revert_db(db_name, build)
   Drupal.drush_clear_cache(repo, branch, build, site, drupal_version)
-  _revert_go_online(repo, branch, build, site, drupal_version)
+  _revert_go_online(repo, branch, build, buildtype, site, drupal_version)
 
 
 # Function to revert settings.php change for when a build fails and database is reverted
@@ -45,7 +45,7 @@ def _revert_settings(repo, branch, build, buildtype, site, alias):
 # Function to put the site back online after a revert, as the site would have been put into maintenance mode *before* the backup was taken
 @task
 @roles('app_primary')
-def _revert_go_online(repo, branch, build, site, drupal_version=None):
+def _revert_go_online(repo, branch, build, buildtype, site, drupal_version=None):
   print "===> Bringing the %s site back online." % site
 
   drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
