@@ -5,6 +5,7 @@ import string
 import time
 # Custom Code Enigma modules
 import Drupal
+import DrupalUtils
 import common.MySQL
 
 
