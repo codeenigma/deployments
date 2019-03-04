@@ -23,6 +23,7 @@ def _revert_db(repo, branch, build, buildtype, site):
   drupal_version = drupal_version.strip()
   # Older versions of Drupal put version in single quotes
   drupal_version = drupal_version.strip("'")
+  drupal_version = int(drupal_version)
 
   common.MySQL.mysql_revert_db(db_name, build)
   Drupal.drush_clear_cache(repo, branch, build, site, drupal_version)
