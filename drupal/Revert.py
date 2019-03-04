@@ -53,13 +53,8 @@ def _revert_go_online(repo, branch, build, buildtype, site, drupal_version=None)
 
   with settings(warn_only=True):
     if drupal_version is None:
-      drush_output = Drupal.drush_status(repo, branch, build, buildtype, site, drush_runtime_location)
-
-      # Get Drupal version to pass to cache clear and _revert_go_online()
-      drupal_version = run("echo \"%s\" | grep \"drupal-version\" | cut -d\: -f2 | cut -d. -f1" % drush_output)
-      drupal_version = drupal_version.strip()
-      # Older versions of Drupal put version in single quotes
-      drupal_version = drupal_version.strip("'")
+      # Use "sync" method here so the check uses the live symlink to get the Drupal version rather than the new build, which just failed
+      drupal_version = int(DrupalUtils.determine_drupal_version(None, repo, branch, build, None, "sync"))
 
     if drupal_version > 7:
       online_command = "state-set system.maintenance_mode 0"
