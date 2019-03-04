@@ -305,7 +305,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     for revert_alias,revert_site in sites_deployed.iteritems():
       common.MySQL.mysql_revert_db(db_name, build)
       execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
-      execute(Revert._revert_go_online, repo, branch, build, site, drupal_version)
+      execute(Revert._revert_go_online, repo, branch, build, buildtype, site, drupal_version)
     raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
   if do_updates and previous_build is not None:
