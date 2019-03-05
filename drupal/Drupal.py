@@ -541,7 +541,7 @@ def go_offline(repo, branch, site, alias, readonlymode, drupal_version):
   if readonlymode == "maintenance":
     print "===> Taking the site offline temporarily to do the drush updatedb..."
     if drupal_version > 7:
-      DrupalUtils.drush_command("state-set system.maintenancemode 1", site, drush_runtime_location)
+      DrupalUtils.drush_command("state-set system.maintenance_mode 1", site, drush_runtime_location)
     else:
       DrupalUtils.drush_command("vset site_offline 1", site, drush_runtime_location)
       DrupalUtils.drush_command("vset maintenance_mode 1", site, drush_runtime_location)
