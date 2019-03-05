@@ -539,7 +539,7 @@ def go_offline(repo, branch, site, alias, readonlymode, drupal_version):
   if readonlymode == "maintenance":
     print "===> Taking the site offline temporarily to do the drush updatedb..."
     if drupal_version > 7:
-      DrupalUtils.drush_command("state-set system.maintenancemode 1", site, drush_runtime_location)
+      DrupalUtils.drush_command("state-set system.maintenance_mode 1", site, drush_runtime_location)
     else:
       DrupalUtils.drush_command("vset site_offline 1", site, drush_runtime_location)
       DrupalUtils.drush_command("vset maintenance_mode 1", site, drush_runtime_location)
@@ -577,7 +577,7 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
     print "===> Taking the site back online..."
     with settings(warn_only=True):
       if drupal_version > 7:
-        if DrupalUtils.drush_command("state-set system.maintenancemode 0", site, drush_runtime_location).failed:
+        if DrupalUtils.drush_command("state-set system.maintenance_mode 0", site, drush_runtime_location).failed:
           print "###### Could not set the site back online! Reverting this build and database"
           sudo("unlink /var/www/live.%s.%s" % (repo, branch))
           sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
