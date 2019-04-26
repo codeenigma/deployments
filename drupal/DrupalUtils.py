@@ -67,13 +67,12 @@ def determine_drupal_version(drupal_version, repo, branch, build, config, method
 
 # Fetch a fresh database dump from target server
 @task
-def get_database(shortname, branch, santise):
+def get_database(shortname, branch, sanitise, site="default"):
   # First, check the site exists on target server server
-  if run('drush sa | grep ^@%s_%s$ > /dev/null' % (shortname, branch)).failed:
-    print "####### ERROR: Could not find a site with the Drush alias %s_%s in order to grab a database dump. Aborting." % (shortname, branch)
-    raise SystemError("Could not find a site with the Drush alias %s_%s in order to grab a database dump. Aborting." % (shortname, branch))
+  if run("readlink /var/www/live.%s.%s" % (shortname, branch)).failed:
+    raise SystemError("####### ERROR: Could not find a site at /var/www/live.%s.%s in order to grab a database dump. Aborting." % (shortname, branch))
 
-  print "===> Found a site with Drush alias %s_%s. Let's grab a database and copy it down." % (shortname, branch)
+  print "===> Found a site at /var/www/live.%s.%s. Let's grab a database and copy it down." % (shortname, branch)
 
   # Make sure a backup directory exists
   print "===> Make sure a backup directory exists on target server..."
@@ -81,17 +80,26 @@ def get_database(shortname, branch, santise):
 
   # Let's dump the database into a bzip2 file
   print "===> Dumping database into bzip2 file..."
-  if santise == "yes":
+  if sanitise == "yes":
     # @TODO: this will need Drupal 8 support!
     # We need to run a special mysqldump command to obfustcate the database
     with settings(hide('running', 'stdout', 'stderr')):
-      dbname = run("drush @%s_%s status  Database\ name | awk {'print $4'} | head -1" % (shortname, branch))
-      dbuser = run("drush @%s_%s status  Database\ user | awk {'print $4'} | head -1" % (shortname, branch))
-      dbpass = run("drush @%s_%s --show-passwords status  Database\ pass | awk {'print $4'} | head -1" % (shortname, branch))
-      dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (shortname, branch))
+
+      drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (shortname, branch, site)
+      dbname_output = drush_command("status -l %s Database\ name" % site, drush_site=None, drush_runtime_location=drush_runtime_location, drush_sudo=False, drush_format=None, drush_path=None, www_user=False)
+      dbuser_output = drush_command("status -l %s Database\ user" % site, drush_site=None, drush_runtime_location=drush_runtime_location, drush_sudo=False, drush_format=None, drush_path=None, www_user=False)
+      dbpass_output = drush_command("--show-passwords status -l %s Database\ pass" % site, drush_site=None, drush_runtime_location=drush_runtime_location, drush_sudo=False, drush_format=None, drush_path=None, www_user=False)
+      dbhost_output = drush_command("status -l %s Database\ host" % site, drush_site=None, drush_runtime_location=drush_runtime_location, drush_sudo=False, drush_format=None, drush_path=None, www_user=False)
+
+      dbname = run("echo \"%s\" | awk {'print $4'} | head -1" % dbname_output)
+      dbuser = run("echo \"%s\" | awk {'print $4'} | head -1" % dbuser_output)
+      dbpass = run("echo \"%s\" | awk {'print $4'} | head -1" % dbpass_output)
+      dbhost = run("echo \"%s\" | awk {'print $4'} | head -1" % dbhost_output)
+
       run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /usr/local/bin/drupal-obfuscate.rb | bzip2 -f > ~jenkins/client-db-dumps/%s-%s_database_dump.sql.bz2' % (dbuser, dbpass, dbhost, dbname, shortname, branch))
+
   else:
-    run('drush @%s_%s sql-dump --result-file=/dev/stdout --result-file=/dev/stdout | bzip2 -f > ~jenkins/client-db-dumps/%s-%s_database_dump.sql.bz2' % (shortname, branch, shortname, branch))
+    run('cd /var/www/live.%s.%s/www/sites/%s && drush -l %s -y sql-dump | bzip2 -f > ~jenkins/client-db-dumps/%s-%s_database_dump.sql.bz2' % (shortname, branch, site, site, shortname, branch))
 
   # Make sure a directory exists for database dumps to be downloaded to
   local('mkdir -p /tmp/client-db-dumps')
