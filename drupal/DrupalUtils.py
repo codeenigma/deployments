@@ -67,7 +67,7 @@ def determine_drupal_version(drupal_version, repo, branch, build, config, method
 
 # Fetch a fresh database dump from target server
 @task
-def get_database(shortname, branch, santise, site="default"):
+def get_database(shortname, branch, sanitise, site="default"):
   # First, check the site exists on target server server
   if run("readlink /var/www/live.%s.%s" % (shortname, branch)).failed:
     raise SystemError("####### ERROR: Could not find a site at /var/www/live.%s.%s in order to grab a database dump. Aborting." % (shortname, branch))
@@ -80,7 +80,7 @@ def get_database(shortname, branch, santise, site="default"):
 
   # Let's dump the database into a bzip2 file
   print "===> Dumping database into bzip2 file..."
-  if santise == "yes":
+  if sanitise == "yes":
     # @TODO: this will need Drupal 8 support!
     # We need to run a special mysqldump command to obfustcate the database
     with settings(hide('running', 'stdout', 'stderr')):
