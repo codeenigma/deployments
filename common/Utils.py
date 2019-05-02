@@ -298,6 +298,8 @@ def define_roles(config, cluster, autoscale=None, aws_credentials='/home/jenkins
         'memcache_all': [ env.host ],
     }
 
+  print "Final role definitions are: %s" % env.roledefs
+
 
 # Creating required application directories
 @task
