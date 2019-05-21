@@ -1,5 +1,6 @@
 from fabric.api import *
 from fabric.contrib.files import *
+from collections import OrderedDict
 import os
 import sys
 import random
@@ -65,7 +66,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   www_root = "/var/www"
   site_root = www_root + '/%s_%s_%s' % (repo, branch, build)
   site_link = www_root + '/live.%s.%s' % (repo, branch)
-  site_exists = None
   behat_config_file_default = "/var/www/%s_%s_%s/tests/behat/behat.yml" % (repo, branch, build)
 
   # Set our host_string based on user@host
@@ -205,6 +205,12 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   mapping = {}
   mapping = Drupal.configure_site_mapping(repo, mapping, config)
 
+  # Empty dictionary for new sites
+  new_sites = {}
+
+  # Emtpy dictionary for existing sites
+  existing_sites = {}
+
   # Empty dictionary for sites that have been deployed. A site is added to the
   # dictionary at the *start* of its deployment so it is also reverted if a stage
   # of the deployment fails. Though it is only added if the build is an existing
@@ -225,6 +231,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     offline_site_exists = DrupalUtils.check_site_exists(previous_build, offline_site)
 
     if offline_site_exists:
+      existing_sites[offline_alias] = offline_site
       drush_runtime_location = "%s/www/sites/%s" % (previous_build, offline_site)
       drush_output = Drupal.drush_status(repo, branch, build, buildtype, offline_site, drush_runtime_location)
       db_name = Drupal.get_db_name(repo, branch, build, buildtype, offline_site, drush_output)
@@ -235,8 +242,19 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
       # Backup database
       execute(common.MySQL.mysql_backup_db, db_name, build, True)
+    else:
+      new_sites[offline_alias] = offline_site
 
     offline_site_exists = None
+
+  # Create a map of sites with the new sites at the front, which means they get deployed first. By doing this, if an initial build fails, it won't affect existing builds.
+  mapping = OrderedDict()
+  if new_sites:
+    for ns_alias,ns_site in new_sites.iteritems():
+      mapping[ns_alias] = ns_site
+
+  for es_alias,es_site in existing_sites.iteritems():
+    mapping[es_alias] = es_site
 
 
   # Run new installs
@@ -252,7 +270,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     print "featurebranch_url: %s" % FeatureBranches.featurebranch_url
     print "featurebranch_vhost: %s" % FeatureBranches.featurebranch_vhost
 
-    site_exists = DrupalUtils.check_site_exists(previous_build, site)
 
     cimy_mapping = {}
     if drupal_version > 7 and import_config_method == "cimy":
@@ -272,7 +289,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # Now check if we have a Drush alias with that name. If not, run an install
     with settings(hide('warnings', 'stderr'), warn_only=True):
       # Because this runs in Jenkins home directory, it will use 'system' drush
-      if not site_exists:
+      if alias in new_sites.keys():
         print "===> Didn't find a previous build so we'll install this new site %s" % url
         initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_config_method, cimy_mapping, webserverport, behat_config, autoscale, php_ini_file, build_hook_version, secure_user_one, previous_build)
       else:
@@ -289,7 +306,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     # If this is a multisite, we have to set it to None so a new 'url' gets generated on the next pass
     url = None
 
-    site_exists = None
 
   # Adjust the live symlink now that all sites have been deployed. Bring them online after this has happened.
   if previous_build is not None:
