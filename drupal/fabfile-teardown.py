@@ -17,9 +17,14 @@ env.shell = '/bin/bash -c'
 
 
 @task
-def main(repo, branch, buildtype, alias=None, url=None, restartvarnish="yes", restartwebserver="yes", mysql_config='/etc/mysql/debian.cnf', config_filename="config.ini"):
+def main(repo, branch, buildtype, alias=None, url=None, restartvarnish="yes", restartwebserver="yes", mysql_config='/etc/mysql/debian.cnf', config_filename="config.ini", config_fullpath=False):
   if alias is None:
     alias = repo
+
+  if config_fullpath == "False":
+    config_fullpath = False
+  if config_fullpath == "True":
+    config_fullpath = True
 
   global varnish_restart
   global nginx_restart
@@ -54,7 +59,7 @@ def main(repo, branch, buildtype, alias=None, url=None, restartvarnish="yes", re
     raise SystemError("The %s site does not exist on the server, so there is nothing to tear down. Aborting." % branch)
 
   mapping = {}
-  mapping = FeatureBranches.configure_teardown_mapping(repo, branch, buildtype, config_filename, mapping)
+  mapping = FeatureBranches.configure_teardown_mapping(repo, branch, buildtype, config_filename, config_fullpath, mapping)
 
   for alias,site in mapping.iteritems():
 

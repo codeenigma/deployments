@@ -153,4 +153,4 @@ def mysql_revert_db(db_name, build, mysql_config='/etc/mysql/debian.cnf'):
   print "===> Waiting 5 seconds to let MySQL internals catch up"
   time.sleep(5)
   print "===> Restoring the database from backup"
-  sudo("if [ -f ~jenkins/dbbackups/%s_prior_to_%s.sql.gz ]; then zcat ~jenkins/dbbackups/%s_prior_to_%s.sql.gz | mysql --defaults-file=%s -D %s; fi" % (db_name, build, db_name, build, mysql_config, db_name))
+  sudo("if [ -f ~jenkins/dbbackups/%s_prior_to_%s.sql.gz ]; then zcat ~jenkins/dbbackups/%s_prior_to_%s.sql.gz | sed -e 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/' | mysql --defaults-file=%s -D %s; fi" % (db_name, build, db_name, build, mysql_config, db_name))

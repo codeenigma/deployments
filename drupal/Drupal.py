@@ -188,7 +188,7 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
       print "===> Database to get a fresh dump from is on the same server. Getting database dump now..."
       # Time to dump the database and save it to db/
       dump_file = "%s_%s.sql.bz2" % (alias, syncbranch)
-      run('cd /var/www/live.%s.%s/www/sites/%s && drush -l %s -y sql-dump | bzip2 -f > /var/www/%s_%s_%s/db/%s' % (repo, syncbranch, site, site, repo, branch, build, dump_file))
+      run('cd /var/www/live.%s.%s/www/sites/%s && drush -l %s -y sql-dump --result-file=/dev/stdout --result-file=/dev/stdout | bzip2 -f > /var/www/%s_%s_%s/db/%s' % (repo, syncbranch, site, site, repo, branch, build, dump_file))
     else:
       # Because freshinstall is False and the site we're syncing from is on the same server,
       # we can use drush sql-sync to sync that database to this one
@@ -289,6 +289,7 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
 
 
 # Run a drush status against that build
+# Failures here should be reverting the database, because the site gets taken offline. If it fails to run drush st and the build fails, the site will remain offline! Probably need to revert the db nearly every time this function fails, as it is called after the site is taken offline. Only caveat *might* be when Drupal.prepare_database() is called during a feature branch build.
 @task
 @roles('app_primary')
 def drush_status(repo, branch, build, buildtype, site, drush_runtime_location=None, alias=None, revert=False, revert_settings=False, sites_deployed=None):
@@ -301,6 +302,7 @@ def drush_status(repo, branch, build, buildtype, site, drush_runtime_location=No
     if revert == False and revert_settings == True:
       for revert_alias,revert_site in sites_deployed.iteritems():
         execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
+        execute(Revert._revert_go_online, repo, branch, build, buildtype, site)
     else:
       if revert:
         for revert_alias,revert_site in sites_deployed.iteritems():

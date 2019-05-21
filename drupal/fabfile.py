@@ -33,12 +33,17 @@ global config
 
 # Main build script
 @task
-def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", import_config=False, statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', config_fullpath=False, php_ini_file=None):
+def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, freshdatabase="Yes", syncbranch=None, sanitise="no", import_config=False, statuscakeuser=None, statuscakekey=None, statuscakeid=None, restartvarnish="yes", cluster=False, sanitised_email=None, sanitised_password=None, webserverport='8080', mysql_version=5.5, rds=False, autoscale=None, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', config_fullpath=False, php_ini_file=None, do_updates=True):
 
   if config_fullpath == "False":
     config_fullpath = False
   if config_fullpath == "True":
     config_fullpath = True
+
+  if do_updates == "False":
+    do_updates = False
+  if do_updates == "True":
+    do_updates = True
 
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename, fullpath=config_fullpath)
@@ -94,7 +99,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # This is the correct location for 'drupal_version' - note, respect the deprecated value as default
   drupal_version = common.ConfigFile.return_config_item(config, "Drupal", "drupal_version", "string", drupal_version)
   profile = common.ConfigFile.return_config_item(config, "Drupal", "profile", "string", "minimal")
-  do_updates = common.ConfigFile.return_config_item(config, "Drupal", "do_updates", "boolean", True)
   run_cron = common.ConfigFile.return_config_item(config, "Drupal", "run_cron", "boolean", False)
   import_config = common.ConfigFile.return_config_item(config, "Drupal", "import_config", "boolean", import_config)
   import_config_method = common.ConfigFile.return_config_item(config, "Drupal", "import_config_method", "string", "cim")
@@ -110,6 +114,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   config_export = common.ConfigFile.return_config_item(config, "Hooks", "config_export", "boolean", False, True, True, replacement_section="Drupal")
   # This is the correct location for 'config_export' - note, respect the deprecated value as default
   config_export = common.ConfigFile.return_config_item(config, "Drupal", "config_export", "boolean", config_export)
+  secure_user_one = common.ConfigFile.return_config_item(config, "Drupal", "secure_user_one", "boolean", True)
 
   # Can be set in the config.ini [Composer] section
   composer = common.ConfigFile.return_config_item(config, "Composer", "composer", "boolean", True)
@@ -177,6 +182,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
   # Let's allow developers to perform some early actions if they need to
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', build_hook_version="1", hosts=env.roledefs['app_all'])
+  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre-prim', build_hook_version="1", hosts=env.roledefs['app_primary'])
 
   # @TODO: This will be a bug when Drupal 9 comes out!
   # We need to cast version as an integer and use < 8
@@ -213,21 +219,24 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   previous_build = common.Utils.get_previous_build(repo, branch, build)
 
   # Take a backup of all sites, then take all sites offline before doing anything else.
-  if do_updates:
-    offline_site_exists = None
+  offline_site_exists = None
 
-    for offline_alias,offline_site in mapping.iteritems():
-      offline_site_exists = DrupalUtils.check_site_exists(previous_build, offline_site)
+  for offline_alias,offline_site in mapping.iteritems():
+    offline_site_exists = DrupalUtils.check_site_exists(previous_build, offline_site)
 
-      if offline_site_exists:
-        drush_runtime_location = "%s/www/sites/%s" % (previous_build, offline_site)
-        drush_output = Drupal.drush_status(repo, branch, build, buildtype, offline_site, drush_runtime_location)
-        db_name = Drupal.get_db_name(repo, branch, build, buildtype, offline_site, drush_output)
-        # Backup database
-        execute(common.MySQL.mysql_backup_db, db_name, build, True)
+    if offline_site_exists:
+      drush_runtime_location = "%s/www/sites/%s" % (previous_build, offline_site)
+      drush_output = Drupal.drush_status(repo, branch, build, buildtype, offline_site, drush_runtime_location)
+      db_name = Drupal.get_db_name(repo, branch, build, buildtype, offline_site, drush_output)
+
+      # If database updates will run, take the site offline
+      if do_updates:
         execute(Drupal.go_offline, repo, branch, offline_site, offline_alias, readonlymode, drupal_version)
 
-      offline_site_exists = None
+      # Backup database
+      execute(common.MySQL.mysql_backup_db, db_name, build, True)
+
+    offline_site_exists = None
 
 
   # Run new installs
@@ -265,11 +274,11 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       # Because this runs in Jenkins home directory, it will use 'system' drush
       if not site_exists:
         print "===> Didn't find a previous build so we'll install this new site %s" % url
-        initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_config_method, cimy_mapping, webserverport, behat_config, autoscale, php_ini_file, build_hook_version, previous_build)
+        initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_config_method, cimy_mapping, webserverport, behat_config, autoscale, php_ini_file, build_hook_version, secure_user_one, previous_build)
       else:
         # Otherwise it's an existing build
         sites_deployed[alias] = site
-        existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, sites_deployed)
+        existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, secure_user_one, sites_deployed)
 
     # Now everything should be in a good state, let's enable environment indicator for this site, if present
     execute(Drupal.environment_indicator, www_root, repo, branch, build, buildtype, alias, site, drupal_version)
@@ -296,6 +305,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     for revert_alias,revert_site in sites_deployed.iteritems():
       common.MySQL.mysql_revert_db(db_name, build)
       execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
+      execute(Revert._revert_go_online, repo, branch, build, buildtype, site, drupal_version)
     raise SystemExit("####### Could not successfully adjust the symlink pointing to the build! Could not take this build live. Database may have had updates applied against the newer build already. Reverting database")
 
   if do_updates and previous_build is not None:
@@ -344,7 +354,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
 # Wrapper function for carrying out a first build of a site
 @task
-def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_config_method, cimy_mapping, webserverport, behat_config, autoscale, php_ini_file, build_hook_version, previous_build):
+def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_config_method, cimy_mapping, webserverport, behat_config, autoscale, php_ini_file, build_hook_version, secure_user_one, previous_build):
   print "===> URL is http://%s" % url
 
   print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
@@ -369,7 +379,8 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
     execute(common.Services.reload_webserver, hosts=env.roledefs['app_all'])
     # Do some final Drupal config tweaking
     execute(InitialBuild.generate_drush_alias, repo, url, branch, alias)
-    execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
+    if secure_user_one:
+      execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
     execute(Drupal.generate_drush_cron, alias, branch, autoscale)
 
     # If this is a custom/feature branch deployment, we want to run drush updb. If it fails,
@@ -387,12 +398,13 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
 
     # Let's allow developers to perform some post-build actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-prim', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_primary'])
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-initial', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
 
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, sites_deployed):
+def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, secure_user_one, sites_deployed):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   with shell_env(PHPRC='%s' % php_ini_file):
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site)
@@ -401,6 +413,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
 
     # Let's allow developers to perform some actions right after Drupal is built
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid-prim', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_primary'])
 
     # Export the config if we need to (Drupal 8+)
     if config_export:
@@ -424,7 +437,8 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
       # Let's allow developers to use other config management for imports, such as CMI
       execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_primary'])
 
-      execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
+      if secure_user_one:
+        execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
       execute(Drupal.check_node_access, repo, alias, branch, build, site, notifications_email)
 
     else:
@@ -437,7 +451,8 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
       # Let's allow developers to use other config management for imports, such as CMI
       execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='config', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_primary'])
 
-      execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
+      if secure_user_one:
+        execute(Drupal.secure_admin_password, repo, branch, build, site, drupal_version)
 
     # Final clean up and run tests, if applicable
     execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
@@ -446,6 +461,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
 
     # Let's allow developers to perform some post-build actions if they need to
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post-prim', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_primary'])
 
 
 # Wrapper function for runnning automated tests on a site

@@ -139,16 +139,20 @@ def configure_feature_branch(buildtype, config, branch, alias):
 
 # Used to configure the mapping of sites to teardown, in case of a multisite setup
 @task
-def configure_teardown_mapping(repo, branch, buildtype, config_filename, mapping):
+def configure_teardown_mapping(repo, branch, buildtype, config_filename, config_fullpath, mapping):
   with settings(warn_only=True):
-    buildtype_config_filename = buildtype + '.' + config_filename
-    if run("stat /var/www/live.%s.%s/%s" % (repo, branch, buildtype_config_filename)).succeeded:
-      config_filename = buildtype_config_filename
-    else:
-      if run("stat /var/www/live.%s.%s/%s" % (repo, branch, config_filename)).failed:
-        raise SystemExit("Could not find any kind of config.ini file on the server the site is been torn down from. Failing the teardown build.")
 
-    config_filepath = "/var/www/live.%s.%s/%s" % (repo, branch, config_filename)
+    if config_fullpath:
+      config_filepath = config_filename
+    else:
+      buildtype_config_filename = buildtype + '.' + config_filename
+      if run("stat /var/www/live.%s.%s/%s" % (repo, branch, buildtype_config_filename)).succeeded:
+        config_filename = buildtype_config_filename
+      else:
+        if run("stat /var/www/live.%s.%s/%s" % (repo, branch, config_filename)).failed:
+          raise SystemExit("Could not find any kind of config.ini file on the server the site is been torn down from. Failing the teardown build.")
+
+      config_filepath = "/var/www/live.%s.%s/%s" % (repo, branch, config_filename)
 
     if run("grep \"\[Sites\]\" %s" % config_filepath).return_code != 0:
       print "###### Didn't find a [Sites] section in %s, so assume this is NOT a multisite build. In which case, we just need to teardown the default site."
