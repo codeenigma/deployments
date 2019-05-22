@@ -234,14 +234,14 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       existing_sites[offline_alias] = offline_site
       drush_runtime_location = "%s/www/sites/%s" % (previous_build, offline_site)
       drush_output = Drupal.drush_status(repo, branch, build, buildtype, offline_site, drush_runtime_location)
-      db_name = Drupal.get_db_name(repo, branch, build, buildtype, offline_site, drush_output)
+      offline_db_name = Drupal.get_db_name(repo, branch, build, buildtype, offline_site, drush_output)
 
       # If database updates will run, take the site offline
       if do_updates:
         execute(Drupal.go_offline, repo, branch, offline_site, offline_alias, readonlymode, drupal_version)
 
       # Backup database
-      execute(common.MySQL.mysql_backup_db, db_name, build, True)
+      execute(common.MySQL.mysql_backup_db, offline_db_name, build, True)
     else:
       new_sites[offline_alias] = offline_site
 
@@ -252,9 +252,12 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   if new_sites:
     for ns_alias,ns_site in new_sites.iteritems():
       mapping[ns_alias] = ns_site
+    print "There are new sites to install: %s" % new_sites
 
   for es_alias,es_site in existing_sites.iteritems():
     mapping[es_alias] = es_site
+
+  print "Ordered mapping (new sites first, if any, then existing sites) is: %s" % mapping
 
 
   # Run new installs
