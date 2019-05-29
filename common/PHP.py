@@ -25,7 +25,7 @@ def composer_command(site_root, composer_command="install", package_to_install=N
   if malicious_code:
     SystemExit("###### Found possible malicious code in the symfony_environment variable, aborting!")
 
-  this_command = ""
+  this_command = "cd %s; " % site_root
   if symfony_environment:
     this_command = this_command + "SYMFONY_ENV=%s " % symfony_environment
 
@@ -54,6 +54,5 @@ def composer_command(site_root, composer_command="install", package_to_install=N
       sudo("rm %s/composer.lock" % site_root)
       sudo("rm -R %s/vendor" % site_root)
 
-  with cd(site_root):
-    print "===> Running the composer command `%s` in the directory %s" % (this_command, site_root)
-    run(this_command)
+  print "===> Running the composer command `%s`" % this_command
+  common.Utils._sshagent_run(this_command)
