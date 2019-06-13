@@ -170,8 +170,6 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   if php_ini_file and not malicious_code:
     run("export PHPRC='%s'" % php_ini_file)
 
-  run("export COMPOSER_EXIT_ON_PATCH_FAILURE=1")
-
   # Set branches to be treated as feature branches
   # Regardless of whether or not 'fra' is set, we need to set 'branches'
   # our our existing_build_wrapper() function gets upset later.
@@ -193,7 +191,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     import_config_method = "cim"
   if drupal_version > 7 and composer is True:
     # Sometimes people use the Drupal Composer project which puts Drupal 8's composer.json file in repo root.
-    with shell_env(PHPRC='%s' % php_ini_file):
+    with shell_env(PHPRC='%s' % php_ini_file, COMPOSER_EXIT_ON_PATCH_FAILURE=1):
       with settings(warn_only=True):
         if run("find %s/composer.json" % site_root).return_code == 0:
           path = site_root
