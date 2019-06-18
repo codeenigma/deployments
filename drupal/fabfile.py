@@ -120,6 +120,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   composer = common.ConfigFile.return_config_item(config, "Composer", "composer", "boolean", True)
   composer_lock = common.ConfigFile.return_config_item(config, "Composer", "composer_lock", "boolean", True)
   no_dev = common.ConfigFile.return_config_item(config, "Composer", "no_dev", "boolean", True)
+  through_ssh = common.ConfigFile.return_config_item(config, "Composer", "through_ssh", "boolean", False)
 
   # Can be set in the config.ini [Testing] section
   # PHPUnit is in common/Tests because it can be used for any PHP application
@@ -197,7 +198,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
           path = site_root
         else:
           path = site_root + "/www"
-      execute(common.PHP.composer_command, path, "install", None, no_dev, composer_lock)
+      execute(common.PHP.composer_command, path, "install", None, no_dev, composer_lock, through_ssh=through_ssh)
 
 
   # Compile a site mapping, which is needed if this is a multisite build
@@ -227,14 +228,14 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     if offline_site_exists:
       drush_runtime_location = "%s/www/sites/%s" % (previous_build, offline_site)
       drush_output = Drupal.drush_status(repo, branch, build, buildtype, offline_site, drush_runtime_location)
-      db_name = Drupal.get_db_name(repo, branch, build, buildtype, offline_site, drush_output)
+      offline_db_name = Drupal.get_db_name(repo, branch, build, buildtype, offline_site, drush_output)
 
       # If database updates will run, take the site offline
       if do_updates:
         execute(Drupal.go_offline, repo, branch, offline_site, offline_alias, readonlymode, drupal_version)
 
       # Backup database
-      execute(common.MySQL.mysql_backup_db, db_name, build, True)
+      execute(common.MySQL.mysql_backup_db, offline_db_name, build, True)
 
     offline_site_exists = None
 
@@ -277,6 +278,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_config_method, cimy_mapping, webserverport, behat_config, autoscale, php_ini_file, build_hook_version, secure_user_one, previous_build)
       else:
         # Otherwise it's an existing build
+        # This does not bring sites online that have been taken offline but not yet deployed
         sites_deployed[alias] = site
         existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, secure_user_one, sites_deployed)
 
