@@ -10,7 +10,7 @@ import common.Utils
 # Run a composer command
 @task
 @roles('app_all')
-def composer_command(site_root, composer_command="install", package_to_install=None, install_no_dev=True, composer_lock=True, composer_global=False, composer_sudo=False, symfony_environment=None):
+def composer_command(site_root, composer_command="install", package_to_install=None, install_no_dev=True, composer_lock=True, composer_global=False, composer_sudo=False, symfony_environment=None, through_ssh=False):
   # Make sure no one passed anything nasty from a build hook
   malicious_code = False
   malicious_code = common.Utils.detect_malicious_strings([';', '&&'], composer_command)
@@ -55,4 +55,9 @@ def composer_command(site_root, composer_command="install", package_to_install=N
       sudo("rm -R %s/vendor" % site_root)
 
   print "===> Running the composer command `%s`" % this_command
-  common.Utils._sshagent_run(this_command)
+  if through_ssh:
+    # If `through_ssh` is set to True in config.ini, run the Composer command through the _sshagent_run() function, which will allow for the use of private repos during a composer install, for example.
+    common.Utils._sshagent_run(this_command)
+  else:
+    # If `through_ssh` is not set, run the Composer command as normal on the destination server.
+    run(this_command)

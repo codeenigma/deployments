@@ -120,6 +120,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   composer = common.ConfigFile.return_config_item(config, "Composer", "composer", "boolean", True)
   composer_lock = common.ConfigFile.return_config_item(config, "Composer", "composer_lock", "boolean", True)
   no_dev = common.ConfigFile.return_config_item(config, "Composer", "no_dev", "boolean", True)
+  through_ssh = common.ConfigFile.return_config_item(config, "Composer", "through_ssh", "boolean", False)
 
   # Can be set in the config.ini [Testing] section
   # PHPUnit is in common/Tests because it can be used for any PHP application
@@ -197,7 +198,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
           path = site_root
         else:
           path = site_root + "/www"
-      execute(common.PHP.composer_command, path, "install", None, no_dev, composer_lock)
+      execute(common.PHP.composer_command, path, "install", None, no_dev, composer_lock, through_ssh=through_ssh)
 
 
   # Compile a site mapping, which is needed if this is a multisite build
