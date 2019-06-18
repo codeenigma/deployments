@@ -191,7 +191,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     import_config_method = "cim"
   if drupal_version > 7 and composer is True:
     # Sometimes people use the Drupal Composer project which puts Drupal 8's composer.json file in repo root.
-    with shell_env(PHPRC='%s' % php_ini_file, COMPOSER_EXIT_ON_PATCH_FAILURE='1'):
+    with shell_env(PHPRC='%s' % php_ini_file):
       with settings(warn_only=True):
         if run("find %s/composer.json" % site_root).return_code == 0:
           path = site_root
