@@ -278,12 +278,12 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       # Because this runs in Jenkins home directory, it will use 'system' drush
       if not site_exists:
         print "===> Didn't find a previous build so we'll install this new site %s" % url
-        initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_config_method, cimy_mapping, webserverport, behat_config, autoscale, php_ini_file, build_hook_version, secure_user_one, previous_build)
+        initial_build_wrapper(url, www_root, application_directory, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_config_method, cimy_mapping, webserverport, behat_config, autoscale, php_ini_file, build_hook_version, secure_user_one, previous_build)
       else:
         # Otherwise it's an existing build
         # This does not bring sites online that have been taken offline but not yet deployed
         sites_deployed[alias] = site
-        existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, secure_user_one, sites_deployed)
+        existing_build_wrapper(url, www_root, application_directory, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, secure_user_one, sites_deployed)
 
     # Now everything should be in a good state, let's enable environment indicator for this site, if present
     execute(Drupal.environment_indicator, www_root, repo, branch, build, buildtype, alias, site, drupal_version)
@@ -362,7 +362,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
 # Wrapper function for carrying out a first build of a site
 @task
-def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_config_method, cimy_mapping, webserverport, behat_config, autoscale, php_ini_file, build_hook_version, secure_user_one, previous_build):
+def initial_build_wrapper(url, www_root, application_directory, repo, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster, rds, drupal_version, import_config, import_config_method, cimy_mapping, webserverport, behat_config, autoscale, php_ini_file, build_hook_version, secure_user_one, previous_build):
   print "===> URL is http://%s" % url
 
   print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
@@ -412,7 +412,7 @@ def initial_build_wrapper(url, www_root, repo, branch, build, site, alias, profi
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, secure_user_one, sites_deployed):
+def existing_build_wrapper(url, www_root, application_directory, site_root, site_link, repo, branch, build, buildtype, previous_build, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, secure_user_one, sites_deployed):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   with shell_env(PHPRC='%s' % php_ini_file):
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site, www_root, application_directory)
