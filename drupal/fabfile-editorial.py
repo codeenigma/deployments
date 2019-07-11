@@ -102,3 +102,4 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, config_filename
   # Final clean up and run tests, if applicable
   execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
   execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
+  execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, hosts=env.roledefs['app_all'])

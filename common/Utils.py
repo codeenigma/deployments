@@ -298,6 +298,8 @@ def define_roles(config, cluster, autoscale=None, aws_credentials='/home/jenkins
         'memcache_all': [ env.host ],
     }
 
+  print "Final role definitions are: %s" % env.roledefs
+
 
 # Creating required application directories
 @task
@@ -347,11 +349,12 @@ def detect_malicious_strings(malicious_strings, input_string=None, check_locatio
 # Ultimately we can remove entirely and just use buildtype, once
 # Drupal scripts are repaired.
 @task
-def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage):
+def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage, build_hook_version="1", alias=None, site=None):
   cwd = os.getcwd()
   print "===> Looking for custom developer hooks at the %s stage for %s builds" % (stage, buildtype)
 
   malicious_commands = ['env.host_string', 'env.host', 'rm -rf /', 'ssh']
+  pre_stages = ['pre', 'pre-prim']
 
   if config.has_section("%s-%s-build" % (buildtype, stage)):
     print "===> Found %s-%s-build hooks, executing" % (buildtype, stage)
@@ -370,7 +373,7 @@ def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage
             print "===> Executing shell script %s" % option
 
             run("chmod +x /var/www/%s_%s_%s/build-hooks/%s" %(repo, build_path, build, option))
-            if stage != 'pre':
+            if stage not in pre_stages:
               with settings(warn_only=True):
                 if run("/var/www/%s_%s_%s/build-hooks/%s" %(repo, build_path, build, option)).failed:
                   print "Could not run build hook. Uh oh."
@@ -386,14 +389,19 @@ def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage
             print "===> Executing Fabric script %s" % option
             hook_file = '%s/build-hooks/%s' % (cwd, option)
 
-            if stage != 'pre':
+            if build_hook_version == "1":
+              fab_command = "fab -H %s -f %s main:repo=%s,branch=%s,build=%s" % (env.host, hook_file, repo, build_path, build)
+            else:
+              fab_command = "fab -H %s -f %s main:repo=%s,branch=%s,build=%s,alias=%s,site=%s" % (env.host, hook_file, repo, build_path, build, alias, site)
+
+            if stage not in pre_stages:
               with settings(warn_only=True):
-                if local("fab -H %s -f %s main:repo=%s,branch=%s,build=%s" % (env.host, hook_file, repo, build_path, build)).failed:
+                if local("%s" % fab_command).failed:
                   print "Could not run build hook. Uh oh."
                 else:
                   print "Finished running build hook."
             else:
-              if local("fab -H %s -f %s main:repo=%s,branch=%s,build=%s" % (env.host, hook_file, repo, build_path, build)).failed:
+              if local("%s" % fab_command).failed:
                 print "Could not run build hook. Uh oh."
               else:
                 print "Finished running build hook."
