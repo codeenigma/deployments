@@ -426,7 +426,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
     # Export the config if we need to (Drupal 8+)
     if config_export:
       execute(Drupal.config_export, repo, branch, build, drupal_version)
-    execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, db_update, revert_settings=True, sites_deployed=sites_deployed)
+    execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, db_backup, revert_settings=True, sites_deployed=sites_deployed)
 
     # Time to update the database!
     if do_updates == True:
@@ -437,7 +437,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
           execute(Drupal.drush_fra, repo, branch, build, buildtype, site, alias, drupal_version, sites_deployed=sites_deployed)
       if run_cron == True:
         execute(Drupal.drush_cron, repo, branch, build, site, drupal_version)
-      execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, db_update, revert=True, sites_deployed=sites_deployed) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+      execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, db_backup, revert=True, sites_deployed=sites_deployed) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       if import_config:
         execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, import_config_method, cimy_mapping, previous_build, sites_deployed=sites_deployed) # This will revert database and settings if it fails.
@@ -451,7 +451,7 @@ def existing_build_wrapper(url, www_root, site_root, site_link, repo, branch, bu
 
     else:
       print "####### WARNING: by skipping database updates we cannot check if the node access table will be rebuilt. If it will this is an intrusive action that may result in an extended outage."
-      execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, db_update, revert=True, sites_deployed=sites_deployed) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
+      execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, db_backup, revert=True, sites_deployed=sites_deployed) # This will revert the database if it fails (maybe hook_updates broke ability to bootstrap)
 
       if import_config:
         execute(Drupal.config_import, repo, branch, build, buildtype, site, alias, drupal_version, import_config_method, cimy_mapping, previous_build, sites_deployed=sites_deployed) # This will revert database and settings if it fails.

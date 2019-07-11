@@ -292,7 +292,7 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
 # Failures here should be reverting the database, because the site gets taken offline. If it fails to run drush st and the build fails, the site will remain offline! Probably need to revert the db nearly every time this function fails, as it is called after the site is taken offline. Only caveat *might* be when Drupal.prepare_database() is called during a feature branch build.
 @task
 @roles('app_primary')
-def drush_status(repo, branch, build, buildtype, site, drush_runtime_location=None, alias=None, db_update=True, revert=False, revert_settings=False, sites_deployed=None):
+def drush_status(repo, branch, build, buildtype, site, drush_runtime_location=None, alias=None, db_backup=True, revert=False, revert_settings=False, sites_deployed=None):
   print "===> Running a drush status test"
   if not drush_runtime_location:
     drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
@@ -306,7 +306,7 @@ def drush_status(repo, branch, build, buildtype, site, drush_runtime_location=No
     else:
       if revert:
         for revert_alias,revert_site in sites_deployed.iteritems():
-          if db_update:
+          if db_backup:
             execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
           else:
             print "####### Due to your config settings no database backup was taken so your database may be broken!"
@@ -320,7 +320,7 @@ def drush_status(repo, branch, build, buildtype, site, drush_runtime_location=No
 # Run drush updatedb to apply any database changes from hook_update's
 @task
 @roles('app_primary')
-def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version, db_update, sites_deployed=None):
+def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version, db_backup, sites_deployed=None):
   print "===> Running any database hook updates"
   with settings(warn_only=True):
     # Clear the Drupal cache before running database updates, as sometimes there can be unexpected results
@@ -333,7 +333,7 @@ def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version, 
     if DrupalUtils.drush_command("updatedb", site, drush_runtime_location, True, None, None, True).failed:
       print "###### Could not apply database updates! Reverting this database"
       for revert_alias,revert_site in sites_deployed.iteritems():
-        if db_update:
+        if db_backup:
           execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
         else:
           print "####### Due to your config settings no database backup was taken so your database may be broken!"
