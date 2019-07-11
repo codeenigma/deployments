@@ -90,6 +90,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   db_username = common.ConfigFile.return_config_item(config, "Database", "db_username")
   db_password = common.ConfigFile.return_config_item(config, "Database", "db_password")
   db_backup = common.ConfigFile.return_config_item(config, "Database", "db_backup", "boolean", True)
+  # Booleans in config.ini get treated as strings
+  if db_backup == "False":
+    db_backup = False
 
   # Need to keep potentially passed in MySQL version and config path as defaults
   mysql_config = common.ConfigFile.return_config_item(config, "Database", "mysql_config", "string", mysql_config)
@@ -118,12 +121,22 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # This is the correct location for 'config_export' - note, respect the deprecated value as default
   config_export = common.ConfigFile.return_config_item(config, "Drupal", "config_export", "boolean", config_export)
   secure_user_one = common.ConfigFile.return_config_item(config, "Drupal", "secure_user_one", "boolean", True)
+  # Booleans in config.ini get treated as strings
+  if secure_user_one == "False":
+    secure_user_one = False
 
   # Can be set in the config.ini [Composer] section
   composer = common.ConfigFile.return_config_item(config, "Composer", "composer", "boolean", True)
   composer_lock = common.ConfigFile.return_config_item(config, "Composer", "composer_lock", "boolean", True)
   no_dev = common.ConfigFile.return_config_item(config, "Composer", "no_dev", "boolean", True)
   through_ssh = common.ConfigFile.return_config_item(config, "Composer", "through_ssh", "boolean", False)
+  # Booleans in config.ini get treated as strings
+  if composer == "False":
+    composer = False
+  if composer_lock == "False":
+    composer_lock = False
+  if no_dev == "False":
+    no_dev = False
 
   # Can be set in the config.ini [Testing] section
   # PHPUnit is in common/Tests because it can be used for any PHP application
@@ -141,6 +154,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   string_to_check = common.ConfigFile.return_config_item(config, "Testing", "string_to_check", "string")
   curl_options = common.ConfigFile.return_config_item(config, "Testing", "curl_options", "string", "sL")
   check_protocol = common.ConfigFile.return_config_item(config, "Testing", "check_protocol", "string", "https")
+  # Booleans in config.ini get treated as strings
+  if codesniffer == "False":
+    codesniffer = False
 
   # Behat config file location
   behat_config_file = common.ConfigFile.return_config_item(config, "Behat", "behat_config_file", "string", behat_config_file_default)
