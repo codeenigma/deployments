@@ -48,11 +48,15 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename, fullpath=config_fullpath)
 
+  # Can be set in the config.ini [AWS] section
+  aws_credentials = common.ConfigFile.return_config_item(config, "AWS", "aws_credentials", "string", "/home/jenkins/.aws/credentials")
+  aws_autoscale_group = common.ConfigFile.return_config_item(config, "AWS", "aws_autoscale_group", "string", "prod-asg-prod")
+
   # Now we need to figure out what server(s) we're working with
   # Define primary host
   common.Utils.define_host(config, buildtype, repo)
   # Define server roles (if applicable)
-  common.Utils.define_roles(config, cluster, autoscale)
+  common.Utils.define_roles(config, cluster, autoscale, aws_credentials, aws_autoscale_group)
   # Check where we're deploying to - abort if nothing set in config.ini
   if env.host is None:
     raise ValueError("===> You wanted to deploy a build but we couldn't find a host in the map file for repo %s so we're aborting." % repo)

@@ -28,7 +28,7 @@ config = common.ConfigFile.read_config_file()
 
 
 @task
-def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=None, buildtype_override=False, ckfinder=False, keepbackup=False, migrations=False, cluster=False, with_no_dev=True, php_ini_file=None, parameters_yml=True, env_file=False):
+def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=None, buildtype_override=False, ckfinder=False, keepbackup=False, migrations=False, cluster=False, with_no_dev=True, php_ini_file=None, parameters_yml=True, env_file=False, autoscale=None):
 
   # Set some default config options and variables
   user = "jenkins"
@@ -63,6 +63,10 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   composer_lock = common.ConfigFile.return_config_item(config, "Composer", "composer_lock", "boolean", True)
   no_dev = common.ConfigFile.return_config_item(config, "Composer", "no_dev", "boolean", with_no_dev)
 
+  # Can be set in the config.ini [AWS] section
+  aws_credentials = common.ConfigFile.return_config_item(config, "AWS", "aws_credentials", "string", "/home/jenkins/.aws/credentials")
+  aws_autoscale_group = common.ConfigFile.return_config_item(config, "AWS", "aws_autoscale_group", "string", "prod-asg-prod")
+
   # Set SSH key if needed
   ssh_key = None
   if "git@github.com" in repourl:
@@ -72,7 +76,7 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   common.Utils.define_host(config, buildtype, repo)
 
   # Define server roles (if applicable)
-  common.Utils.define_roles(config, cluster)
+  common.Utils.define_roles(config, cluster, autoscale, aws_credentials, aws_autoscale_group)
 
   if env.host is None:
     raise ValueError("===> You wanted to deploy a build but we couldn't find a host in the map file for repo %s so we're aborting." % repo)
