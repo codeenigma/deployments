@@ -75,7 +75,11 @@ def return_config_item(config, section, item, var_type="string", default_value=N
     elif var_type is "boolean":
       if notify:
         print "===> %s in [%s] being set to %s" % (item, section, config.getboolean(section, item))
-      default_value = config.getboolean(section, item)
+      # Make sure booleans get converted into proper booleans
+      if config.getboolean(section, item) == "False":
+        default_value = False
+      else:
+        default_value = True
     elif var_type is "int":
       if notify:
         print "===> %s in [%s] being set to %s" % (item, section, config.getint(section, item))
