@@ -52,14 +52,14 @@ def main(repo, repourl, branch, build, buildtype, symassets="nosym", keepbuilds=
   if php_ini_file and not malicious_code:
     run("export PHPRC='%s'" % php_ini_file)
 
-  common.Utils.clone_repo(repo, repourl, branch, build, None, ssh_key)
+  execute(common.Utils.clone_repo, repo, repourl, branch, build, None, ssh_key, hosts=env.roledefs['app_all'])
   
   # Let's allow developers to perform some pre-build actions if they need to
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
 
-  common.Utils.adjust_live_symlink(repo, branch, build)
+  execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
   if symassets == "sym":
-    Flat.symlink_assets(repo, branch, build)
+    execute(Flat.symlink_assets, repo, branch, build)
 
   # Let's allow developers to perform some post-build actions if they need to
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
@@ -68,4 +68,4 @@ def main(repo, repourl, branch, build, buildtype, symassets="nosym", keepbuilds=
   if php_ini_file:
     run("export PHPRC=''")
 
-  common.Utils.remove_old_builds(repo, branch, keepbuilds)
+  execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, hosts=env.roledefs['app_all'])
