@@ -86,7 +86,7 @@ def initial_build_config_import(repo, branch, build, site, drupal_version, impor
 # Stuff to do when this is the initial build
 @task
 @roles('app_primary')
-def initial_build(repo, url, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster=False, rds=False):
+def initial_build(repo, url, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster=False, autoscale=False, rds=False):
   print "===> This looks like the first build! We have some things to do.."
 
   print "===> Making the shared files dir and setting symlink"
@@ -115,7 +115,7 @@ def initial_build(repo, url, branch, build, site, alias, profile, buildtype, san
   db_host = None
 
   # For clusters we need to do some extra things
-  if cluster:
+  if cluster or autoscale:
     # This is the Database host that we need to insert into Drupal settings.php. It is different from the main db host because it might be a floating IP
     db_host = config.get('DrupalDBHost', 'dbhost')
     # Convert a list of apps back into a string, to pass to the MySQL new database function for setting appropriate GRANTs to the database
