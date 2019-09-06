@@ -212,7 +212,7 @@ def reenable_modules(repo, alias, branch, build, site, buildtype, import_config,
     if drupal_version > 7:
       if import_config:
         import_config_command = DrupalConfig.import_config_command(repo, branch, build, site, import_config_method, cimy_mapping)
-        if DrupalUtils.drush_command("%s" % import_config_command, site, drush_runtime_location).failed:
+        if DrupalUtils.drush_command("%s" % import_config_command, site, drush_runtime_location, True, None, None, True).failed:
           print "###### Cannot import config to enable modules. Manual investigation is required."
         else:
           print " ===> Modules re-enabled via config import."
