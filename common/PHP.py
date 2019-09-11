@@ -10,7 +10,7 @@ import common.Utils
 # Run a composer command
 @task
 @roles('app_all')
-def composer_command(site_root, composer_command="install", package_to_install=None, install_no_dev=True, composer_lock=True, composer_global=False, composer_sudo=False, symfony_environment=None, through_ssh=False, mark_unstable=False):
+def composer_command(site_root, composer_command="install", package_to_install=None, install_no_dev=True, composer_lock=True, composer_global=False, composer_sudo=False, symfony_environment=None, through_ssh=False):
   # Make sure no one passed anything nasty from a build hook
   malicious_code = False
   malicious_code = common.Utils.detect_malicious_strings([';', '&&'], composer_command)
@@ -67,7 +67,7 @@ def composer_command(site_root, composer_command="install", package_to_install=N
 def composer_validate(site_root, through_ssh):
   validate_command = "cd %s; composer validate --no-check-all --no-check-publish" % site_root
   composer_lock_outdated = False
-  with settings(warn_only=True):
+  with settings(hide('warnings', 'stderr'), warn_only=True):
     if through_ssh:
       composer_validate_output = common.Utils._sshagent_run(validate_command)
     else:
