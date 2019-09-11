@@ -65,7 +65,7 @@ def composer_command(site_root, composer_command="install", package_to_install=N
 @task
 @roles('app_all')
 def composer_validate(site_root, through_ssh):
-  validate_command = "cd %s; composer validate --no-check-all --no-check-publish"
+  validate_command = "cd %s; composer validate --no-check-all --no-check-publish" % site_root
   composer_lock_outdated = False
   with settings(warn_only=True):
     if through_ssh:
