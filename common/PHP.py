@@ -62,16 +62,13 @@ def composer_command(site_root, composer_command="install", package_to_install=N
     # If `through_ssh` is not set, run the Composer command as normal on the destination server.
     run(this_command)
 
+
 @task
-@roles('app_all')
-def composer_validate(site_root, through_ssh):
+def composer_validate(site_root):
   validate_command = "cd %s; composer validate --no-check-all --no-check-publish" % site_root
   composer_lock_outdated = False
   with settings(hide('warnings', 'stderr'), warn_only=True):
-    if through_ssh:
-      composer_validate_output = common.Utils._sshagent_run(validate_command)
-    else:
-      composer_validate_output = run(validate_command)
+    composer_validate_output = run(validate_command)
 
     if run("echo \"%s\" | grep 'The lock file is not up to date with the latest changes'" % composer_validate_output).failed:
       print "composer.lock is up to date with composer.json"

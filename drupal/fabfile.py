@@ -209,7 +209,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         else:
           path = site_root + "/" + application_directory
       if mark_unstable:
-        composer_lock_outdated = common.PHP.composer_validate(path, through_ssh)
+        composer_lock_outdated = common.PHP.composer_validate(path)
 
       execute(common.PHP.composer_command, path, "install", None, no_dev, composer_lock, through_ssh=through_ssh)
 
