@@ -73,6 +73,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   site_link = www_root + '/live.%s.%s' % (repo, branch)
   site_exists = None
   behat_config_file_default = "%s/%s_%s_%s/tests/behat/behat.yml" % (www_root, repo, branch, build)
+  composer_lock_outdated = False
 
   # Set our host_string based on user@host
   env.host_string = '%s@%s' % (user, env.host)
@@ -129,6 +130,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   composer_lock = common.ConfigFile.return_config_item(config, "Composer", "composer_lock", "boolean", True)
   no_dev = common.ConfigFile.return_config_item(config, "Composer", "no_dev", "boolean", True)
   through_ssh = common.ConfigFile.return_config_item(config, "Composer", "through_ssh", "boolean", False)
+  mark_unstable = common.ConfigFile.return_config_item(config, "Composer", "mark_unstable", "boolean", False)
 
   # Can be set in the config.ini [Testing] section
   # PHPUnit is in common/Tests because it can be used for any PHP application
@@ -206,6 +208,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
           path = site_root
         else:
           path = site_root + "/" + application_directory
+      if mark_unstable:
+        composer_lock_outdated = common.PHP.composer_validate(path)
+
       execute(common.PHP.composer_command, path, "install", None, no_dev, composer_lock, through_ssh=through_ssh)
 
   # Compile a site mapping, which is needed if this is a multisite build
@@ -353,10 +358,22 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     print "####### BUILD COMPLETE. Could not copy the revert script to the application server, revert will need to be handled manually"
   else:
     print "####### BUILD COMPLETE. If you need to revert this build, run the following command: sudo /home/jenkins/revert -b %s -d %s -s %s/live.%s.%s -a %s_%s" % (previous_build, previous_db, www_root, repo, branch, repo, branch)
-  # If any of our tests failed, abort the job
-  # r23697
+  # We have two scenarios where a build might be marked as unstable:
+  # 1) If the composer.lock file is outdated (r45198)
+  # 2) If any of our tests failed, abort the job (r23697)
+  unstable_text = ""
+  unstable_build = False
+
   if behat_tests_failed:
-    print "####### Some tests failed. Aborting the job."
+    unstable_text = unstable_text + "####### Some tests failed. Aborting the job.\n"
+    unstable_build = True
+
+  if composer_lock_outdated:
+    unstable_text = unstable_text + "####### composer.lock is outdated.\n"
+    unstable_build = True
+
+  if unstable_build:
+    print "%s" % unstable_text
     sys.exit(3)
 
 

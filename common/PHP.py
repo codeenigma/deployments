@@ -61,3 +61,19 @@ def composer_command(site_root, composer_command="install", package_to_install=N
   else:
     # If `through_ssh` is not set, run the Composer command as normal on the destination server.
     run(this_command)
+
+
+@task
+def composer_validate(site_root):
+  validate_command = "cd %s; composer validate --no-check-all --no-check-publish" % site_root
+  composer_lock_outdated = False
+  with settings(hide('warnings', 'stderr'), warn_only=True):
+    composer_validate_output = run(validate_command)
+
+    if run("echo '%s' | grep 'The lock file is not up to date with the latest changes'" % composer_validate_output).failed:
+      print "composer.lock is up to date with composer.json"
+    else:
+      print "composer.lock is not up to date with the latest changes in composer.json. Mark build as unstable."
+      composer_lock_outdated = True
+
+  return composer_lock_outdated
