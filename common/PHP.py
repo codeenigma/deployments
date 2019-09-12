@@ -70,7 +70,7 @@ def composer_validate(site_root):
   with settings(hide('warnings', 'stderr'), warn_only=True):
     composer_validate_output = run(validate_command)
 
-    if run("echo \"%s\" | grep 'The lock file is not up to date with the latest changes'" % composer_validate_output).failed:
+    if run("echo '%s' | grep 'The lock file is not up to date with the latest changes'" % composer_validate_output).failed:
       print "composer.lock is up to date with composer.json"
     else:
       print "composer.lock is not up to date with the latest changes in composer.json. Mark build as unstable."
