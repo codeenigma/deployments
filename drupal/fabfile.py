@@ -373,6 +373,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     unstable_build = True
 
   if unstable_build:
+    print "%s" % unstable_text
     sys.exit(3)
 
 
