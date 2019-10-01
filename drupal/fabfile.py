@@ -436,6 +436,8 @@ def initial_build_wrapper(url, www_root, application_directory, repo, branch, bu
 @task
 def existing_build_wrapper(url, www_root, application_directory, site_root, site_link, repo, branch, build, buildtype, previous_build, db_backup, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, secure_user_one, sites_deployed):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
+  if buildtype == "custombranch":
+    print "Site URL is http://%s" % url
   with shell_env(PHPRC='%s' % php_ini_file):
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site, www_root, application_directory)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site, www_root, application_directory)
