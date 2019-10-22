@@ -430,11 +430,11 @@ def perform_client_sync_hook(path_to_application, buildtype, stage):
           malicious_code = detect_malicious_strings(malicious_commands, False, this_hook)
           if malicious_code:
             break
-  
+
           if not malicious_code:
             if option[-2:] == 'sh':
               print "===> Executing shell script %s" % option
-  
+
               run("chmod +x %s/build-hooks/%s" %(path_to_application, option))
               if stage != 'pre':
                 with settings(warn_only=True):
@@ -583,11 +583,17 @@ def check_package(method):
 # Tarball up an application for future fresh EC2 instances entering an autoscale group
 @task
 @roles('app_primary')
-def tarball_up_to_s3(www_root, repo, buildtype, build, autoscale):
-  with cd("%s/%s_%s_%s" % (www_root, repo, buildtype, build)):
+def tarball_up_to_s3(www_root, repo, buildtype, build, autoscale, all_builds=False):
+  if all_builds:
+    tar_dir = www_root
+    tar_name = autoscale
+  else:
+    tar_dir = "%s/%s_%s_%s" % (www_root, repo, buildtype, build)
+    tar_name = repo
+  with cd(tar_dir):
     print("===> Tarballing up the build to S3 for future EC2 instances")
-    sudo("rm -f /tmp/%s.tar.gz" % repo)
-    run("tar -zcf /tmp/%s.tar.gz ." % repo)
+    sudo("rm -f /tmp/%s.tar.gz" % tar_name)
+    run("tar --exclude='./*/.git' --exclude='./shared' -zcf /tmp/%s.tar.gz ." % tar_name)
     run('export AWS_PROFILE="%s"' % repo)
-    run("sudo /usr/local/bin/aws s3 cp /tmp/%s.tar.gz s3://current-%s-production" % (repo, autoscale))
-    sudo("rm -f /tmp/%s.tar.gz" % repo)
+    run("sudo /usr/local/bin/aws s3 cp /tmp/%s.tar.gz s3://current-%s-production" % (tar_name, autoscale))
+    sudo("rm -f /tmp/%s.tar.gz" % tar_name)
