@@ -592,7 +592,7 @@ def tarball_up_to_s3(www_root, repo, buildtype, build, autoscale, all_builds=Fal
     tar_name = repo
   with cd(tar_dir):
     print("===> Tarballing up the build to S3 for future EC2 instances")
-    run("sudo mkdir -p /tmp/%s" % buildtype)
+    run("mkdir -p /tmp/%s" % buildtype)
     sudo("rm -f /tmp/%s/%s.tar.gz" % (buildtype, tar_name))
     run("tar --exclude='./*/.git' --exclude='./shared' -zcf /tmp/%s/%s.tar.gz ." % (buildtype, tar_name))
     run('export AWS_PROFILE="%s"' % repo)
