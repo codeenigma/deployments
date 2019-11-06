@@ -17,7 +17,7 @@ env.shell = '/bin/bash -c'
 
 
 @task
-def main(repo, branch, buildtype, alias=None, url=None, restartvarnish="yes", restartwebserver="yes", mysql_config='/etc/mysql/debian.cnf', config_filename="config.ini", config_fullpath=False):
+def main(repo, branch, buildtype, alias=None, url=None, restartvarnish="yes", restartwebserver="yes", mysql_config='/etc/mysql/debian.cnf', config_filename="config.ini", config_fullpath=False, mysql_user_ip='localhost'):
   if alias is None:
     alias = repo
 
@@ -69,7 +69,7 @@ def main(repo, branch, buildtype, alias=None, url=None, restartvarnish="yes", re
     # --------------
     # If this is the first build, attempt to install the site for the first time.
     try:
-      FeatureBranches.remove_site(repo, branch, alias, site, mysql_config)
+      FeatureBranches.remove_site(repo, branch, alias, site, mysql_config, mysql_user_ip)
       common.BuildTeardown.remove_vhost(repo, branch, webserver, alias)
       common.BuildTeardown.remove_http_auth(repo, branch, webserver, alias)
       FeatureBranches.remove_drush_alias(alias, branch)
