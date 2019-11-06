@@ -173,7 +173,7 @@ def configure_teardown_mapping(repo, branch, buildtype, config_filename, config_
 
 # Used for Drupal build teardowns.
 @task
-def remove_site(repo, branch, alias, site, mysql_config):
+def remove_site(repo, branch, alias, site, mysql_config, mysql_user_ip):
   # Drop DB...
   # 'build' and 'buildtype' can be none because only needed for revert which isn't relevant
   # This needs to be in a with settings(warn_only=True) to prevent the build from failing if the site is broken
@@ -188,7 +188,7 @@ def remove_site(repo, branch, alias, site, mysql_config):
 
   print "===> Dropping database and user: %s" % dbname
   sudo("mysql --defaults-file=%s -e 'DROP DATABASE IF EXISTS `%s`;'" % (mysql_config, dbname))
-  sudo("mysql --defaults-file=%s -e \"DROP USER \'%s\'@\'localhost\';\"" % (mysql_config, dbname))
+  sudo("mysql --defaults-file=%s -e \"DROP USER \'%s\'@\'%s\';\"" % (mysql_config, dbname, mysql_user_ip))
 
   with settings(warn_only=True):
     # Remove files directories
