@@ -64,7 +64,7 @@ def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_br
 
 # Sync databases from production to staging
 @task
-def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config):
+def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config, drupal_version, stage_drupal_root, app_dir):
   now = time.strftime("%Y%m%d%H%M%S", time.gmtime())
   # Switch to operating to the production server as a target
   env.host = config.get(shortname, 'host')
@@ -79,7 +79,8 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
   run("mkdir -p ~jenkins/dbbackups")
 
   # Abort early if we couldn't bootstrap the database in production
-  if run('drush sa | grep ^@%s_%s$ > /dev/null' % (shortname, prod_branch)).failed:
+  prod_site_exists = common.Utils.get_previous_build(shortname, prod_branch)
+  if prod_site_exists is None:
     raise SystemError("Couldn't find this site with Drush alias %s_%s in production in order to sync its database to staging! Aborting." % (shortname, prod_branch))
 
   # Unless we have explicitly been told to fetch a fresh database (make a dump),
@@ -88,10 +89,11 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
   # the production system
 
   remote_database = False
+  prod_drupal_root = prod_site_exists + '/' + app_dir
   if fresh_database == 'no':
     print "===> Looking for an existing database backup..."
     # Enumerate the database name
-    dbname = run("drush @%s_%s status  Database\ name | awk {'print $4'} | head -1" % (shortname, prod_branch))
+    dbname = run("cd %s && drush status | egrep \"DB name|Database name\" | awk {'print $4'} | head -1" % prod_drupal_root)
     # Look for a database backup
     with settings(warn_only=True):
       print "===> Checking for /opt/dbbackups directory..."
@@ -104,7 +106,7 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
       else:
         print "===> Could not find /opt/dbbackups. Before we assume there's not database backup, it could be the database backup is on a separate database server. Let's check..."
         print "===> Getting database host..."
-        dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (shortname, prod_branch))
+        dbhost = run("cd %s && drush status | egrep \"DB host|Database host\" | awk {'print $4'} | head -1" % prod_drupal_root)
         if dbhost == 'localhost':
           fresh_database = 'yes'
         else:
@@ -137,18 +139,23 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
     # Ensure we sanitise it first if necessary - which requires a custom mysqldump command
     if sanitise == 'yes':
       script_dir = os.path.dirname(os.path.realpath(__file__))
-      if put(script_dir + '/../util/drupal-obfuscate.rb', '/home/jenkins', mode=0755).failed:
+      if drupal_version == 8:
+        obfuscate_script = "drupal8-obfuscate.rb"
+      else:
+        obfuscate_script = "drupal-obfuscate.rb"
+      if put(script_dir + '/../util/%s' % obfuscate_script, '/home/jenkins', mode=0755).failed:
         raise SystemExit("Could not copy the obfuscate script to the application server, aborting as we cannot safely sanitise the live data")
       else:
-        print "===> Obfuscate script copied to %s:/home/jenkins/drupal-obfuscate.rb - obfuscating data" % env.host
+        print "===> Obfuscate script copied to %s:/home/jenkins/%s - obfuscating data" % (env.host, obfuscate_script)
         with settings(hide('running', 'stdout', 'stderr')):
-          dbname = run("drush @%s_%s status  Database\ name | awk {'print $4'} | head -1" % (shortname, prod_branch))
-          dbuser = run("drush @%s_%s status  Database\ user | awk {'print $4'} | head -1" % (shortname, prod_branch))
-          dbpass = run("drush @%s_%s --show-passwords status  Database\ pass | awk {'print $4'} | head -1" % (shortname, prod_branch))
-          dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (shortname, prod_branch))
-          run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, shortname, now))
+          with cd('%s' % prod_drupal_root):
+            dbname = run("drush status | egrep \"DB name|Database name\" | awk {'print $4'} | head -1")
+            dbuser = run("drush status | egrep \"DB user|Database user\" | awk {'print $4'} | head -1")
+            dbpass = run("drush --show-passwords status | egrep \"DB pass|Database pass\" | awk {'print $4'} | head -1")
+            dbhost = run("drush status | egrep \"DB host|Database host\" | awk {'print $4'} | head -1")
+          run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/%s | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, obfuscate_script, shortname, now))
     else:
-      run('drush @%s_%s sql-dump --result-file=/dev/stdout --result-file=/dev/stdout | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (shortname, prod_branch, shortname, now))
+      run('cd %s && drush sql-dump --result-file=/dev/stdout --result-file=/dev/stdout | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (prod_drupal_root, shortname, prod_branch, shortname, now))
     print "===> Fetching the drupal database backup from production..."
 
   # Fetch the database backup from prod
@@ -173,41 +180,43 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
 
   print "===> Importing the drupal database"
   # Need to drop all tables first in case there are existing tables that have to be ADDED from an upgrade
-  run("drush @%s_%s -y sql-drop" % (staging_shortname, staging_branch))
+  run("cd %s && drush -y sql-drop" % stage_drupal_root)
   # Reimport from backup
   # Ignore errors because we will want to remove the database dump regardless of whether this succeeded,
   # *in case* it contains sensitive data
   with settings(warn_only=True):
-    run("bzcat ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | drush @%s_%s sql-cli " % (shortname, now, staging_shortname, staging_branch))
-    # Set all users to the supplied e-mail address/password for stage testing
-    if sanitise == 'yes':
-      if sanitised_password is None:
-        sanitised_password = common.Utils._gen_passwd()
-      if sanitised_email is None:
-        sanitised_email = 'example.com'
-      run("drush @%s_%s -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (staging_shortname, staging_branch, shortname, sanitised_email, sanitised_password))
-      print "===> Data sanitised, email domain set to %s, passwords set to %s" % (sanitised_email, sanitised_password)
+    with cd('%s' % stage_drupal_root):
+      run("bzcat ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | drush sql-cli " % (shortname, now))
+      # Set all users to the supplied e-mail address/password for stage testing
+      if sanitise == 'yes':
+        if sanitised_password is None:
+          sanitised_password = common.Utils._gen_passwd()
+        if sanitised_email is None:
+          sanitised_email = 'example.com'
+        run("drush -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (shortname, sanitised_email, sanitised_password))
+        print "===> Data sanitised, email domain set to %s, passwords set to %s" % (sanitised_email, sanitised_password)
   run("rm ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2" % (shortname, now))
 
 
 # Run drush updatedb to apply any database changes from hook_update's
 @task
-def drush_updatedb(orig_host, shortname, staging_branch):
+def drush_updatedb(orig_host, shortname, staging_branch, stage_drupal_root):
   env.host_string = orig_host
   print env.host_string
   print "===> Running any database hook updates"
-  run("drush -y @%s_%s updatedb" % (shortname, staging_branch))
+  run("cd %s && drush -y updatedb" % (stage_drupal_root, shortname, staging_branch))
 
 
 # Keep calm and clear the cache
 @task
-def clear_caches(orig_host, shortname, staging_branch, drupal_version):
+def clear_caches(orig_host, shortname, staging_branch, drupal_version, stage_drupal_root):
   env.host_string = orig_host
   print "===> Clearing caches"
-  if drupal_version > 7:
-    run("drush @%s_%s -y cr" % (shortname, staging_branch))
-  else:
-    run("drush -y @%s_%s cc all" % (shortname, staging_branch))
+  with cd('%s' % stage_drupal_root):
+    if drupal_version > 7:
+      run("drush -y cr")
+    else:
+      run("drush -y cc all")
 
 
 # @TODO: we should refactor the common.Services restart functions so they
