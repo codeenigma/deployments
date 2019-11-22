@@ -32,7 +32,7 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
   # --------------
   # If this is the first build, attempt to install the site for the first time.
   with settings(warn_only=True):
-    site_exists = common.Utils.get_previous_build(staging_shortname, staging_branch)
+    site_exists = common.Utils.get_previous_build(staging_shortname, staging_branch, 0)
     if site_exists is None:
       raise SystemError("You can't sync to a site if it hasn't been set up yet in this environment.")
     else:

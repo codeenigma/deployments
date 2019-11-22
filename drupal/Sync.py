@@ -79,7 +79,7 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
   run("mkdir -p ~jenkins/dbbackups")
 
   # Abort early if we couldn't bootstrap the database in production
-  prod_site_exists = common.Utils.get_previous_build(shortname, prod_branch)
+  prod_site_exists = common.Utils.get_previous_build(shortname, prod_branch, 0)
   if prod_site_exists is None:
     raise SystemError("Couldn't find this site with Drush alias %s_%s in production in order to sync its database to staging! Aborting." % (shortname, prod_branch))
 
