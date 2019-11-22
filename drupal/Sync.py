@@ -204,7 +204,7 @@ def drush_updatedb(orig_host, shortname, staging_branch, stage_drupal_root):
   env.host_string = orig_host
   print env.host_string
   print "===> Running any database hook updates"
-  run("cd %s && drush -y updatedb" % (stage_drupal_root, shortname, staging_branch))
+  run("cd %s && drush -y updatedb" % stage_drupal_root)
 
 
 # Keep calm and clear the cache
