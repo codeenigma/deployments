@@ -12,12 +12,12 @@ import common.Utils
 
 # Take a database backup of the staging site before we replace its database.
 @task
-def backup_db(shortname, staging_branch):
+def backup_db(shortname, staging_branch, stage_drupal_root):
   now = time.strftime("%Y%m%d%H%M%S", time.gmtime())
   print "===> Ensuring backup directory exists"
   run("mkdir -p ~jenkins/dbbackups")
   print "===> Taking a database backup of the Drupal database..."
-  run("drush @%s_%s sql-dump --result-file=/dev/stdout --result-file=/dev/stdout | bzip2 -f > ~jenkins/dbbackups/%s_%s_prior_to_sync_%s.sql.bz2" % (shortname, staging_branch, shortname, staging_branch, now))
+  run("cd %s && drush sql-dump --result-file=/dev/stdout --result-file=/dev/stdout | bzip2 -f > ~jenkins/dbbackups/%s_%s_prior_to_sync_%s.sql.bz2" % (stage_drupal_root, shortname, staging_branch, now))
 
 
 # Sync uploaded assets from production to staging
