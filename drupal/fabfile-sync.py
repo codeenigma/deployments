@@ -70,7 +70,7 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
 
       # Files syncing (uploads)
       if synctype == 'files' or synctype == 'both':
-        Sync.sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, remote_files_dir, staging_files_dir, sync_dir)
+        Sync.sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, app_dir, remote_files_dir, staging_files_dir, sync_dir)
         # Allow developer to run a script mid-way through a sync
         common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'mid-files')
 
