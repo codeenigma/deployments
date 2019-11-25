@@ -119,7 +119,7 @@ def get_db_name(repo, branch, build, buildtype, site, drush_output):
 
 # Get the database username of an existing Drupal website
 @task
-@roles('app_primary')
+@role('app_primary')
 def get_db_user(repo, branch, site, drush_output):
   db_user = None
   db_user = run("echo \"%s\" | grep \"db-username:\" | cut -d \":\" -f 2" % drush_output)
