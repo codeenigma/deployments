@@ -179,7 +179,7 @@ def remove_site(repo, branch, alias, site, mysql_config, mysql_user_ip):
   # This needs to be in a with settings(warn_only=True) to prevent the build from failing if the site is broken
   with settings(warn_only=True):
     drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
-    drush_output = Drupal.drush_status(repo, branch, None, None, site, drush_runtime_location)
+    drush_output = run("cd %s && drush -l %s status --format=yaml" % (drush_runtime_location, site))
     dbname = Drupal.get_db_name(repo, branch, None, None, site, drush_output)
     dbuser = Drupal.get_db_user(repo, branch, site, drush_output)
 
