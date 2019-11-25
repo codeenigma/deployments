@@ -181,14 +181,19 @@ def remove_site(repo, branch, alias, site, mysql_config, mysql_user_ip):
     drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
     drush_output = Drupal.drush_status(repo, branch, None, None, site, drush_runtime_location)
     dbname = Drupal.get_db_name(repo, branch, None, None, site, drush_output)
+    dbuser = Drupal.get_db_user(repo, branch, site, drush_output)
 
   # If the dbname variable is still empty, fail the build early
   if not dbname:
     raise SystemExit("###### Could not determine the database name, so we cannot proceed with tearing down the site.")
 
-  print "===> Dropping database and user: %s" % dbname
+  # If the dbuser variable is still empty, fail the build early
+  if not dbuser:
+    raise SystemExit("###### Could not determine the database username, so we cannot proceed with tearing down the site.")
+
+  print "===> Dropping database %s and user %s" % (dbname, dbuser)
   sudo("mysql --defaults-file=%s -e 'DROP DATABASE IF EXISTS `%s`;'" % (mysql_config, dbname))
-  sudo("mysql --defaults-file=%s -e \"DROP USER \'%s\'@\'%s\';\"" % (mysql_config, dbname, mysql_user_ip))
+  sudo("mysql --defaults-file=%s -e \"DROP USER \'%s\'@\'%s\';\"" % (mysql_config, dbuser, mysql_user_ip))
 
   with settings(warn_only=True):
     # Remove files directories
