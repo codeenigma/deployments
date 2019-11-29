@@ -44,6 +44,7 @@ def mysql_new_database(repo, buildtype, rds=False, db_name=None, db_host=None, d
     db_name_length = 32
   # Allow space for integer suffix if required
   db_name_length = db_name_length - 4
+  db_username_length = db_username_length - 4
   print "===> MySQL version is %s, setting database name length to %s and username length to %s." % (mysql_version, db_name_length, db_username_length)
 
   # Set database name to repo_buildtype if none provided
@@ -55,7 +56,9 @@ def mysql_new_database(repo, buildtype, rds=False, db_name=None, db_host=None, d
 
   # Now let's set up the database
   database_created = False
+  user_created = False
   counter = 0
+  user_counter = 0
   original_db_name = db_name
   while not database_created:
     with settings(warn_only=True):
@@ -70,7 +73,17 @@ def mysql_new_database(repo, buildtype, rds=False, db_name=None, db_host=None, d
         # Truncate the database username if necessary
         db_username = (db_username[:db_username_length]) if len(db_username) > db_username_length else db_username
 
-        print "===> Database username will be %s." % db_username
+        orignal_username = db_username
+
+        while not user_created:
+          if db_username == sudo("mysql --defaults-file=%s -Bse 'SELECT user FROM mysql.user' | egrep \"^%s$\"" (mysql_config, db_username)):
+            print "===> The username %s already exists." % db_username
+            user_counter += 1
+            db_username = orignal_username + '_' + str(user_counter)
+          else:
+            print "===> Database username will be %s." % db_username
+            user_created = True
+
         print "===> Creating database %s." % db_name
         sudo("mysql --defaults-file=%s -e 'CREATE DATABASE `%s`'" % (mysql_config, db_name))
         # Set MySQL grants for each app server
