@@ -76,7 +76,7 @@ def mysql_new_database(repo, buildtype, rds=False, db_name=None, db_host=None, d
         orignal_username = db_username
 
         while not user_created:
-          if db_username == sudo("mysql --defaults-file=%s -Bse 'SELECT user FROM mysql.user' | egrep \"^%s$\"" (mysql_config, db_username)):
+          if db_username == sudo("mysql --defaults-file=%s -Bse 'SELECT user FROM mysql.user' | egrep \"^%s$\"" % (mysql_config, db_username)):
             print "===> The username %s already exists." % db_username
             user_counter += 1
             db_username = orignal_username + '_' + str(user_counter)
