@@ -56,7 +56,7 @@ def mysql_new_database(repo, buildtype, rds=False, db_name=None, db_host=None, d
 
   # Now let's set up the database
   database_created = False
-  user_created = False
+  username_generated = False
   counter = 0
   user_counter = 0
   original_db_name = db_name
@@ -75,14 +75,14 @@ def mysql_new_database(repo, buildtype, rds=False, db_name=None, db_host=None, d
 
         orignal_username = db_username
 
-        while not user_created:
+        while not username_generated:
           if db_username == sudo("mysql --defaults-file=%s -Bse 'SELECT user FROM mysql.user' | egrep \"^%s$\"" % (mysql_config, db_username)):
             print "===> The username %s already exists." % db_username
             user_counter += 1
             db_username = orignal_username + '_' + str(user_counter)
           else:
             print "===> Database username will be %s." % db_username
-            user_created = True
+            username_generated = True
 
         print "===> Creating database %s." % db_name
         sudo("mysql --defaults-file=%s -e 'CREATE DATABASE `%s`'" % (mysql_config, db_name))
