@@ -371,7 +371,7 @@ def drush_fra(repo, branch, build, buildtype, site, alias, drupal_version, sites
   drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   drush_command = "pm-list --pipe --type=module --status=enabled --no-core"
   drush_output = DrupalUtils.drush_command(drush_command, site, drush_runtime_location, False, "yaml")
-  if run("echo \"%s\" | grep -q ^features$" % drush_output).return_code != 0:
+  if run("echo \"%s\" | grep -q ^features:$" % drush_output).return_code != 0:
     print "===> Features module not installed, skipping feature revert"
   else:
     print "===> Reverting all features..."
