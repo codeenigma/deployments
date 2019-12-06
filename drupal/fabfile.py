@@ -403,6 +403,8 @@ def initial_build_wrapper(url, www_root, application_directory, repo, branch, bu
     execute(AdjustConfiguration.adjust_settings_php, repo, branch, build, buildtype, alias, site, www_root, application_directory)
     execute(InitialBuild.initial_build_vhost, repo, url, branch, build, alias, buildtype, FeatureBranches.ssl_enabled, FeatureBranches.ssl_cert, FeatureBranches.ssl_ip, FeatureBranches.httpauth_pass, FeatureBranches.drupal_common_config, FeatureBranches.featurebranch_vhost, webserverport)
     execute(AdjustConfiguration.adjust_drushrc_php, repo, branch, build, site, www_root, application_directory)
+
+    execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', build_hook_version=build_hook_version, alias=alias, site=site, hosts=env.roledefs['app_all'])
     # Restart services
     execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
     execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
