@@ -117,6 +117,23 @@ def get_db_name(repo, branch, build, buildtype, site, drush_output):
   return db_name
 
 
+# Get the database username of an existing Drupal website
+@task
+@roles('app_primary')
+def get_db_user(repo, branch, site, drush_output):
+  db_user = None
+  db_user = run("echo \"%s\" | grep \"db-username:\" | cut -d \":\" -f 2" % drush_output)
+
+  # If the dbuser variable is empty for whatever reason, resort to grepping settings.php
+  if not db_user:
+    with cd("/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)):
+      print "===> drush did not give us a database username so grepping the settings file"
+      db_user = sudo("grep \"'username' => '%s*\" settings.php | cut -d \">\" -f 2" % repo)
+      db_user = db_user.translate(None, "',")
+  print "===> Database username determined to be %s" % db_user
+  return db_user
+
+
 # Generate a crontab for running drush cron on this site
 @task
 @roles('app_primary')
@@ -352,9 +369,7 @@ def drush_updatedb(repo, branch, build, buildtype, site, alias, drupal_version, 
 def drush_fra(repo, branch, build, buildtype, site, alias, drupal_version, sites_deployed=None):
   # Set drush variables
   drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
-  drush_command = "pm-list --pipe --type=module --status=enabled --no-core"
-  drush_output = DrupalUtils.drush_command(drush_command, site, drush_runtime_location, False, "yaml")
-  if run("echo \"%s\" | grep -q ^features$" % drush_output).return_code != 0:
+  if run("cd %s && drush -y --format=yaml -l %s pm-list --pipe --type=module --status=enabled --no-core | grep -q ^features:$" % (drush_runtime_location, site)).return_code != 0:
     print "===> Features module not installed, skipping feature revert"
   else:
     print "===> Reverting all features..."
