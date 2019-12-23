@@ -15,11 +15,16 @@ import Revert
 
 # Function to set up a site mapping for Drupal multisites, if applicable.
 @task
-def configure_site_mapping(repo, mapping, config):
+def configure_site_mapping(repo, mapping, config, method="deployment"):
+  wording = []
+  if method == "deployment":
+    wording = ["deploy", "deployment"]
+  else:
+    wording = ["sync", "sync"]
   sites = []
   # [Sites] is defined in config.ini
   if config.has_section("Sites"):
-    print "===> Found a Sites section. Determining which sites to deploy..."
+    print "===> Found a Sites section. Determining which sites to %s..." % wording[0]
     for option in config.options("Sites"):
       line = config.get("Sites", option)
       line = line.split(',')
@@ -28,7 +33,7 @@ def configure_site_mapping(repo, mapping, config):
         sites.append(sitename)
 
   if not sites:
-    print "There isn't a Sites section, so we assume this is standard deployment."
+    print "There isn't a Sites section, so we assume this is standard %s." % wording[1]
     buildsite = 'default'
     alias = repo
     mapping.update({alias:buildsite})

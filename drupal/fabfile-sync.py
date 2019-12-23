@@ -9,6 +9,7 @@ import ConfigParser
 import common.ConfigFile
 import common.Services
 import common.Utils
+import Drupal
 import DrupalUtils
 import Sync
 
@@ -21,7 +22,8 @@ global config
 config = common.ConfigFile.read_config_file('sync.ini', False)
 
 @task
-def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database='no', sanitise='yes', sanitised_password=None, sanitised_email=None, staging_shortname=None, remote_files_dir=None, staging_files_dir=None, sync_dir=None):
+def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database='no', sanitise='yes', sanitised_password=None, sanitised_email=None, staging_shortname=None, remote_files_dir=None, staging_files_dir=None, sync_dir=None, config_filename='config.ini'):
+
   # Set the variables we need.
   drupal_version = None
   app_dir = "www"
@@ -40,7 +42,7 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
       path_to_drupal = site_exists
       print "===> Path is %s" % path_to_drupal
 
-      path_to_config_file = path_to_drupal + '/config.ini'
+      path_to_config_file = path_to_drupal + '/' + config_filename
 
       drupal_config = common.ConfigFile.read_config_file(path_to_config_file, False, True, True)
 
@@ -60,23 +62,28 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
 
       stage_drupal_root = path_to_drupal + '/' + app_dir
 
-      # Database syncing
-      if synctype == 'db' or synctype == 'both':
-        Sync.backup_db(staging_shortname, staging_branch, stage_drupal_root)
-        Sync.sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config, drupal_version, stage_drupal_root, app_dir)
-        # Allow developer to run a script mid-way through a sync
-        common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'mid-db')
-        Sync.drush_updatedb(orig_host, staging_shortname, staging_branch, stage_drupal_root)
+      mapping = {}
+      mapping = Drupal.configure_site_mapping(shortname, mapping, drupal_config, method="sync")
 
-      # Files syncing (uploads)
-      if synctype == 'files' or synctype == 'both':
-        Sync.sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, app_dir, remote_files_dir, staging_files_dir, sync_dir)
-        # Allow developer to run a script mid-way through a sync
-        common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'mid-files')
+      for alias,site in mapping.iteritems():
+        # Database syncing
+        if synctype == 'db' or synctype == 'both':
+          Sync.backup_db(staging_shortname, staging_branch, stage_drupal_root, site)
+          Sync.sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config, drupal_version, stage_drupal_root, app_dir, site)
+          # Allow developer to run a script mid-way through a sync
+          common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'mid-db')
+          Sync.drush_updatedb(orig_host, staging_shortname, staging_branch, stage_drupal_root, site)
 
-      # Cleanup
-      Sync.clear_caches(orig_host, staging_shortname, staging_branch, drupal_version, stage_drupal_root)
-      env.host_string = orig_host
+        # Files syncing (uploads)
+        if synctype == 'files' or synctype == 'both':
+          Sync.sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, app_dir, remote_files_dir, staging_files_dir, sync_dir, site, alias)
+          # Allow developer to run a script mid-way through a sync
+          common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'mid-files')
+
+        # Cleanup
+        Sync.clear_caches(orig_host, staging_shortname, staging_branch, drupal_version, stage_drupal_root, site)
+        env.host_string = orig_host
+
       common.Services.clear_php_cache()
       common.Services.clear_varnish_cache()
       common.Services.reload_webserver()
