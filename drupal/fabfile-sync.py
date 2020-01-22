@@ -62,9 +62,29 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
     stage_drupal_root = path_to_drupal + '/' + app_dir
 
     mapping = {}
-    mapping = Drupal.configure_site_mapping(shortname, mapping, drupal_config, method="sync")
+    mapping = Drupal.configure_site_mapping(shortname, mapping, drupal_config, method="sync", branch=staging_branch)
 
     for alias,site in mapping.iteritems():
+      # Need to check invididual sites are setup on both stage and prod
+      # There could be a time where a site is setup on stage, but hasn't been
+      # setup on prod yet, so we can't sync that particular site
+
+      stage_site_exists = DrupalUtils.check_site_exists(site_exists, site)
+
+      env.host = config.get(shortname, 'host')
+      env.user = config.get(shortname, 'user')
+      env.host_string = '%s@%s' % (env.user, env.host)
+
+      prod_site_exists = DrupalUtils.check_site_exists('/var/www/live.%s.%s' % (shortname, prod_branch), site)
+
+      env.host_string = orig_host
+
+      if stage_site_exists and prod_site_exists:
+        print "Both the stage and prod sites exist. Continue with sync."
+      else:
+        SystemError("One of the sites does not exist. Fail the sync early.")
+
+
       # Database syncing
       if synctype == 'db' or synctype == 'both':
         Sync.backup_db(staging_shortname, staging_branch, stage_drupal_root, site)

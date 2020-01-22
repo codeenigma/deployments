@@ -15,7 +15,7 @@ import Revert
 
 # Function to set up a site mapping for Drupal multisites, if applicable.
 @task
-def configure_site_mapping(repo, mapping, config, method="deployment"):
+def configure_site_mapping(repo, mapping, config, method="deployment", branch=None):
   wording = []
   if method == "deployment":
     wording = ["deploy", "deployment"]
@@ -39,7 +39,20 @@ def configure_site_mapping(repo, mapping, config, method="deployment"):
     mapping.update({alias:buildsite})
   # @TODO: can this use sites.php?
   else:
-    dirs = os.walk('www/sites').next()[1]
+    if method == "deployment":
+      dirs = os.walk('www/sites').next()[1]
+    else:
+      if branch is None:
+        raise SystemExit("Cannot configure a sync mapping if the branch name hasn't been specified.")
+      dirs = []
+      dirs_remote = run("cd /var/www/live.%s.%s/www/sites && ls -d */" % (repo, branch))
+      print "dirs_remote: %s" % dirs_remote
+      dir_array = dirs_remote.split('/')
+      for directory in dir_array:
+        directory = directory.strip()
+        if directory:
+          dirs.append(directory)
+      print "dirs: %s" % dirs
     for buildsite in dirs:
       if buildsite in sites:
         if buildsite == 'default':
