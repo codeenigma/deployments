@@ -156,6 +156,7 @@ def initial_build(repo, url, branch, build, site, alias, profile, buildtype, san
     DrupalUtils.drush_command(drush_command, site, drush_runtime_location)
     # Append the necessary include and other settings
     append_string = """$config_directories['sync'] = '../config/sync';
+$settings['config_sync_directory'] = '../config/sync';
 $file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
 if (file_exists($file)) {
   include($file);

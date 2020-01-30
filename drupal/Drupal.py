@@ -628,7 +628,7 @@ def secure_admin_password(repo, branch, build, site, drupal_version):
   print "===> Setting secure username and password for uid 1"
   drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   u1pass = common.Utils._gen_passwd(20)
-  u1name = common.Utils._gen_passwd(20)
+  u1name = "codeenigma-%s-admin" % branch
   with cd('/var/www/%s_%s_%s/www/sites/%s' % (repo, branch, build, site)):
     with settings(warn_only=True):
       if drupal_version > 7:

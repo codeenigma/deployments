@@ -14,6 +14,12 @@ env.shell = '/bin/bash -c'
 
 @task
 def main(shortname, branch, command, backup=True):
+
+  if backup == "False":
+    backup = False
+  if backup == "True":
+    backup = True
+
   # Define server roles (if applicable)
   common.Utils.define_roles(None, False)
   # Run the command
