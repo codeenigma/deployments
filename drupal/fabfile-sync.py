@@ -57,7 +57,7 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
     drupal_version = int(DrupalUtils.determine_drupal_version(drupal_version, shortname, staging_branch, 0, drupal_config, 'sync'))
 
     # Allow developer to run a script prior to a sync
-    common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'pre')
+    common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'pre', config_filename)
 
     stage_drupal_root = path_to_drupal + '/' + app_dir
 
@@ -90,7 +90,7 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
         Sync.backup_db(staging_shortname, staging_branch, stage_drupal_root, site)
         Sync.sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config, drupal_version, stage_drupal_root, app_dir, site)
         # Allow developer to run a script mid-way through a sync
-        common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'mid-db')
+        common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'mid-db', config_filename)
         Sync.drush_updatedb(orig_host, staging_shortname, staging_branch, stage_drupal_root, site)
 
       # Files syncing (uploads)
@@ -107,6 +107,6 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
     common.Services.clear_varnish_cache()
     common.Services.reload_webserver()
     # Allow developer to run a script after a sync
-    common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'post')
+    common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'post', config_filename)
   else:
     raise SystemError("Could not find this shortname %s in the sync.ini so we cannot proceed." % staging_shortname)
