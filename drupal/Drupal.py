@@ -15,11 +15,16 @@ import Revert
 
 # Function to set up a site mapping for Drupal multisites, if applicable.
 @task
-def configure_site_mapping(repo, mapping, config):
+def configure_site_mapping(repo, mapping, config, method="deployment", branch=None):
+  wording = []
+  if method == "deployment":
+    wording = ["deploy", "deployment"]
+  else:
+    wording = ["sync", "sync"]
   sites = []
   # [Sites] is defined in config.ini
   if config.has_section("Sites"):
-    print "===> Found a Sites section. Determining which sites to deploy..."
+    print "===> Found a Sites section. Determining which sites to %s..." % wording[0]
     for option in config.options("Sites"):
       line = config.get("Sites", option)
       line = line.split(',')
@@ -28,13 +33,26 @@ def configure_site_mapping(repo, mapping, config):
         sites.append(sitename)
 
   if not sites:
-    print "There isn't a Sites section, so we assume this is standard deployment."
+    print "There isn't a Sites section, so we assume this is standard %s." % wording[1]
     buildsite = 'default'
     alias = repo
     mapping.update({alias:buildsite})
   # @TODO: can this use sites.php?
   else:
-    dirs = os.walk('www/sites').next()[1]
+    if method == "deployment":
+      dirs = os.walk('www/sites').next()[1]
+    else:
+      if branch is None:
+        raise SystemExit("Cannot configure a sync mapping if the branch name hasn't been specified.")
+      dirs = []
+      dirs_remote = run("cd /var/www/live.%s.%s/www/sites && ls -d */" % (repo, branch))
+      print "dirs_remote: %s" % dirs_remote
+      dir_array = dirs_remote.split('/')
+      for directory in dir_array:
+        directory = directory.strip()
+        if directory:
+          dirs.append(directory)
+      print "dirs: %s" % dirs
     for buildsite in dirs:
       if buildsite in sites:
         if buildsite == 'default':
