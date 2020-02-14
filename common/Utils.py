@@ -408,12 +408,12 @@ def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage
 
 
 @task
-def perform_client_sync_hook(path_to_application, buildtype, stage):
+def perform_client_sync_hook(path_to_application, buildtype, stage, config='config.ini'):
   print "===> Looking for custom developer hooks at the %s stage of this sync from %s" % (stage, buildtype)
 
   malicious_commands = ['env.host_string', 'env.host', 'rm -rf /', 'ssh']
 
-  application_config_path = path_to_application + '/config.ini'
+  application_config_path = path_to_application + '/%s' % config
   print "===> Trying to read config at %s" % application_config_path
   application_config = common.ConfigFile.read_config_file(application_config_path, False, True, True)
   print "===> This hook is %s-%s-sync"  % (buildtype, stage)
