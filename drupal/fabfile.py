@@ -139,7 +139,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   phpunit_group = common.ConfigFile.return_config_item(config, "Testing", "phpunit_group", "string", "unit")
   phpunit_test_directory = common.ConfigFile.return_config_item(config, "Testing", "phpunit_test_directory", "string", "%s/modules/custom" % application_directory)
   phpunit_path = common.ConfigFile.return_config_item(config, "Testing", "phpunit_path", "string", "vendor/phpunit/phpunit/phpunit")
-  phpunit_install = common.ConfigFile.return_config_item(config, "Testing", "phpunit_path", "boolean", True)
+  phpunit_install = common.ConfigFile.return_config_item(config, "Testing", "phpunit_install", "boolean", True)
   # CodeSniffer itself is in common/Tests, but standards used here are Drupal specific, see drupal/DrupalTests.py for the wrapper to apply them
   codesniffer = common.ConfigFile.return_config_item(config, "Testing", "codesniffer", "boolean")
   codesniffer_extensions = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_extensions", "string", "php,module,inc,install,test,profile,theme,info,txt,md")
