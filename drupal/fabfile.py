@@ -52,6 +52,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   aws_credentials = common.ConfigFile.return_config_item(config, "AWS", "aws_credentials", "string", "/home/jenkins/.aws/credentials")
   aws_autoscale_group = common.ConfigFile.return_config_item(config, "AWS", "aws_autoscale_group", "string", "prod-asg-prod")
   aws_package_all_builds = common.ConfigFile.return_config_item(config, "AWS", "aws_package_all_builds", "boolean", False)
+  aws_build_tar = common.ConfigFile.return_config_item(config, "AWS", "aws_build_tar", "boolean", True)
 
   # Now we need to figure out what server(s) we're working with
   # Define primary host
@@ -349,7 +350,15 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
   # If this is autoscale at AWS, let's update the tarball in S3
   if autoscale:
-    execute(common.Utils.tarball_up_to_s3, www_root, repo, branch, build, autoscale, aws_package_all_builds)
+    # In some cases, you may not want to tarball up the builds.
+    # For example, when all builds are tarballed up, you can't
+    # reliably have multiple builds running for dev and stage
+    # as it will cause an error when the contents of /var/www
+    # change.
+    if aws_build_tar:
+      execute(common.Utils.tarball_up_to_s3, www_root, repo, branch, build, autoscale, aws_package_all_builds)
+    else:
+      print "Don't create a tarball after this build. Assume the tarballing is happening separately, such as in an overnight job."
 
   #commit_new_db(repo, repourl, url, build, branch)
   execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, hosts=env.roledefs['app_all'])
