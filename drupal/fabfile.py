@@ -332,6 +332,9 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     for online_alias,online_site in sites_deployed.iteritems():
       execute(Drupal.go_online, repo, branch, build, buildtype, online_alias, online_site, previous_build, readonlymode, drupal_version, sites_deployed=sites_deployed) # This will revert the database and switch the symlink back if it fails
 
+  # Clear the opcache again after the site has been brought online
+  execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
+
   for test_alias,test_site in mapping.iteritems():
     behat_url = site_urls[test_alias]
 
