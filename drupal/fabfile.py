@@ -52,6 +52,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   aws_credentials = common.ConfigFile.return_config_item(config, "AWS", "aws_credentials", "string", "/home/jenkins/.aws/credentials")
   aws_autoscale_group = common.ConfigFile.return_config_item(config, "AWS", "aws_autoscale_group", "string", "prod-asg-prod")
   aws_package_all_builds = common.ConfigFile.return_config_item(config, "AWS", "aws_package_all_builds", "boolean", False)
+  aws_build_tar = common.ConfigFile.return_config_item(config, "AWS", "aws_build_tar", "boolean", True)
 
   # Now we need to figure out what server(s) we're working with
   # Define primary host
@@ -139,6 +140,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   phpunit_group = common.ConfigFile.return_config_item(config, "Testing", "phpunit_group", "string", "unit")
   phpunit_test_directory = common.ConfigFile.return_config_item(config, "Testing", "phpunit_test_directory", "string", "%s/modules/custom" % application_directory)
   phpunit_path = common.ConfigFile.return_config_item(config, "Testing", "phpunit_path", "string", "vendor/phpunit/phpunit/phpunit")
+  phpunit_install = common.ConfigFile.return_config_item(config, "Testing", "phpunit_install", "boolean", True)
   # CodeSniffer itself is in common/Tests, but standards used here are Drupal specific, see drupal/DrupalTests.py for the wrapper to apply them
   codesniffer = common.ConfigFile.return_config_item(config, "Testing", "codesniffer", "boolean")
   codesniffer_extensions = common.ConfigFile.return_config_item(config, "Testing", "codesniffer_extensions", "string", "php,module,inc,install,test,profile,theme,info,txt,md")
@@ -330,11 +332,14 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     for online_alias,online_site in sites_deployed.iteritems():
       execute(Drupal.go_online, repo, branch, build, buildtype, online_alias, online_site, previous_build, readonlymode, drupal_version, sites_deployed=sites_deployed) # This will revert the database and switch the symlink back if it fails
 
+  # Clear the opcache again after the site has been brought online
+  execute(common.Services.clear_php_cache, hosts=env.roledefs['app_all'])
+
   for test_alias,test_site in mapping.iteritems():
     behat_url = site_urls[test_alias]
 
     # After any build we want to run all the available automated tests
-    test_runner(www_root, repo, branch, build, test_alias, buildtype, behat_url, ssl_enabled, db_backup, config, behat_config, behat_config_file, import_config, import_config_method, cimy_mapping, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, test_site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, build_hook_version, sites_deployed)
+    test_runner(www_root, repo, branch, build, test_alias, buildtype, behat_url, ssl_enabled, db_backup, config, behat_config, behat_config_file, import_config, import_config_method, cimy_mapping, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, phpunit_install, test_site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, build_hook_version, sites_deployed)
 
     behat_url = None
 
@@ -348,7 +353,15 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
   # If this is autoscale at AWS, let's update the tarball in S3
   if autoscale:
-    execute(common.Utils.tarball_up_to_s3, www_root, repo, branch, build, autoscale, aws_package_all_builds)
+    # In some cases, you may not want to tarball up the builds.
+    # For example, when all builds are tarballed up, you can't
+    # reliably have multiple builds running for dev and stage
+    # as it will cause an error when the contents of /var/www
+    # change.
+    if aws_build_tar:
+      execute(common.Utils.tarball_up_to_s3, www_root, repo, branch, build, autoscale, aws_package_all_builds)
+    else:
+      print "Don't create a tarball after this build. Assume the tarballing is happening separately, such as in an overnight job."
 
   #commit_new_db(repo, repourl, url, build, branch)
   execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, hosts=env.roledefs['app_all'])
@@ -500,7 +513,7 @@ def existing_build_wrapper(url, www_root, application_directory, site_root, site
 
 # Wrapper function for runnning automated tests on a site
 @task
-def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, db_backup, config, behat_config, behat_config_file, import_config, import_config_method, cimy_mapping, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, build_hook_version, sites_deployed):
+def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, db_backup, config, behat_config, behat_config_file, import_config, import_config_method, cimy_mapping, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, phpunit_install, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, build_hook_version, sites_deployed):
   # Run simpletest tests
   execute(DrupalTests.run_tests, repo, branch, build, config, drupal_version, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, www_root)
 
@@ -515,7 +528,7 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
   if phpunit_run:
     # @TODO: We really need to figure out how to use execute() and fish returned variables from the response
     path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
-    phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path)
+    phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_install)
     if phpunit_fail_build and phpunit_tests_failed:
       for revert_alias,revert_site in sites_deployed.iteritems():
         if db_backup:
