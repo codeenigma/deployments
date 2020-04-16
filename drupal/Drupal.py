@@ -640,7 +640,7 @@ def go_online(repo, branch, build, buildtype, alias, site, previous_build, reado
 
   print "Clear the cache after bringing the %s site back online." % site
   with settings(warn_only=True):
-     drush_clear_cache(repo, branch, build, site, drupal_version)
+    drush_clear_cache(repo, branch, build, site, drupal_version)
 
 
 # Set the username and password of user 1 to something random if the buildtype is 'prod'
