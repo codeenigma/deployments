@@ -339,7 +339,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
     behat_url = site_urls[test_alias]
 
     # After any build we want to run all the available automated tests
-    test_runner(www_root, repo, branch, build, test_alias, buildtype, behat_url, ssl_enabled, db_backup, config, behat_config, behat_config_file, import_config, import_config_method, cimy_mapping, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, phpunit_install, test_site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, build_hook_version, sites_deployed)
+    test_runner(www_root, repo, branch, build, test_alias, buildtype, behat_url, ssl_enabled, db_backup, config, behat_config, behat_config_file, import_config, import_config_method, cimy_mapping, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, phpunit_install, test_site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, build_hook_version, sites_deployed, previous_build)
 
     behat_url = None
 
@@ -513,16 +513,9 @@ def existing_build_wrapper(url, www_root, application_directory, site_root, site
 
 # Wrapper function for runnning automated tests on a site
 @task
-def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, db_backup, config, behat_config, behat_config_file, import_config, import_config_method, cimy_mapping, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, phpunit_install, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, build_hook_version, sites_deployed):
+def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enabled, db_backup, config, behat_config, behat_config_file, import_config, import_config_method, cimy_mapping, drupal_version, phpunit_run, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_fail_build, phpunit_install, site, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, string_to_check, check_protocol, curl_options, notifications_email, build_hook_version, sites_deployed, previous_build):
   # Run simpletest tests
   execute(DrupalTests.run_tests, repo, branch, build, config, drupal_version, codesniffer, codesniffer_extensions, codesniffer_ignore, codesniffer_paths, www_root)
-
-  # Run behat tests
-  if behat_config:
-    if buildtype in behat_config['behat_buildtypes']:
-      behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config_file, behat_config['behat_junit'], import_config, import_config_method, cimy_mapping, drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
-  else:
-    print "===> No behat tests."
 
   # Run phpunit tests
   if phpunit_run:
@@ -530,19 +523,31 @@ def test_runner(www_root, repo, branch, build, alias, buildtype, url, ssl_enable
     path_to_app = "%s/%s_%s_%s" % (www_root, repo, branch, build)
     phpunit_tests_failed = common.Tests.run_phpunit_tests(path_to_app, phpunit_group, phpunit_test_directory, phpunit_path, phpunit_install)
     if phpunit_fail_build and phpunit_tests_failed:
-      for revert_alias,revert_site in sites_deployed.iteritems():
-        if db_backup:
-          execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
-        else:
-          print "####### Due to your config settings no database backup was taken so your database may be broken!"
-        execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
-      raise SystemExit("####### phpunit tests failed and you have specified you want to fail and roll back when this happens. Reverting database")
+      if previous_build is not None:
+        for revert_alias,revert_site in sites_deployed.iteritems():
+          if db_backup:
+            execute(Revert._revert_db, repo, branch, build, buildtype, revert_site)
+          else:
+            print "####### Due to your config settings no database backup was taken so your database may be broken!"
+          execute(Revert._revert_settings, repo, branch, build, buildtype, revert_site, revert_alias)
+        sudo("unlink /var/www/live.%s.%s" % (repo, branch))
+        sudo("ln -s %s /var/www/live.%s.%s" % (previous_build, repo, branch))
+        raise SystemExit("####### phpunit tests failed and you have specified you want to fail and roll back when this happens. Reverting database")
+      else:
+        raise SystemExit("####### phpunit tests failed and you specified you want to fail and roll back when this happens, but this was an initial build so there is nothing to roll back to.")
     elif phpunit_tests_failed:
       print "####### phpunit tests failed but the build is set to disregard... continuing, but you should review your test output"
     else:
       print "===> phpunit tests ran successfully."
   else:
     print "===> No phpunit tests."
+
+  # Run behat tests
+  if behat_config:
+    if buildtype in behat_config['behat_buildtypes']:
+      behat_tests_failed = DrupalTests.run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config_file, behat_config['behat_junit'], import_config, import_config_method, cimy_mapping, drupal_version, behat_config['behat_tags'], behat_config['behat_modules'])
+  else:
+    print "===> No behat tests."
 
   # Run a regex check
   if url and string_to_check:
