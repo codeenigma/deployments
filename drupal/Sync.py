@@ -74,7 +74,7 @@ def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_br
 
 # Sync databases from production to staging
 @task
-def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config, drupal_version, stage_drupal_root, app_dir, site='default'):
+def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config, drupal_version, stage_drupal_root, app_dir, site='default', db_import_method='drush'):
   now = time.strftime("%Y%m%d%H%M%S", time.gmtime())
   # Switch to operating to the production server as a target
   env.host = config.get(shortname, 'host')
@@ -196,7 +196,13 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
   # *in case* it contains sensitive data
   with settings(warn_only=True):
     with cd('%s' % stage_drupal_root):
-      run("bzcat ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | drush -l %s sql-cli " % (shortname, now, site))
+      if db_import_method == "mysql":
+        # Get the destination database name so we can use mysql to import the source database
+        dest_db_name = run("cd %s && drush -l %s status | egrep \"DB name|Database name\" | awk {'print $4'} | head -1" % (stage_drupal_root, site))
+        import_command = "mysql --defaults-file=/etc/mysql/debian.cnf %s" % dest_db_name
+      else:
+        import_command = "drush -l %s sql-cli" % site
+      sudo("bzcat ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | %s " % (shortname, now, import_command))
       # Set all users to the supplied e-mail address/password for stage testing
       if sanitise == 'yes':
         if sanitised_password is None:
