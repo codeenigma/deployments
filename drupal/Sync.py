@@ -202,7 +202,7 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
         import_command = "mysql --defaults-file=/etc/mysql/debian.cnf %s" % dest_db_name
       else:
         import_command = "drush -l %s sql-cli" % site
-      sudo("bzcat ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | %s " % (shortname, now, import_command))
+      sudo("bzcat /home/jenkins/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | %s " % (shortname, now, import_command))
       # Set all users to the supplied e-mail address/password for stage testing
       if sanitise == 'yes':
         if sanitised_password is None:
