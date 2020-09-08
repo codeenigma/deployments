@@ -12,7 +12,7 @@ def clear_varnish_cache():
     if run('pgrep -lf varnish | egrep -v "bash|grep" > /dev/null').return_code == 0:
       print "===> Purge Varnish cache without restarting"
       varnish_version = run("sudo varnishd -V 2>&1 | grep 'varnish-' | awk {'print $2'} | cut -d- -f2 | cut -d. -f1")
-      if varnish_version == "4":
+      if varnish_version == "4" or varnish_version == "6":
         sudo("varnishadm \"ban req.url ~ '.'\"")
       else:
         sudo("varnishadm \"ban.url .\"")
