@@ -45,6 +45,11 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   if do_updates == "True":
     do_updates = True
 
+  if import_config == "False":
+    import_config = False
+  if import_config == "True":
+    import_config = True 
+
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename, fullpath=config_fullpath)
 
