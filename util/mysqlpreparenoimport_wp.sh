@@ -58,7 +58,7 @@ while [  $COUNTER -lt 99 ]; do
     echo "Creating a database for $NEWDB"
     mysqladmin -u$myUser -p$myPass -h$myHost create $NEWDB || exit 1
     echo "Generating a user/pass for database $NEWDB"
-    mysql -u$myUser -p$myPass -h$myHost -e "GRANT ALL ON \`$NEWDB\`.* to '$NEWDB'@'localhost' IDENTIFIED BY '$PASS'" || exit 1
+    mysql -u$myUser -p$myPass -h$myHost -e "GRANT ALL ON \`$NEWDB\`.* to '$NEWDB'@'$myHost' IDENTIFIED BY '$PASS'" || exit 1
     break
   fi
 done
