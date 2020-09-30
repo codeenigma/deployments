@@ -63,6 +63,7 @@ def main(repo, repourl, branch, build, buildtype, symassets="nosym", keepbuilds=
   execute(common.Utils.clone_repo, repo, repourl, branch, build, None, ssh_key, hosts=env.roledefs['app_all'])
   
   # Let's allow developers to perform some pre-build actions if they need to
+  execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre-prim', hosts=env.roledefs['app_primary'])
   execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
 
   execute(common.Utils.adjust_live_symlink, repo, branch, build, hosts=env.roledefs['app_all'])
