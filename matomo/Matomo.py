@@ -30,6 +30,7 @@ def mysql_backup_db(db_name, build, fail_build=False, mysql_config='/etc/mysql/d
 def database_updates(repo, branch, build, www_root, application_directory, db_name):
   print "Applying database updates."
   with settings(warn_only=True):
+    sudo("su -s /bin/bash www-data -c '%s/live.%s.%s/%s/console cache:clear'" % (www_root, repo, branch, application_directory))
     with cd("%s/%s_%s_%s/%s" % (www_root, repo, branch, build, application_directory)):
       if sudo("su -s /bin/bash www-data -c './console core:update'").failed:
         execute(Revert._revert_db, repo, branch, build, db_name)
