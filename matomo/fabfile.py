@@ -95,7 +95,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, restartvarnish=
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid', build_hook_version="1", hosts=env.roledefs['app_all'])
     execute(common.Utils.perform_client_deploy_hook, repo, branch, build, buildtype, config, stage='mid-prim', build_hook_version="1", hosts=env.roledefs['app_primary'])
 
-    execute(Matomo.database_updates, repo, branch, build, www_root, application_directory)
+    execute(Matomo.database_updates, repo, branch, build, www_root, application_directory, db_name)
   
   # Adjust the live symlink now that all sites have been deployed. Bring them online after this has happened.
   if previous_build is not None:

@@ -30,10 +30,10 @@ def mysql_backup_db(db_name, build, fail_build=False, mysql_config='/etc/mysql/d
 def database_updates(repo, branch, build, www_root, application_directory, db_name):
   print "Applying database updates."
   with settings(warn_only=True):
-    with cd("%s/%s_%s_%s/%s" % (www_root, repo, branch, application_directory)):
-      if run("su -s /bin/bash www-data -c 'console core:update'").failed:
-        print "Could not run database updates. Reverting database and aborting."
+    with cd("%s/%s_%s_%s/%s" % (www_root, repo, branch, build, application_directory)):
+      if sudo("su -s /bin/bash www-data -c './console core:update'").failed:
         execute(Revert._revert_db, repo, branch, build, db_name)
+        raise SystemExit("###### Could not run database updates. Reverting database and aborting.")
 
 
 # Clear Matomo cache
@@ -42,8 +42,8 @@ def database_updates(repo, branch, build, www_root, application_directory, db_na
 def clear_cache(repo, branch, build, www_root, application_directory):
   print "Clearing cache."
   with settings(warn_only=True):
-    with cd("%s/%s_%s_%s/%s" % (www_root, repo, branch, application_directory)):
-      if run("su -s /bin/bash www-data -c 'console cache:clear'").failed:
+    with cd("%s/%s_%s_%s/%s" % (www_root, repo, branch, build, application_directory)):
+      if sudo("su -s /bin/bash www-data -c './console cache:clear'").failed:
         print "Could not clear the cache. Not failing the build though."
 
 
