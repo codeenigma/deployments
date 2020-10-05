@@ -28,7 +28,7 @@ def initial_build(repo, url, branch, build, buildtype, profile, webserver, webse
   # We can default these to None, mysql_new_database() will sort itself out
   list_of_app_servers = None
   db_host = None
-
+  print "cluster is: %s" % cluster
   # For clusters we need to do some extra things
   if cluster or autoscale:
     # This is the Database host that we need to insert into Drupal settings.php. It is different from the main db host because it might be a floating IP
