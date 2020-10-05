@@ -4,6 +4,7 @@ import random
 import string
 # Custom Code Enigma modules
 import common.Utils
+import common.MySQL
 # Needed to get variables set in modules back into the main script
 from common.Utils import *
 
