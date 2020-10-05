@@ -63,6 +63,10 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
   # Need to keep potentially passed in 'url' value as default
   url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
 
+  # Need to keep potentially passed in MySQL version and config path as defaults
+  mysql_config = common.ConfigFile.return_config_item(config, "Database", "mysql_config", "string", mysql_config)
+  mysql_version = common.ConfigFile.return_config_item(config, "Database", "mysql_version", "string", mysql_version)
+
   # Set a URL if one wasn't already provided
   if url is None:
     url = "%s-%s.codeenigma.net" % (repo, branch)
