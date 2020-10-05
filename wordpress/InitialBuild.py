@@ -48,9 +48,9 @@ def initial_build(repo, url, branch, build, profile, webserver, webserverport, c
   # Copy wp-config.php into place
   if run("stat /var/www/live.%s.%s/wp-config.php.%s" % (repo, branch, branch)).return_code == 0:
      sudo("cp /var/www/live.%s.%s/wp-config.php.%s /var/www/live.%s.%s/wp-config.php" % (repo, branch, branch, repo, branch)
-  else
+  else:
     print "No wp-config.php.%s file, continuing..." % branch
-  fi
+
 
   # wp-cli site install.
   sudo("wp --path=/var/www/live.%s.%s --allow-root core config --dbname=%s --dbuser=%s --dbpass=%s --dbhost=%s" % (repo, branch, new_database[0], new_database[1], new_database[2], new_database[3]))
