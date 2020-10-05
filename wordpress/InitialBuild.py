@@ -10,7 +10,7 @@ from common.Utils import *
 
 # Stuff to do when this is the initial build
 @task
-def initial_build(repo, url, branch, build, buildtype, profile, webserver, webserverport, config, db_name, db_username, db_password, mysql_version, cluster=False, autoscale=False, rds=False):
+def initial_build(repo, url, branch, build, buildtype, profile, webserver, webserverport, config, db_name, db_username, db_password, mysql_version, mysql_config, cluster=False, autoscale=False, rds=False):
   print "===> This looks like the first build! We have some things to do.."
 
   print "===> Setting the live document root symlink"
@@ -31,7 +31,7 @@ def initial_build(repo, url, branch, build, buildtype, profile, webserver, webse
   print "cluster is: %s" % cluster
   # For clusters we need to do some extra things
   if cluster or autoscale:
-    # This is the Database host that we need to insert into Drupal settings.php. It is different from the main db host because it might be a floating IP
+    # This is the Database host that we need to insert into wordpress config. It is different from the main db host because it might be a floating IP
     db_host = config.get('WPDBHost', 'dbhost')
     # Convert a list of apps back into a string, to pass to the MySQL new database function for setting appropriate GRANTs to the database
     list_of_app_servers = env.roledefs['app_all']
@@ -41,7 +41,7 @@ def initial_build(repo, url, branch, build, buildtype, profile, webserver, webse
 
   # Prepare the database
   # We'll get back db_name, db_username, db_password and db_host from this call as a list in new_database
-  new_database = common.MySQL.mysql_new_database(repo, buildtype, rds, db_name, db_host, db_username, mysql_version, db_password, list_of_app_servers)
+  new_database = common.MySQL.mysql_new_database(repo, buildtype, rds, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
 
   print "===> Waiting 10 seconds to let MySQL internals catch up"
   time.sleep(10)
