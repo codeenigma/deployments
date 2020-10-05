@@ -30,7 +30,7 @@ config = common.ConfigFile.read_config_file()
 # New 'main()' task which should replace the deployment.sh wrapper, and support repo -> host mapping
 #####
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserverport='8080', php_ini_file=None):
+def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserverport='8080', php_ini_file=None, cluster=False, autoscale=False, rds=False)):
   # We need to iterate through the options in the map and find the right host based on
   # whether the repo name matches any of the options, as they may not be exactly identical
   if config.has_section(buildtype):
@@ -86,7 +86,8 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
     try:
       common.Utils.clone_repo(repo, repourl, branch, build, None, ssh_key)
-      InitialBuild.initial_build(repo, url, branch, build, profile, webserverport)
+      InitialBuild.initial_build(repo, url, branch, build, profile, webserver, webserverport, config, db_name, db_username, db_password, cluster=False, autoscale=False, rds=False):
+
       # Unset CLI PHP version if we need to
       if php_ini_file:
         run("export PHPRC=''")
