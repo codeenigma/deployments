@@ -30,7 +30,7 @@ config = common.ConfigFile.read_config_file()
 # New 'main()' task which should replace the deployment.sh wrapper, and support repo -> host mapping
 #####
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserver='nginx', webserverport='8080', php_ini_file=None, cluster=False, autoscale=False, rds=False):
+def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserver='nginx', webserverport='8080', php_ini_file=None, cluster=False, autoscale=None, rds=False):
   # We need to iterate through the options in the map and find the right host based on
   # whether the repo name matches any of the options, as they may not be exactly identical
   if config.has_section(buildtype):
@@ -56,9 +56,12 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
   # Can be set in the config.ini [Build] section
   ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
   notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
+  php_ini_file = common.ConfigFile.return_config_item(config, "Build", "php_ini_file", "string", php_ini_file)
+  db_name = common.ConfigFile.return_config_item(config, "Database", "db_name")
+  db_username = common.ConfigFile.return_config_item(config, "Database", "db_username")
+  db_password = common.ConfigFile.return_config_item(config, "Database", "db_password")
   # Need to keep potentially passed in 'url' value as default
   url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
-  php_ini_file = common.ConfigFile.return_config_item(config, "Build", "php_ini_file", "string", php_ini_file)
 
   # Set a URL if one wasn't already provided
   if url is None:
