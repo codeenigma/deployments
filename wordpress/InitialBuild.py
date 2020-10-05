@@ -10,7 +10,7 @@ from common.Utils import *
 
 # Stuff to do when this is the initial build
 @task
-def initial_build(repo, url, branch, build, profile, webserver, webserverport, config, db_name, db_username, db_password, cluster=False, autoscale=False, rds=False):
+def initial_build(repo, url, branch, build, buildtype, profile, webserver, webserverport, config, db_name, db_username, db_password, cluster=False, autoscale=False, rds=False):
   print "===> This looks like the first build! We have some things to do.."
 
   print "===> Setting the live document root symlink"
@@ -41,7 +41,7 @@ def initial_build(repo, url, branch, build, profile, webserver, webserverport, c
 
   # Prepare the database
   # We'll get back db_name, db_username, db_password and db_host from this call as a list in new_database
-  new_database = common.MySQL.mysql_new_database(repo, buildtype, rds, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
+  new_database = common.MySQL.mysql_new_database(repo, buildtype, rds, db_name, db_host, db_username, db_password, list_of_app_servers)
 
   print "===> Waiting 10 seconds to let MySQL internals catch up"
   time.sleep(10)
