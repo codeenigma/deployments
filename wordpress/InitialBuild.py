@@ -54,7 +54,7 @@ def initial_build(repo, url, branch, build, profile, webserver, webserverport, c
 
   # wp-cli site install.
   sudo("wp --path=/var/www/live.%s.%s --allow-root core config --dbname=%s --dbuser=%s --dbpass=%s --dbhost=%s" % (repo, branch, new_database[0], new_database[1], new_database[2], new_database[3]))
-  sudo("wp --path=/var/www/live.%s.%s --allow-root core install --title=%s --admin_user=codeenigma --admin_email=sysadm@codeenigma.com --admin_password=%s" % (repo, branch, new_database[0], new_database[2])
+  sudo("wp --path=/var/www/live.%s.%s --allow-root core install --title=%s --admin_user=codeenigma --admin_email=sysadm@codeenigma.com --admin_password=%s" % (repo, branch, new_database[0], new_database[2]))
 
   print "===> Setting up an %s vhost" % webserver
   # Copy vhost to server(s)
