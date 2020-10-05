@@ -92,7 +92,7 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
     try:
       common.Utils.clone_repo(repo, repourl, branch, build, None, ssh_key)
-      InitialBuild.initial_build(repo, url, branch, build, buildtype, profile, webserver, webserverport, config, db_name, db_username, db_password, cluster, autoscale, rds)
+      InitialBuild.initial_build(repo, url, branch, build, buildtype, profile, webserver, webserverport, config, db_name, db_username, db_password, mysql_version, cluster, autoscale, rds)
 
       # Unset CLI PHP version if we need to
       if php_ini_file:
