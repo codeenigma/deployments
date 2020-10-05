@@ -30,7 +30,7 @@ config = common.ConfigFile.read_config_file()
 # New 'main()' task which should replace the deployment.sh wrapper, and support repo -> host mapping
 #####
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserverport='8080', php_ini_file=None, cluster=False, autoscale=False, rds=False):
+def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserver='nginx', webserverport='8080', php_ini_file=None, cluster=False, autoscale=False, rds=False):
   # We need to iterate through the options in the map and find the right host based on
   # whether the repo name matches any of the options, as they may not be exactly identical
   if config.has_section(buildtype):
