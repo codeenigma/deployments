@@ -81,20 +81,19 @@ def get_database(shortname, branch, sanitise, site="default"):
   # Let's dump the database into a bzip2 file
   print "===> Dumping database into bzip2 file..."
   if sanitise == "yes":
-    # @TODO: this will need Drupal 8 support!
     # We need to run a special mysqldump command to obfustcate the database
     with settings(hide('running', 'stdout', 'stderr')):
 
-      drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (shortname, branch, site)
-      dbname_output = drush_command("status -l %s Database\ name" % site, drush_site=None, drush_runtime_location=drush_runtime_location, drush_sudo=False, drush_format=None, drush_path=None, www_user=False)
-      dbuser_output = drush_command("status -l %s Database\ user" % site, drush_site=None, drush_runtime_location=drush_runtime_location, drush_sudo=False, drush_format=None, drush_path=None, www_user=False)
-      dbpass_output = drush_command("--show-passwords status -l %s Database\ pass" % site, drush_site=None, drush_runtime_location=drush_runtime_location, drush_sudo=False, drush_format=None, drush_path=None, www_user=False)
-      dbhost_output = drush_command("status -l %s Database\ host" % site, drush_site=None, drush_runtime_location=drush_runtime_location, drush_sudo=False, drush_format=None, drush_path=None, www_user=False)
+      with cd("/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)):
+        db_name_output = sudo("grep -v \"*\" settings.php | grep \"'database' => '%s*\" | cut -d \">\" -f 2" % repo)
+        db_user_output = sudo("grep -v \"*\" settings.php | grep \"'username' => \" | cut -d \">\" -f 2" )
+        db_pass_output = sudo("grep -v \"*\" settings.php | grep \"'password' => \" | cut -d \">\" -f 2" )
+        db_host_output = sudo("grep -v \"*\" settings.php | grep \"'host' => \" | cut -d \">\" -f 2" )
 
-      dbname = run("echo \"%s\" | awk {'print $4'} | head -1" % dbname_output)
-      dbuser = run("echo \"%s\" | awk {'print $4'} | head -1" % dbuser_output)
-      dbpass = run("echo \"%s\" | awk {'print $4'} | head -1" % dbpass_output)
-      dbhost = run("echo \"%s\" | awk {'print $4'} | head -1" % dbhost_output)
+      db_name = db_name_output.translate(None, "',")
+      db_user = db_user_output.translate(None, "',")
+      db_pass = db_pass_output.translate(None, "',")
+      db_host = db_host_output.translate(None, "',")
 
       run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /usr/local/bin/drupal-obfuscate.rb | bzip2 -f > ~jenkins/client-db-dumps/%s-%s_database_dump.sql.bz2' % (dbuser, dbpass, dbhost, dbname, shortname, branch))
 
