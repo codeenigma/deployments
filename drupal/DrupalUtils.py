@@ -95,7 +95,7 @@ def get_database(shortname, branch, sanitise, site="default"):
       db_pass = db_pass_output.translate(None, "',")
       db_host = db_host_output.translate(None, "',")
 
-      run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /usr/local/bin/drupal-obfuscate.rb | bzip2 -f > ~jenkins/client-db-dumps/%s-%s_database_dump.sql.bz2' % (dbuser, dbpass, dbhost, dbname, shortname, branch))
+      run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /usr/local/bin/drupal-obfuscate.rb | bzip2 -f > ~jenkins/client-db-dumps/%s-%s_database_dump.sql.bz2' % (db_user, db_pass, db_host, db_name, shortname, branch))
 
   else:
     run('cd /var/www/live.%s.%s/www/sites/%s && drush -l %s -y sql-dump | bzip2 -f > ~jenkins/client-db-dumps/%s-%s_database_dump.sql.bz2' % (shortname, branch, site, site, shortname, branch))
