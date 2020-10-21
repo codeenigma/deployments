@@ -84,7 +84,7 @@ def get_database(shortname, branch, sanitise, site="default"):
     # We need to run a special mysqldump command to obfustcate the database
     with settings(hide('running', 'stdout', 'stderr')):
 
-      with cd("/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)):
+      with cd("/var/www/live.%s.%s/www/sites/%s" % (shortname, branch, site)):
         db_name_output = sudo("grep -v \"*\" settings.php | grep \"'database' => '%s*\" | cut -d \">\" -f 2" % repo)
         db_user_output = sudo("grep -v \"*\" settings.php | grep \"'username' => \" | cut -d \">\" -f 2" )
         db_pass_output = sudo("grep -v \"*\" settings.php | grep \"'password' => \" | cut -d \">\" -f 2" )
