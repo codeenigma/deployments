@@ -17,7 +17,7 @@ def initial_build(repo, url, branch, build, profile, webserverport):
 
   print "===> Making the shared files dir and setting symlink"
   sudo("mkdir -p /var/www/shared/%s_%s_uploads" % (repo, branch))
-  sudo("chown www-data:staff /var/www/shared/%s_%s_uploads" % (repo, branch))
+  sudo("chown jenkins:www-data /var/www/shared/%s_%s_uploads" % (repo, branch))
   sudo("ln -s /var/www/shared/%s_%s_uploads /var/www/%s_%s_%s/www/wp-content/uploads" % (repo, branch, repo, branch, build))
 
   print "===> Preparing the database"
