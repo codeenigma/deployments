@@ -128,7 +128,7 @@ def check_site_exists(previous_build, site):
         return False
 
 @task
-def get_drush_major_version(drush_path=None):
+def determine_drush_major_version(drush_path=None):
   """
   Find the Drush version (major)
 
