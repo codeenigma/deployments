@@ -150,5 +150,5 @@ def get_drush_major_version(drush_path=None):
   drush_version = semver.search(drush_version_output)
 
   if drush_version:
-    return drush_version.group('major')
+    return int(drush_version.group('major'))
   raise SystemExit("Unable to determine the installed version of Drush")
