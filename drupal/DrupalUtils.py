@@ -128,9 +128,9 @@ def check_site_exists(previous_build, site):
         return False
 
 @task
-def get_drush_version(drush_path=None):
+def get_drush_major_version(drush_path=None):
   """
-  Find the Drush version
+  Find the Drush version (major)
 
   The output of drush --version can be any of the following:
   - Drush Commandline Tool 10.3.5
@@ -147,8 +147,8 @@ def get_drush_version(drush_path=None):
   """
   drush_version_output = run(drush_path + " --version") if drush_path else run("drush --version")
   semver = re.compile("(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?")
-  drush_major_version = semver.search(drush_version_output)
+  drush_version = semver.search(drush_version_output)
 
-  if drush_major_version:
-    return drush_major_version
+  if drush_version:
+    return drush_version.group('major')
   raise SystemExit("Unable to determine the installed version of Drush")
