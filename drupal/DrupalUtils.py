@@ -154,13 +154,13 @@ def determine_drush_major_version(drush_path=None):
   raise SystemExit("Unable to determine the installed version of Drush")
 
 @task
-def update_user_password(name, password):
+def get_drush_user_password_command(name, password):
   """
-  Update the password of the named user using Drush
+  Construct the drush user-password command
 
-  Prior to Drush 9.x, the upwd command expected --password, newer versions of
+  Prior to Drush 9.x, the upwd command expects --password, newer versions of
   Drush do not.
   """
   if determine_drush_major_version() >= 9:
-    return drush_command("upwd %s '%s'" % (name, password))
-  return drush_command("upwd %s --password='%s'" % (name, password))
+    return "upwd %s '%s'" % (name, password)
+  return "upwd %s --password='%s'" % (name, password)
