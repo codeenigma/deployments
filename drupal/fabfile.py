@@ -48,7 +48,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   if import_config == "False":
     import_config = False
   if import_config == "True":
-    import_config = True 
+    import_config = True
 
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename, fullpath=config_fullpath)
@@ -256,7 +256,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
       # Backup database
       if db_backup:
-        execute(common.MySQL.mysql_backup_db, offline_db_name, build, True)
+        previous_db = execute(common.MySQL.mysql_backup_db, offline_db_name, build, True)
 
     offline_site_exists = None
 
