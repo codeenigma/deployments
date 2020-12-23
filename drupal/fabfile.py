@@ -257,7 +257,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
       # Backup database
       if db_backup:
         previous_db = execute(common.MySQL.mysql_backup_db, offline_db_name, build, True)
-        previous_db = previous_db['env.roledefs['app_primary']']
+        previous_db = previous_db[env.roledefs['app_primary'][0]]
 
     offline_site_exists = None
 
