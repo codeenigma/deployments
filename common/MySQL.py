@@ -146,7 +146,8 @@ def mysql_backup_db(db_name, build, fail_build=False, mysql_config='/etc/mysql/d
       raise SystemExit("######### Could not create directory ~jenkins/dbbackups! Aborting early")
   print "===> Taking a database backup..."
   with settings(warn_only=True):
-    if sudo("mysqldump --defaults-file=%s %s | gzip > ~jenkins/dbbackups/%s_prior_to_%s.sql.gz; if [ ${PIPESTATUS[0]} -ne 0 ]; then exit 1; else exit 0; fi" % (mysql_config, db_name, db_name, build)).failed:
+    backup_name = "%s_prior_to_%s.sql.gz" % (db_name, build)
+    if sudo("mysqldump --defaults-file=%s %s | gzip > ~jenkins/dbbackups/%s; if [ ${PIPESTATUS[0]} -ne 0 ]; then exit 1; else exit 0; fi" % (mysql_config, db_name, backup_name)).failed:
       failed_backup = True
     else:
       failed_backup = False
@@ -155,6 +156,7 @@ def mysql_backup_db(db_name, build, fail_build=False, mysql_config='/etc/mysql/d
     raise SystemExit("######### Could not take database backup prior to launching new build! Aborting early")
   if failed_backup:
     print "######### Backup failed, but build set to continue regardless"
+  return backup_name
 
 
 # Revert a MySQL database to a previously taken backup

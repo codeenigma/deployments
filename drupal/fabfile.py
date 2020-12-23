@@ -48,7 +48,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   if import_config == "False":
     import_config = False
   if import_config == "True":
-    import_config = True 
+    import_config = True
 
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename, fullpath=config_fullpath)
@@ -256,7 +256,8 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
 
       # Backup database
       if db_backup:
-        execute(common.MySQL.mysql_backup_db, offline_db_name, build, True)
+        previous_db = execute(common.MySQL.mysql_backup_db, offline_db_name, build, True)
+        previous_db = previous_db[env.roledefs['app_primary'][0]]
 
     offline_site_exists = None
 
@@ -376,7 +377,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   if put(script_dir + '/../util/revert', '/home/jenkins', mode=0755).failed:
     print "####### BUILD COMPLETE. Could not copy the revert script to the application server, revert will need to be handled manually"
   else:
-    print "####### BUILD COMPLETE. If you need to revert this build, run the following command: sudo /home/jenkins/revert -b %s -d %s -s %s/live.%s.%s -a %s_%s" % (previous_build, previous_db, www_root, repo, branch, repo, branch)
+    print "####### BUILD COMPLETE. If you need to revert this build, run the following command: sudo /home/jenkins/revert -b %s -d /home/jenkins/dbbackups/%s -s %s/live.%s.%s -a %s_%s" % (previous_build, previous_db, www_root, repo, branch, repo, branch)
   # We have two scenarios where a build might be marked as unstable:
   # 1) If the composer.lock file is outdated (r45198)
   # 2) If any of our tests failed, abort the job (r23697)
