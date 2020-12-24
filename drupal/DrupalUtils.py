@@ -1,5 +1,6 @@
 from fabric.api import *
 import common.ConfigFile
+import re
 
 
 # Runs a drush command
@@ -125,3 +126,41 @@ def check_site_exists(previous_build, site):
       else:
         print "###### %s site does not exist." % site
         return False
+
+@task
+def determine_drush_major_version(drush_path=None):
+  """
+  Find the Drush version (major)
+
+  The output of drush --version can be any of the following:
+  - Drush Commandline Tool 10.3.5
+  - Drush Commandline Tool 9.7.2
+  - Drush Version   :  8.4.5
+  - Drush Version   :  7.4.0
+  and can include warnings...
+
+  I've used a modified version of the semver regex: I removed ^ from the
+  beginning and $ from the end so that wherever the version appears in the
+  string, it'll hopefully find it
+
+  @see https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+  """
+  drush_version_output = run(drush_path + " --version") if drush_path else run("drush --version")
+  semver = re.compile("(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?")
+  drush_version = semver.search(drush_version_output)
+
+  if drush_version:
+    return int(drush_version.group('major'))
+  raise SystemExit("Unable to determine the installed version of Drush")
+
+@task
+def get_drush_user_password_command(name, password):
+  """
+  Construct the drush user-password command
+
+  Prior to Drush 9.x, the upwd command expects --password, newer versions of
+  Drush do not.
+  """
+  if determine_drush_major_version() >= 9:
+    return "upwd %s '%s'" % (name, password)
+  return "upwd %s --password='%s'" % (name, password)
