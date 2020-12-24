@@ -660,7 +660,7 @@ def secure_admin_password(repo, branch, build, site, drupal_version):
         drush_command = 'sqlq "UPDATE users SET name = \'%s\' WHERE uid = 1"' % u1name
         DrupalUtils.drush_command(drush_command, site, drush_runtime_location)
       drush_clear_cache(repo, branch, build, site, drupal_version)
-      drush_command = "upwd %s --password='%s'" % (u1name, u1pass)
+      drush_command = DrupalUtils.get_drush_user_password_command(u1name, u1pass)
       DrupalUtils.drush_command(drush_command, site, drush_runtime_location)
 
 
