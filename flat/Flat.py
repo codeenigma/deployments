@@ -2,6 +2,7 @@ from fabric.api import *
 from fabric.contrib.files import *
 
 @task
+@roles('app_all')
 def symlink_assets(repo, branch, build):
   with settings(warn_only=True):
     items = ['css', 'js', 'images']

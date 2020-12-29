@@ -3,6 +3,7 @@ from fabric.contrib.files import *
 import os
 import common.Services
 import common.Utils
+import DrupalUtils
 
 @task
 # Small function to revert db
@@ -60,7 +61,7 @@ def configure_site_mapping(repo, mapping, config):
         else:
           alias = "%s_%s" % (repo, buildsite)
         mapping.update({alias:buildsite})
-  
+
   print "Final mapping is: %s" % mapping
   return mapping
 
@@ -366,7 +367,7 @@ def backup_db(repo, branch, build, mapping, sites):
     if buildsite not in sites:
       print "===> Taking a database backup..."
       with settings(warn_only=True):
-        if run("drush @%s_%s sql-dump --skip-tables-key=common | gzip > ~jenkins/dbbackups/%s_%s_prior_to_%s.sql.gz; if [ ${PIPESTATUS[0]} -ne 0 ]; then exit 1; else exit 0; fi" % (alias, branch, alias, branch, build)).failed:
+        if run("drush @%s_%s sql-dump --result-file=/dev/stdout --result-file=/dev/stdout --skip-tables-key=common | gzip > ~jenkins/dbbackups/%s_%s_prior_to_%s.sql.gz; if [ ${PIPESTATUS[0]} -ne 0 ]; then exit 1; else exit 0; fi" % (alias, branch, alias, branch, build)).failed:
           failed_backup = True
         else:
           failed_backup = False
@@ -409,7 +410,7 @@ def adjust_settings_php(repo, branch, build, buildtype, mapping, sites):
 
   for alias,buildsite in mapping.iteritems():
     if buildsite not in sites:
-      
+
       # In some cases it seems jenkins loses write permissions to the 'default' directory
       # Let's make sure!
       sudo("chmod -R 775 /var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, buildsite))
@@ -570,7 +571,7 @@ def drush_status(repo, branch, build, buildtype, mapping, sites, revert=False, r
                 _revert_db(alias, branch, build)
                 _revert_settings(repo, alias, branch, build, buildtype, buildsite)
             raise SystemExit("Could not bootstrap the database on this build! Aborting")
-       
+
           if run("drush status").failed:
             if revert == False and revert_settings == True:
               _revert_settings(repo, alias, branch, build, buildtype, buildsite)
@@ -716,4 +717,4 @@ def secure_admin_password(repo, branch, build, mapping, drupal_version):
           run('drush sqlq "UPDATE users_field_data SET name = \'%s\' WHERE uid = 1"' % u1name)
         else:
           run('drush sqlq "UPDATE users SET name = \'%s\' WHERE uid = 1"' % u1name)
-        run("drush upwd %s --password='%s'" % (u1name, u1pass))
+        DrupalUtils.drush_command(DrupalUtils.get_drush_user_password_command(u1name, u1pass))

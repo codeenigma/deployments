@@ -12,33 +12,43 @@ import common.Utils
 
 # Take a database backup of the staging site before we replace its database.
 @task
-def backup_db(shortname, staging_branch):
+def backup_db(shortname, staging_branch, stage_drupal_root, site='default'):
   now = time.strftime("%Y%m%d%H%M%S", time.gmtime())
   print "===> Ensuring backup directory exists"
   run("mkdir -p ~jenkins/dbbackups")
   print "===> Taking a database backup of the Drupal database..."
-  run("drush @%s_%s sql-dump | bzip2 -f > ~jenkins/dbbackups/%s_%s_prior_to_sync_%s.sql.bz2" % (shortname, staging_branch, shortname, staging_branch, now))
+  run("cd %s && drush -l %s sql-dump --result-file=/dev/stdout --result-file=/dev/stdout | bzip2 -f > ~jenkins/dbbackups/%s_%s_prior_to_sync_%s.sql.bz2" % (stage_drupal_root, site, shortname, staging_branch, now))
 
 
 # Sync uploaded assets from production to staging
 @task
-def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, remote_files_dir=None, staging_files_dir=None, sync_dir=None):
+def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_branch, config, app_dir, remote_files_dir=None, staging_files_dir=None, sync_dir=None, site='default', alias=None):
   # Switch the credentials with which to connect to production
   env.host = config.get(shortname, 'host')
   env.user = config.get(shortname, 'user')
   env.host_string = '%s@%s' % (env.user, env.host)
+
+  prod_site_exists = common.Utils.get_previous_build(shortname, prod_branch, 0)
+  if prod_site_exists is None:
+    raise SystemError("Couldn't find this site with Drush alias %s_%s in production in order to sync its files to staging! Aborting." % (shortname, prod_branch))
+
+  prod_drupal_root = prod_site_exists + '/' + app_dir
 
   if sync_dir is None:
     sync_dir = '/tmp'
  
   # Sync down the assets to the Jenkins machine, before sending them upstream to the staging server.
   print "===> Finding the remote files directories to rsync from..."
-  if run('drush @%s_%s dd files' % (shortname, prod_branch)).failed:
-    raise SystemError("Couldn't find this site with Drush alias %s_%s in production in order to sync its assets to staging! Aborting." % (shortname, prod_branch))
+  if run('cd %s && drush -l %s dd files' % (prod_drupal_root, site)).failed:
+    raise SystemError("Couldn't find this site %s with Drush alias %s_%s in production in order to sync its assets to staging! Aborting." % (site, shortname, prod_branch))
   else:
     if remote_files_dir is None:
-      remote_files_dir = run("drush @%s_%s dd files" % (shortname, prod_branch))
-    local("rsync -e 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' -aHPv %s@%s:%s/ %s/%s_drupal_files/" % (env.user, env.host, remote_files_dir, sync_dir, shortname))
+      remote_files_dir = run("cd %s && drush -l %s dd files" % (prod_drupal_root, site))
+    if site == 'default':
+      sync_dir_name = staging_shortname
+    else:
+      sync_dir_name = staging_shortname + '_' + site
+    local("rsync -e 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' -aHPv %s@%s:%s/ %s/%s_drupal_files/" % (env.user, env.host, remote_files_dir, sync_dir, sync_dir_name))
   
   # Switch the host to the staging server, it's time to send the assets upstream
   env.host_string = orig_host
@@ -47,14 +57,14 @@ def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_br
   # Temporarily force the perms to be owned by jenkins on staging, so that we can overwrite files
   # First check - is the files dir a symlink?
   if staging_files_dir is None:
-    staging_files_dir = "/var/www/shared/%s_%s_files" % (staging_shortname, staging_branch)
+    staging_files_dir = "/var/www/shared/%s_%s_files" % (sync_dir_name, staging_branch)
     with settings(warn_only=True):
-      if sudo("readlink /var/www/shared/%s_%s_files" % (staging_shortname, staging_branch)).return_code == 0:
-        staging_files_dir = sudo("readlink /var/www/shared/%s_%s_files" % (staging_shortname, staging_branch))
+      if sudo("readlink %s" % staging_files_dir).return_code == 0:
+        staging_files_dir = sudo("readlink %s" % staging_files_dir)
   
   sudo("chown -R jenkins %s" % staging_files_dir)
   # Rsync up the files
-  local("rsync -aHPv %s/%s_drupal_files/ %s:%s" % (sync_dir, shortname, env.host_string, staging_files_dir))
+  local("rsync -aHPv %s/%s_drupal_files/ %s:%s" % (sync_dir, sync_dir_name, env.host_string, staging_files_dir))
   # Fix up the perms
   sudo("chown -R www-data:jenkins %s" % staging_files_dir)
   sudo("chmod 2775 %s" % staging_files_dir)
@@ -64,7 +74,7 @@ def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_br
 
 # Sync databases from production to staging
 @task
-def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config):
+def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config, drupal_version, stage_drupal_root, app_dir, site='default', db_import_method='drush'):
   now = time.strftime("%Y%m%d%H%M%S", time.gmtime())
   # Switch to operating to the production server as a target
   env.host = config.get(shortname, 'host')
@@ -79,7 +89,8 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
   run("mkdir -p ~jenkins/dbbackups")
 
   # Abort early if we couldn't bootstrap the database in production
-  if run('drush sa | grep ^@%s_%s$ > /dev/null' % (shortname, prod_branch)).failed:
+  prod_site_exists = common.Utils.get_previous_build(shortname, prod_branch, 0)
+  if prod_site_exists is None:
     raise SystemError("Couldn't find this site with Drush alias %s_%s in production in order to sync its database to staging! Aborting." % (shortname, prod_branch))
 
   # Unless we have explicitly been told to fetch a fresh database (make a dump),
@@ -88,10 +99,11 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
   # the production system
 
   remote_database = False
+  prod_drupal_root = prod_site_exists + '/' + app_dir
   if fresh_database == 'no':
     print "===> Looking for an existing database backup..."
     # Enumerate the database name
-    dbname = run("drush @%s_%s status  Database\ name | awk {'print $4'} | head -1" % (shortname, prod_branch))
+    dbname = run("cd %s && drush -l %s status | egrep \"DB name|Database name\" | awk {'print $4'} | head -1" % (prod_drupal_root, site))
     # Look for a database backup
     with settings(warn_only=True):
       print "===> Checking for /opt/dbbackups directory..."
@@ -104,7 +116,7 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
       else:
         print "===> Could not find /opt/dbbackups. Before we assume there's not database backup, it could be the database backup is on a separate database server. Let's check..."
         print "===> Getting database host..."
-        dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (shortname, prod_branch))
+        dbhost = run("cd %s && drush -l %s status | egrep \"DB host|Database host\" | awk {'print $4'} | head -1" % (prod_drupal_root, site))
         if dbhost == 'localhost':
           fresh_database = 'yes'
         else:
@@ -137,18 +149,23 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
     # Ensure we sanitise it first if necessary - which requires a custom mysqldump command
     if sanitise == 'yes':
       script_dir = os.path.dirname(os.path.realpath(__file__))
-      if put(script_dir + '/../util/drupal-obfuscate.rb', '/home/jenkins', mode=0755).failed:
+      if drupal_version == 8:
+        obfuscate_script = "drupal8-obfuscate.rb"
+      else:
+        obfuscate_script = "drupal-obfuscate.rb"
+      if put(script_dir + '/../util/%s' % obfuscate_script, '/home/jenkins', mode=0755).failed:
         raise SystemExit("Could not copy the obfuscate script to the application server, aborting as we cannot safely sanitise the live data")
       else:
-        print "===> Obfuscate script copied to %s:/home/jenkins/drupal-obfuscate.rb - obfuscating data" % env.host
+        print "===> Obfuscate script copied to %s:/home/jenkins/%s - obfuscating data" % (env.host, obfuscate_script)
         with settings(hide('running', 'stdout', 'stderr')):
-          dbname = run("drush @%s_%s status  Database\ name | awk {'print $4'} | head -1" % (shortname, prod_branch))
-          dbuser = run("drush @%s_%s status  Database\ user | awk {'print $4'} | head -1" % (shortname, prod_branch))
-          dbpass = run("drush @%s_%s --show-passwords status  Database\ pass | awk {'print $4'} | head -1" % (shortname, prod_branch))
-          dbhost = run("drush @%s_%s status  Database\ host | awk {'print $4'} | head -1" % (shortname, prod_branch))
-          run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, shortname, now))
+          with cd('%s' % prod_drupal_root):
+            dbname = run("drush -l %s status | egrep \"DB name|Database name\" | awk {'print $4'} | head -1" % site)
+            dbuser = run("drush -l %s status | egrep \"DB user|Database user\" | awk {'print $4'} | head -1" % site)
+            dbpass = run("drush --show-passwords -l %s status | egrep \"DB pass|Database pass\" | awk {'print $4'} | head -1" % site)
+            dbhost = run("drush -l %s status | egrep \"DB host|Database host\" | awk {'print $4'} | head -1" % site)
+          run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/%s | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, obfuscate_script, shortname, now))
     else:
-      run('drush @%s_%s sql-dump | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (shortname, prod_branch, shortname, now))
+      run('cd %s && drush -l %s sql-dump --result-file=/dev/stdout --result-file=/dev/stdout | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (prod_drupal_root, site, shortname, now))
     print "===> Fetching the drupal database backup from production..."
 
   # Fetch the database backup from prod
@@ -173,41 +190,49 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
 
   print "===> Importing the drupal database"
   # Need to drop all tables first in case there are existing tables that have to be ADDED from an upgrade
-  run("drush @%s_%s -y sql-drop" % (staging_shortname, staging_branch))
+  run("cd %s && drush -l %s -y sql-drop" % (stage_drupal_root, site))
   # Reimport from backup
   # Ignore errors because we will want to remove the database dump regardless of whether this succeeded,
   # *in case* it contains sensitive data
   with settings(warn_only=True):
-    run("bzcat ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | drush @%s_%s sql-cli " % (shortname, now, staging_shortname, staging_branch))
-    # Set all users to the supplied e-mail address/password for stage testing
-    if sanitise == 'yes':
-      if sanitised_password is None:
-        sanitised_password = common.Utils._gen_passwd()
-      if sanitised_email is None:
-        sanitised_email = 'example.com'
-      run("drush @%s_%s -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (staging_shortname, staging_branch, shortname, sanitised_email, sanitised_password))
-      print "===> Data sanitised, email domain set to %s, passwords set to %s" % (sanitised_email, sanitised_password)
+    with cd('%s' % stage_drupal_root):
+      if db_import_method == "mysql":
+        # Get the destination database name so we can use mysql to import the source database
+        dest_db_name = run("cd %s && drush -l %s status | egrep \"DB name|Database name\" | awk {'print $4'} | head -1" % (stage_drupal_root, site))
+        import_command = "mysql --defaults-file=/etc/mysql/debian.cnf %s" % dest_db_name
+      else:
+        import_command = "drush -l %s sql-cli" % site
+      sudo("bzcat /home/jenkins/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | %s " % (shortname, now, import_command))
+      # Set all users to the supplied e-mail address/password for stage testing
+      if sanitise == 'yes':
+        if sanitised_password is None:
+          sanitised_password = common.Utils._gen_passwd()
+        if sanitised_email is None:
+          sanitised_email = 'example.com'
+        run("drush -l %s -y sql-sanitize --sanitize-email=%s+%%uid@%s --sanitize-password=%s" % (site, shortname, sanitised_email, sanitised_password))
+        print "===> Data sanitised, email domain set to %s, passwords set to %s" % (sanitised_email, sanitised_password)
   run("rm ~/dbbackups/drupal_%s_%s_from_prod.sql.bz2" % (shortname, now))
 
 
 # Run drush updatedb to apply any database changes from hook_update's
 @task
-def drush_updatedb(orig_host, shortname, staging_branch):
+def drush_updatedb(orig_host, shortname, staging_branch, stage_drupal_root, site='default'):
   env.host_string = orig_host
   print env.host_string
-  print "===> Running any database hook updates"
-  run("drush -y @%s_%s updatedb" % (shortname, staging_branch))
+  print "===> Running any database hook updates on %s site" % site
+  run("cd %s && drush -l %s -y updatedb" % (stage_drupal_root, site))
 
 
 # Keep calm and clear the cache
 @task
-def clear_caches(orig_host, shortname, staging_branch, drupal_version):
+def clear_caches(orig_host, shortname, staging_branch, drupal_version, stage_drupal_root, site='default'):
   env.host_string = orig_host
   print "===> Clearing caches"
-  if drupal_version > 7:
-    run("drush @%s_%s -y cr" % (shortname, staging_branch))
-  else:
-    run("drush -y @%s_%s cc all" % (shortname, staging_branch))
+  with cd('%s' % stage_drupal_root):
+    if drupal_version > 7:
+      run("drush -l %s -y cr" % site)
+    else:
+      run("drush -l %s -y cc all" % site)
 
 
 # @TODO: we should refactor the common.Services restart functions so they

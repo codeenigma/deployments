@@ -44,6 +44,7 @@ def mysql_new_database(repo, buildtype, rds=False, db_name=None, db_host=None, d
     db_name_length = 32
   # Allow space for integer suffix if required
   db_name_length = db_name_length - 4
+  db_username_length = db_username_length - 4
   print "===> MySQL version is %s, setting database name length to %s and username length to %s." % (mysql_version, db_name_length, db_username_length)
 
   # Set database name to repo_buildtype if none provided
@@ -55,7 +56,9 @@ def mysql_new_database(repo, buildtype, rds=False, db_name=None, db_host=None, d
 
   # Now let's set up the database
   database_created = False
+  username_generated = False
   counter = 0
+  user_counter = 0
   original_db_name = db_name
   while not database_created:
     with settings(warn_only=True):
@@ -70,7 +73,17 @@ def mysql_new_database(repo, buildtype, rds=False, db_name=None, db_host=None, d
         # Truncate the database username if necessary
         db_username = (db_username[:db_username_length]) if len(db_username) > db_username_length else db_username
 
-        print "===> Database username will be %s." % db_username
+        orignal_username = db_username
+
+        while not username_generated:
+          if db_username == sudo("mysql --defaults-file=%s -Bse 'SELECT user FROM mysql.user' | egrep \"^%s$\"" % (mysql_config, db_username)):
+            print "===> The username %s already exists." % db_username
+            user_counter += 1
+            db_username = orignal_username + '_' + str(user_counter)
+          else:
+            print "===> Database username will be %s." % db_username
+            username_generated = True
+
         print "===> Creating database %s." % db_name
         sudo("mysql --defaults-file=%s -e 'CREATE DATABASE `%s`'" % (mysql_config, db_name))
         # Set MySQL grants for each app server
@@ -133,7 +146,8 @@ def mysql_backup_db(db_name, build, fail_build=False, mysql_config='/etc/mysql/d
       raise SystemExit("######### Could not create directory ~jenkins/dbbackups! Aborting early")
   print "===> Taking a database backup..."
   with settings(warn_only=True):
-    if sudo("mysqldump --defaults-file=%s %s | gzip > ~jenkins/dbbackups/%s_prior_to_%s.sql.gz; if [ ${PIPESTATUS[0]} -ne 0 ]; then exit 1; else exit 0; fi" % (mysql_config, db_name, db_name, build)).failed:
+    backup_name = "%s_prior_to_%s.sql.gz" % (db_name, build)
+    if sudo("mysqldump --defaults-file=%s %s | gzip > ~jenkins/dbbackups/%s; if [ ${PIPESTATUS[0]} -ne 0 ]; then exit 1; else exit 0; fi" % (mysql_config, db_name, backup_name)).failed:
       failed_backup = True
     else:
       failed_backup = False
@@ -142,6 +156,7 @@ def mysql_backup_db(db_name, build, fail_build=False, mysql_config='/etc/mysql/d
     raise SystemExit("######### Could not take database backup prior to launching new build! Aborting early")
   if failed_backup:
     print "######### Backup failed, but build set to continue regardless"
+  return backup_name
 
 
 # Revert a MySQL database to a previously taken backup
@@ -153,4 +168,4 @@ def mysql_revert_db(db_name, build, mysql_config='/etc/mysql/debian.cnf'):
   print "===> Waiting 5 seconds to let MySQL internals catch up"
   time.sleep(5)
   print "===> Restoring the database from backup"
-  sudo("if [ -f ~jenkins/dbbackups/%s_prior_to_%s.sql.gz ]; then zcat ~jenkins/dbbackups/%s_prior_to_%s.sql.gz | mysql --defaults-file=%s -D %s; fi" % (db_name, build, db_name, build, mysql_config, db_name))
+  sudo("if [ -f ~jenkins/dbbackups/%s_prior_to_%s.sql.gz ]; then zcat ~jenkins/dbbackups/%s_prior_to_%s.sql.gz | sed -e 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/' | sed -e 's/^SET @@SESSION.SQL_LOG_BIN/-- &/' | sed -e 's/^SET @@GLOBAL.GTID_PURGED=/-- &/' | mysql --defaults-file=%s -D %s; fi" % (db_name, build, db_name, build, mysql_config, db_name))

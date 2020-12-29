@@ -63,6 +63,8 @@ def generate_url(url, repo, branch):
   if url is None:
     url = "%s.%s.%s" % (repo, branch, env.host)
   url = url.replace('/', '-')
+  # Sometimes we receive a URL with an undercore in which needs removing
+  url = url.replace('_', '-')
   url_output = url.lower()
   return url_output
 
@@ -74,7 +76,8 @@ def get_previous_build(repo, branch, build):
     if run("readlink /var/www/live.%s.%s" % (repo, branch)).failed:
       return None
     else:
-      return run("readlink /var/www/live.%s.%s" % (repo, branch))
+      with cd("/var/www/live.%s.%s" % (repo, branch)):
+        return run("pwd -P")
 
 @task
 def get_previous_db(repo, branch, build):
@@ -297,6 +300,8 @@ def define_roles(config, cluster, autoscale=None, aws_credentials='/home/jenkins
         'memcache_all': [ env.host ],
     }
 
+  print "Final role definitions are: %s" % env.roledefs
+
 
 # Creating required application directories
 @task
@@ -346,11 +351,12 @@ def detect_malicious_strings(malicious_strings, input_string=None, check_locatio
 # Ultimately we can remove entirely and just use buildtype, once
 # Drupal scripts are repaired.
 @task
-def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage):
+def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage, build_hook_version="1", alias=None, site=None):
   cwd = os.getcwd()
   print "===> Looking for custom developer hooks at the %s stage for %s builds" % (stage, buildtype)
 
   malicious_commands = ['env.host_string', 'env.host', 'rm -rf /', 'ssh']
+  pre_stages = ['pre', 'pre-prim']
 
   if config.has_section("%s-%s-build" % (buildtype, stage)):
     print "===> Found %s-%s-build hooks, executing" % (buildtype, stage)
@@ -369,7 +375,7 @@ def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage
             print "===> Executing shell script %s" % option
 
             run("chmod +x /var/www/%s_%s_%s/build-hooks/%s" %(repo, build_path, build, option))
-            if stage != 'pre':
+            if stage not in pre_stages:
               with settings(warn_only=True):
                 if run("/var/www/%s_%s_%s/build-hooks/%s" %(repo, build_path, build, option)).failed:
                   print "Could not run build hook. Uh oh."
@@ -385,26 +391,31 @@ def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage
             print "===> Executing Fabric script %s" % option
             hook_file = '%s/build-hooks/%s' % (cwd, option)
 
-            if stage != 'pre':
+            if build_hook_version == "1":
+              fab_command = "fab -H %s -f %s main:repo=%s,branch=%s,build=%s" % (env.host, hook_file, repo, build_path, build)
+            else:
+              fab_command = "fab -H %s -f %s main:repo=%s,branch=%s,build=%s,alias=%s,site=%s" % (env.host, hook_file, repo, build_path, build, alias, site)
+
+            if stage not in pre_stages:
               with settings(warn_only=True):
-                if local("fab -H %s -f %s main:repo=%s,branch=%s,build=%s" % (env.host, hook_file, repo, build_path, build)).failed:
+                if local("%s" % fab_command).failed:
                   print "Could not run build hook. Uh oh."
                 else:
                   print "Finished running build hook."
             else:
-              if local("fab -H %s -f %s main:repo=%s,branch=%s,build=%s" % (env.host, hook_file, repo, build_path, build)).failed:
+              if local("%s" % fab_command).failed:
                 print "Could not run build hook. Uh oh."
               else:
                 print "Finished running build hook."
 
 
 @task
-def perform_client_sync_hook(path_to_application, buildtype, stage):
+def perform_client_sync_hook(path_to_application, buildtype, stage, config='config.ini'):
   print "===> Looking for custom developer hooks at the %s stage of this sync from %s" % (stage, buildtype)
 
   malicious_commands = ['env.host_string', 'env.host', 'rm -rf /', 'ssh']
 
-  application_config_path = path_to_application + '/config.ini'
+  application_config_path = path_to_application + '/%s' % config
   print "===> Trying to read config at %s" % application_config_path
   application_config = common.ConfigFile.read_config_file(application_config_path, False, True, True)
   print "===> This hook is %s-%s-sync"  % (buildtype, stage)
@@ -421,11 +432,11 @@ def perform_client_sync_hook(path_to_application, buildtype, stage):
           malicious_code = detect_malicious_strings(malicious_commands, False, this_hook)
           if malicious_code:
             break
-  
+
           if not malicious_code:
             if option[-2:] == 'sh':
               print "===> Executing shell script %s" % option
-  
+
               run("chmod +x %s/build-hooks/%s" %(path_to_application, option))
               if stage != 'pre':
                 with settings(warn_only=True):
@@ -574,11 +585,18 @@ def check_package(method):
 # Tarball up an application for future fresh EC2 instances entering an autoscale group
 @task
 @roles('app_primary')
-def tarball_up_to_s3(www_root, repo, buildtype, build, autoscale):
-  with cd("%s/%s_%s_%s" % (www_root, repo, buildtype, build)):
+def tarball_up_to_s3(www_root, repo, buildtype, build, autoscale, all_builds=False):
+  if all_builds:
+    tar_dir = www_root
+    tar_name = autoscale
+  else:
+    tar_dir = "%s/%s_%s_%s" % (www_root, repo, buildtype, build)
+    tar_name = repo
+  with cd(tar_dir):
     print("===> Tarballing up the build to S3 for future EC2 instances")
-    sudo("rm -f /tmp/%s.tar.gz" % repo)
-    run("tar -zcf /tmp/%s.tar.gz ." % repo)
+    run("mkdir -p /tmp/%s" % buildtype)
+    sudo("rm -f /tmp/%s/%s.tar.gz" % (buildtype, tar_name))
+    run("tar --exclude='./*/.git' --exclude='./shared' -zcf /tmp/%s/%s.tar.gz ." % (buildtype, tar_name))
     run('export AWS_PROFILE="%s"' % repo)
-    run("sudo /usr/local/bin/aws s3 cp /tmp/%s.tar.gz s3://current-%s-production" % (repo, autoscale))
-    sudo("rm -f /tmp/%s.tar.gz" % repo)
+    run("sudo /usr/local/bin/aws s3 cp /tmp/%s/%s.tar.gz s3://current-%s-production" % (buildtype, tar_name, autoscale))
+    sudo("rm -f /tmp/%s/%s.tar.gz" % (buildtype, tar_name))

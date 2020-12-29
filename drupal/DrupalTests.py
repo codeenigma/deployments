@@ -5,6 +5,7 @@ import os
 import common.Tests
 import common.PHP
 import DrupalUtils
+import DrupalConfig
 
 
 # Builds the variables needed to carry out Behat testing later
@@ -98,7 +99,7 @@ def run_tests(repo, branch, build, config, drupal_version, codesniffer=False, ex
 # Run behat tests, if present
 @task
 @roles('app_primary')
-def run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, junit, drupal_version, tags = [], disable_modules = []):
+def run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enabled, behat_config_file, junit, import_config, import_config_method, cimy_mapping, drupal_version, tags = [], disable_modules = []):
   cwd = os.getcwd()
   continue_tests = True
   tests_failed = False
@@ -124,8 +125,6 @@ def run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enable
               break
 
       with cd("/var/www/%s_%s_%s/tests/behat" % (repo, branch, build)):
-        common.PHP.composer_command("/var/www/%s_%s_%s/tests/behat" % (repo, branch, build))
-
         if run("stat behat.yml").failed:
           # No behat.yml file, so let's move our buildtype specific behat file into place, if it exists.
           if run("stat %s.behat.yml" % buildtype).failed:
@@ -176,7 +175,7 @@ def run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enable
           test_method = '-f progress -o std -f junit -o xml'
         else:
           test_method = '-f pretty -o std'
-        if run("bin/behat -v --tags=\"%s\" %s" % (test_tags, test_method)).failed:
+        if run("/var/www/%s_%s_%s/vendor/bin/behat --config=%s -v --tags=\"%s\" %s" % (repo, branch, build, behat_config_file, test_tags, test_method)).failed:
           print "Behat tests seem to have failed!"
           tests_failed = True
         else:
@@ -200,26 +199,30 @@ def run_behat_tests(repo, branch, build, alias, site, buildtype, url, ssl_enable
 
     # Re-enable modules
     if disable_modules:
-      reenable_modules(repo, alias, branch, build, site, buildtype, drupal_version, disable_modules)
+      reenable_modules(repo, alias, branch, build, site, buildtype, import_config, import_config_method, cimy_mapping, drupal_version, disable_modules)
 
     # Send test status back to main fabfile
     return tests_failed
 
 
 @task
-def reenable_modules(repo, alias, branch, build, site, buildtype, drupal_version, enable_modules = []):
+def reenable_modules(repo, alias, branch, build, site, buildtype, import_config, import_config_method, cimy_mapping, drupal_version, enable_modules = []):
   drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
   with settings(warn_only=True):
     if drupal_version > 7:
-      if DrupalUtils.drush_command("cim", site, drush_runtime_location).failed:
-        print "###### Cannot import config to enable modules. Manual investigation is required."
+      if import_config:
+        import_config_command = DrupalConfig.import_config_command(repo, branch, build, site, import_config_method, cimy_mapping)
+        if DrupalUtils.drush_command("%s" % import_config_command, site, drush_runtime_location, True, None, None, True).failed:
+          print "###### Cannot import config to enable modules. Manual investigation is required."
+        else:
+          print " ===> Modules re-enabled via config import."
       else:
-        print " ===> Modules re-enabled via config import."
-    else:
-      if enable_modules:
-        for module in enable_modules:
-          drush_command = "pm-enable %s" % module
-          if DrupalUtils.drush_command(drush_command, site, drush_runtime_location).failed:
-            print "###### Cannot enable %s. Manual investigation is required." % module
-          else:
-            print "===> %s re-enabled." % module
+        print "Enable modules using pm-enable instead."
+
+    if enable_modules and not import_config:
+      for module in enable_modules:
+        drush_command = "pm-enable %s" % module
+        if DrupalUtils.drush_command(drush_command, site, drush_runtime_location).failed:
+          print "###### Cannot enable %s. Manual investigation is required." % module
+        else:
+          print "===> %s re-enabled." % module

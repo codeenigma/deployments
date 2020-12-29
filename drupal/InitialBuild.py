@@ -3,8 +3,10 @@ from fabric.operations import put
 from fabric.contrib.files import *
 import random
 import string
+import time
 # Custom Code Enigma modules
 import DrupalUtils
+import DrupalConfig
 import common.Utils
 import common.MySQL
 
@@ -66,14 +68,16 @@ def initial_build_updatedb(repo, branch, build, site, drupal_version):
 # Function used by Drupal 8 builds to import site config
 @task
 @roles('app_primary')
-def initial_build_config_import(repo, branch, build, site, drupal_version):
+def initial_build_config_import(repo, branch, build, site, drupal_version, import_config_method, cimy_mapping):
   with settings(warn_only=True):
     # Check to see if this is a Drupal 8 build
     if drupal_version > 7:
+      import_config_command = DrupalConfig.import_config_command(repo, branch, build, site, import_config_method, cimy_mapping)
+
       # Set drush location
       drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
       print "===> Importing configuration for Drupal 8 site..."
-      if DrupalUtils.drush_command("cim", site, drush_runtime_location, True, None, None, True).failed:
+      if DrupalUtils.drush_command("%s" % import_config_command, site, drush_runtime_location, True, None, None, True).failed:
         raise SystemExit("###### Could not import configuration! Failing the initial build.")
       else:
         print "===> Configuration imported."
@@ -82,7 +86,7 @@ def initial_build_config_import(repo, branch, build, site, drupal_version):
 # Stuff to do when this is the initial build
 @task
 @roles('app_primary')
-def initial_build(repo, url, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster=False, rds=False):
+def initial_build(repo, url, branch, build, site, alias, profile, buildtype, sanitise, config, db_name, db_username, db_password, mysql_version, mysql_config, dump_file, sanitised_password, sanitised_email, cluster=False, autoscale=False, rds=False):
   print "===> This looks like the first build! We have some things to do.."
 
   print "===> Making the shared files dir and setting symlink"
@@ -111,7 +115,7 @@ def initial_build(repo, url, branch, build, site, alias, profile, buildtype, san
   db_host = None
 
   # For clusters we need to do some extra things
-  if cluster:
+  if cluster or autoscale:
     # This is the Database host that we need to insert into Drupal settings.php. It is different from the main db host because it might be a floating IP
     db_host = config.get('DrupalDBHost', 'dbhost')
     # Convert a list of apps back into a string, to pass to the MySQL new database function for setting appropriate GRANTs to the database
@@ -131,6 +135,9 @@ def initial_build(repo, url, branch, build, site, alias, profile, buildtype, san
   # We'll get back db_name, db_username, db_password and db_host from this call as a list in new_database
   new_database = common.MySQL.mysql_new_database(alias, buildtype, rds, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
 
+  print "===> Waiting 10 seconds to let MySQL internals catch up"
+  time.sleep(10)
+
   # Set the buildtype back to the original buildtype
   buildtype = preserve_buildtype
 
@@ -149,6 +156,7 @@ def initial_build(repo, url, branch, build, site, alias, profile, buildtype, san
     DrupalUtils.drush_command(drush_command, site, drush_runtime_location)
     # Append the necessary include and other settings
     append_string = """$config_directories['sync'] = '../config/sync';
+$settings['config_sync_directory'] = '../config/sync';
 $file = '/var/www/%s_%s_%s/www/sites/%s/%s.settings.php';
 if (file_exists($file)) {
   include($file);

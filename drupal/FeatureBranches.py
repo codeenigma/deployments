@@ -3,6 +3,7 @@ from fabric.contrib.files import sed
 import string
 # Custom Code Enigma modules
 import DrupalUtils
+import DrupalConfig
 import Drupal
 
 
@@ -16,14 +17,14 @@ drupal_common_config = None
 # Feature branches only, preparing database
 # Assumes single server, cannot work on a cluster
 @task
-def initial_db_and_config(repo, branch, build, site, import_config, drupal_version):
+def initial_db_and_config(repo, branch, build, site, import_config, import_config_method, cimy_mapping, drupal_version):
   with settings(warn_only=True):
     # Run database updates
-    drush_runtime_location = "/var/www/%s_%s_%s/www/sites/default" % (repo, branch, build)
+    drush_runtime_location = "/var/www/%s_%s_%s/www/sites/%s" % (repo, branch, build, site)
     if DrupalUtils.drush_command("updatedb", site, drush_runtime_location, True, None, None, True).failed:
       raise SystemExit("###### Could not run database updates! Everything else has been done, but failing the build to alert to the fact database updates could not be run.")
     else:
-      Drupal.drush_clear_cache(repo, branch, build, "default", drupal_version)
+      Drupal.drush_clear_cache(repo, branch, build, site, drupal_version)
 
     # Run entity updates
     if drupal_version > 7:
@@ -32,12 +33,14 @@ def initial_db_and_config(repo, branch, build, site, import_config, drupal_versi
 
     # Import config
     if drupal_version > 7 and import_config:
+      import_config_command = DrupalConfig.import_config_command(repo, branch, build, site, import_config_method, cimy_mapping)
+
       print "===> Importing configuration for Drupal 8 site..."
-      if DrupalUtils.drush_command("cim", site, drush_runtime_location, True, None, None, True).failed:
+      if DrupalUtils.drush_command("%s" % import_config_command, site, drush_runtime_location, True, None, None, True).failed:
         raise SystemExit("###### Could not import configuration! Failing build.")
       else:
         print "===> Configuration imported. Running a cache rebuild..."
-        Drupal.drush_clear_cache(repo, branch, build, "default", drupal_version)
+        Drupal.drush_clear_cache(repo, branch, build, site, drupal_version)
 
 
 # Sets all the variables for a feature branch InitialBuild
@@ -134,29 +137,65 @@ def configure_feature_branch(buildtype, config, branch, alias):
           print "We could not find a [featurebranch] section in the config.ini file, yet this *is* a feature branch build. That is perfectly fine, as options do not need to be set for a feature branch build, but they can be handy."
 
 
+# Used to configure the mapping of sites to teardown, in case of a multisite setup
+@task
+def configure_teardown_mapping(repo, branch, buildtype, config_filename, config_fullpath, mapping):
+  with settings(warn_only=True):
+
+    if config_fullpath:
+      config_filepath = config_filename
+    else:
+      buildtype_config_filename = buildtype + '.' + config_filename
+      if run("stat /var/www/live.%s.%s/%s" % (repo, branch, buildtype_config_filename)).succeeded:
+        config_filename = buildtype_config_filename
+      else:
+        if run("stat /var/www/live.%s.%s/%s" % (repo, branch, config_filename)).failed:
+          raise SystemExit("Could not find any kind of config.ini file on the server the site is been torn down from. Failing the teardown build.")
+
+      config_filepath = "/var/www/live.%s.%s/%s" % (repo, branch, config_filename)
+
+    if run("grep \"\[Sites\]\" %s" % config_filepath).return_code != 0:
+      print "###### Didn't find a [Sites] section in %s, so assume this is NOT a multisite build. In which case, we just need to teardown the default site."
+      mapping.update({repo:"default"})
+      return mapping
+    else:
+      list_of_sites = run("grep \"sites=\" %s | cut -d= -f2" % config_filepath)
+      for each_site in list_of_sites.split(','):
+        if each_site == 'default':
+          alias = repo
+        else:
+          alias = "%s_%s" % (repo, each_site)
+        mapping.update({alias:each_site})
+
+      print "Final mapping is: %s" % mapping
+      return mapping
+
+
 # Used for Drupal build teardowns.
 @task
-def remove_site(repo, branch, alias, mysql_config):
+def remove_site(repo, branch, alias, site, mysql_config, mysql_user_ip):
   # Drop DB...
   # 'build' and 'buildtype' can be none because only needed for revert which isn't relevant
-  drush_runtime_location = "/var/www/live.%s.%s/www" % (repo, branch)
-  drush_output = Drupal.drush_status(repo, branch, None, None, None, drush_runtime_location)
-  dbname = Drupal.get_db_name(repo, branch, None, None, "default", drush_output)
+  # This needs to be in a with settings(warn_only=True) to prevent the build from failing if the site is broken
+  with settings(warn_only=True):
+    drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, branch, site)
+    drush_output = run("cd %s && drush -l %s status --format=yaml" % (drush_runtime_location, site))
+    dbname = Drupal.get_db_name(repo, branch, None, None, site, drush_output)
+    dbuser = Drupal.get_db_user(repo, branch, site, drush_output)
 
   # If the dbname variable is still empty, fail the build early
   if not dbname:
     raise SystemExit("###### Could not determine the database name, so we cannot proceed with tearing down the site.")
 
-  print "===> Dropping database and user: %s" % dbname
+  # If the dbuser variable is still empty, fail the build early
+  if not dbuser:
+    raise SystemExit("###### Could not determine the database username, so we cannot proceed with tearing down the site.")
+
+  print "===> Dropping database %s and user %s" % (dbname, dbuser)
   sudo("mysql --defaults-file=%s -e 'DROP DATABASE IF EXISTS `%s`;'" % (mysql_config, dbname))
-  sudo("mysql --defaults-file=%s -e \"DROP USER \'%s\'@\'localhost\';\"" % (mysql_config, dbname))
+  sudo("mysql --defaults-file=%s -e \"DROP USER \'%s\'@\'%s\';\"" % (mysql_config, dbuser, mysql_user_ip))
 
   with settings(warn_only=True):
-    # Remove site directories
-    print "===> Unlinking live symlink and removing site directories..."
-    sudo("unlink /var/www/live.%s.%s" % (repo, branch))
-    sudo("rm -rf /var/www/%s_%s_*" % (repo, branch))
-
     # Remove files directories
     print "===> Removing files directories..."
     sudo("rm -rf /var/www/shared/%s_%s_*" % (alias, branch))

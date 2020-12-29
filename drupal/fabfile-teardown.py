@@ -17,9 +17,14 @@ env.shell = '/bin/bash -c'
 
 
 @task
-def main(repo, branch, buildtype, alias=None, url=None, restartvarnish="yes", restartwebserver="yes", mysql_config='/etc/mysql/debian.cnf'):
+def main(repo, branch, buildtype, alias=None, url=None, restartvarnish="yes", restartwebserver="yes", mysql_config='/etc/mysql/debian.cnf', config_filename="config.ini", config_fullpath=False, mysql_user_ip='localhost'):
   if alias is None:
     alias = repo
+
+  if config_fullpath == "False":
+    config_fullpath = False
+  if config_fullpath == "True":
+    config_fullpath = True
 
   global varnish_restart
   global nginx_restart
@@ -47,30 +52,34 @@ def main(repo, branch, buildtype, alias=None, url=None, restartvarnish="yes", re
 
   # Set our host_string based on user@host
   env.host_string = '%s@%s' % (user, env.host)
+  
+  does_exist = common.Utils.get_previous_build(repo, branch, None)
 
-  # Set a URL if one wasn't already provided
-  if url is None:
-    url = "%s.%s.%s" % (repo, branch, env.host)
+  if does_exist is None:
+    raise SystemError("The %s site does not exist on the server, so there is nothing to tear down. Aborting." % branch)
 
-  # Check that the site actually exists before proceeding
-  with settings(warn_only=True):
-    if run('drush sa | grep \'^@\?%s_%s$\' > /dev/null' % (alias, branch)).failed:
-      print "===> The %s site does not exist on the server, so there is nothing to tear down. Aborting." % branch
-      raise SystemError("The %s site does not exist on the server, so there is nothing to tear down. Aborting." % branch)
+  mapping = {}
+  mapping = FeatureBranches.configure_teardown_mapping(repo, branch, buildtype, config_filename, config_fullpath, mapping)
 
-  # Run the tasks.
-  # --------------
-  # If this is the first build, attempt to install the site for the first time.
-  try:
-    FeatureBranches.remove_site(repo, branch, alias, mysql_config)
-    common.BuildTeardown.remove_vhost(repo, branch, webserver, alias)
-    common.BuildTeardown.remove_http_auth(repo, branch, webserver, alias)
-    FeatureBranches.remove_drush_alias(alias, branch)
-    common.BuildTeardown.remove_cron(repo, branch, alias)
+  for alias,site in mapping.iteritems():
 
-  except:
-    e = sys.exc_info()[1]
-    raise SystemError(e)
+    print "===> Removing site %s" % site
+
+    # Run the tasks.
+    # --------------
+    # If this is the first build, attempt to install the site for the first time.
+    try:
+      FeatureBranches.remove_site(repo, branch, alias, site, mysql_config, mysql_user_ip)
+      common.BuildTeardown.remove_vhost(repo, branch, webserver, alias)
+      common.BuildTeardown.remove_http_auth(repo, branch, webserver, alias)
+      FeatureBranches.remove_drush_alias(alias, branch)
+      common.BuildTeardown.remove_cron(repo, branch, alias)
+
+    except:
+      e = sys.exc_info()[1]
+      raise SystemError(e)
+
+  common.BuildTeardown.remove_repo_code(repo, branch)
 
   with settings(hide('warnings', 'stderr'), warn_only=True):
     services = ['apache2', 'httpd', 'nginx', 'varnish']
