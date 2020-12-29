@@ -63,6 +63,8 @@ def generate_url(url, repo, branch):
   if url is None:
     url = "%s.%s.%s" % (repo, branch, env.host)
   url = url.replace('/', '-')
+  # Sometimes we receive a URL with an undercore in which needs removing
+  url = url.replace('_', '-')
   url_output = url.lower()
   return url_output
 
