@@ -10,7 +10,7 @@ from common.Utils import *
 
 # Stuff to do when this is the initial build
 @task
-def initial_build(repo, url, branch, build, buildtype, profile, webserver, webserverport, config, db_name, db_username, db_password, mysql_version, mysql_config, cluster=False, autoscale=False, rds=False, install_type):
+def initial_build(repo, url, branch, build, buildtype, profile, webserver, webserverport, config, db_name, db_username, db_password, mysql_version, mysql_config, install_type, cluster=False, autoscale=False, rds=False):
   print "===> This looks like the first build! We have some things to do.."
 
   print "===> Setting the live document root symlink"
