@@ -10,7 +10,7 @@ from common.Utils import *
 
 # Stuff to do when this is the initial build
 @task
-def initial_build(repo, url, branch, build, buildtype, profile, webserver, webserverport, config, db_name, db_username, db_password, mysql_version, mysql_config, cluster=False, autoscale=False, rds=False):
+def initial_build(repo, url, branch, build, buildtype, profile, webserver, webserverport, config, db_name, db_username, db_password, mysql_version, mysql_config, cluster=False, autoscale=False, rds=False, install_type):
   print "===> This looks like the first build! We have some things to do.."
 
   print "===> Setting the live document root symlink"
@@ -55,8 +55,12 @@ def initial_build(repo, url, branch, build, buildtype, profile, webserver, webse
 
 
   # wp-cli site install.
-  sudo("wp --path=/var/www/live.%s.%s --allow-root core config --dbname=%s --dbuser=%s --dbpass=%s --dbhost=%s" % (repo, branch, new_database[0], new_database[1], new_database[2], new_database[3]))
-  sudo("wp --path=/var/www/live.%s.%s --allow-root core install --title=%s --admin_user=codeenigma --admin_email=sysadm@codeenigma.com --admin_password=%s" % (repo, branch, new_database[0], new_database[2]))
+  if install_type == "www":
+    install_path = "/var/www/live.%s.%s/www" % (repo, branch)
+  else:
+    install_path = "/var/www/live.%s.%s" % (repo, branch)
+  sudo("wp --path=%s --allow-root core config --dbname=%s --dbuser=%s --dbpass=%s --dbhost=%s" % (install_path, new_database[0], new_database[1], new_database[2], new_database[3]))
+  sudo("wp --path=%s --allow-root core install --title=%s --admin_user=codeenigma --admin_email=sysadm@codeenigma.com --admin_password=%s" % (install_path, new_database[0], new_database[2]))
 
   print "===> Setting up an %s vhost" % webserver
   # Copy vhost to server(s)
