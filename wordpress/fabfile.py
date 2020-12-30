@@ -30,7 +30,7 @@ config = common.ConfigFile.read_config_file()
 # New 'main()' task which should replace the deployment.sh wrapper, and support repo -> host mapping
 #####
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserver='nginx', webserverport='8080', php_ini_file=None, mysql_version=5.5, mysql_config='/etc/mysql/debian.cnf', cluster=False, autoscale=None, rds=False, install_type):
+def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserver='nginx', webserverport='8080', php_ini_file=None, mysql_version=5.5, mysql_config='/etc/mysql/debian.cnf', install_type='', cluster=False, autoscale=None, rds=False, install_type):
   # We need to iterate through the options in the map and find the right host based on
   # whether the repo name matches any of the options, as they may not be exactly identical
   if config.has_section(buildtype):
