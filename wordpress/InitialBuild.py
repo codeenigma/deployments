@@ -32,9 +32,10 @@ def initial_build(repo, url, branch, build, buildtype, profile, webserver, webse
   if cluster or autoscale:
     # This is the Database host that we need to insert into wordpress config. It is different from the main db host because it might be a floating IP
     db_host = config.get('WPDBHost', 'dbhost')
+    print "db is %s" % (db_host)
     # Convert a list of apps back into a string, to pass to the MySQL new database function for setting appropriate GRANTs to the database
     list_of_app_servers = env.roledefs['app_all']
-
+    print "app list is %s" % (list_of_app_servers)
   if cluster and config.has_section('AppIPs'):
     list_of_app_servers = env.roledefs['app_ip_all']
 

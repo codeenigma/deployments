@@ -42,6 +42,9 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
            env.host = entry.strip()
            print "===> Host is %s" % env.host
            break
+  aws_credentials = common.ConfigFile.return_config_item(config, "AWS", "aws_credentials", "string", "/home/jenkins/.aws/credentials")
+  aws_autoscale_group = common.ConfigFile.return_config_item(config, "AWS", "aws_autoscale_group", "string", "prod-asg-prod")
+  common.Utils.define_roles(config, cluster, autoscale, aws_credentials, aws_autoscale_group)
 
   # Didn't find any host in the map for this project.
   if env.host is None:
