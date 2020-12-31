@@ -29,7 +29,12 @@ env.shell = '/bin/bash -c'
 # New 'main()' task which should replace the deployment.sh wrapper, and support repo -> host mapping
 #####
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserver='nginx', webserverport='8080', php_ini_file=None, mysql_version=5.5, mysql_config='/etc/mysql/debian.cnf', install_type='', cluster=False, autoscale=None, rds=False):
+def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserver='nginx', webserverport='8080', php_ini_file=None, mysql_version=5.5, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', config_fullpath=False, install_type='', cluster=False, autoscale=None, rds=False):
+
+  if config_fullpath == "False":
+    config_fullpath = False
+  if config_fullpath == "True":
+    config_fullpath = True
 
   # Read the config.ini file from repo, if it exists
   config = common.ConfigFile.buildtype_config_file(buildtype, config_filename, fullpath=config_fullpath)
