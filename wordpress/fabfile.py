@@ -23,7 +23,7 @@ from WordPress import *
 env.shell = '/bin/bash -c'
 
 # Read the config.ini file from repo, if it exists
-config = common.ConfigFile.read_config_file()
+config = common.ConfigFile.buildtype_config_file(buildtype, config_filename, fullpath=config_fullpath)
 
 
 ######
