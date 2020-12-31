@@ -31,8 +31,8 @@ env.shell = '/bin/bash -c'
 @task
 def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserver='nginx', webserverport='8080', php_ini_file=None, mysql_version=5.5, mysql_config='/etc/mysql/debian.cnf', install_type='', cluster=False, autoscale=None, rds=False):
 
-# Read the config.ini file from repo, if it exists
-config = common.ConfigFile.buildtype_config_file(buildtype, config_filename, fullpath=config_fullpath)
+  # Read the config.ini file from repo, if it exists
+  config = common.ConfigFile.buildtype_config_file(buildtype, config_filename, fullpath=config_fullpath)
 
   # We need to iterate through the options in the map and find the right host based on
   # whether the repo name matches any of the options, as they may not be exactly identical
