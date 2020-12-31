@@ -60,7 +60,7 @@ def initial_build(repo, url, branch, build, buildtype, profile, webserver, webse
   else:
     install_path = "/var/www/live.%s.%s" % (repo, branch)
   sudo("wp --path=%s --allow-root core config --dbname=%s --dbuser=%s --dbpass=%s --dbhost=%s" % (install_path, new_database[0], new_database[1], new_database[2], new_database[3]))
-  sudo("wp --path=%s --allow-root core install --url %s --title=%s --admin_user=codeenigma --admin_email=sysadm@codeenigma.com --admin_password=%s" % (install_path, url, new_database[0], new_database[2]))
+  sudo("wp --path=%s --allow-root core install --url '%s' --title=%s --admin_user=codeenigma --admin_email=sysadm@codeenigma.com --admin_password=%s" % (install_path, url, new_database[0], new_database[2]))
 
   print "===> Setting up an %s vhost" % webserver
   # Copy vhost to server(s)
