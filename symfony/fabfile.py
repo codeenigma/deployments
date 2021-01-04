@@ -62,6 +62,7 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   composer = common.ConfigFile.return_config_item(config, "Composer", "composer", "boolean", True)
   composer_lock = common.ConfigFile.return_config_item(config, "Composer", "composer_lock", "boolean", True)
   no_dev = common.ConfigFile.return_config_item(config, "Composer", "no_dev", "boolean", with_no_dev)
+  optimize_autoloader = common.ConfigFile.return_config_item(config, "Composer", "optimize_autoloader", "boolean", no_dev)
 
   # Can be set in the config.ini [AWS] section
   aws_credentials = common.ConfigFile.return_config_item(config, "AWS", "aws_credentials", "string", "/home/jenkins/.aws/credentials")
@@ -137,7 +138,8 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
     if composer:
       # Generally we want to run with SYMFONY_ENV=prod because dev just enables developer tools
       # If someone wants to override this, we can pass "dev" as buildtype_override above
-      execute(common.PHP.composer_command, site_root, "install", None, no_dev, composer_lock, False, False, console_buildtype)
+      execute(common.PHP.composer_command, site_root, "install", None, no_dev, composer_lock, False, False, console_buildtype, optimize_autoloader)
+
   if migrations:
     execute(Symfony.run_migrations, repo, buildtype, build, console_buildtype)
 

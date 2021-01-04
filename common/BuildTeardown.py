@@ -8,6 +8,8 @@ import os
 def remove_vhost(repo, branch, webserver, alias):
   with settings(warn_only=True):
     print "===> Unlinking and removing %s vhost..." % webserver
+    # Because underscores get replaced in URL and it's used for vhost name, they need replacing here too
+    alias = alias.replace('_', '-')
     # We grep the config files for the correct symlink to be sure we delete the right one
     conf_file = sudo("find /etc/%s/sites-enabled/ -name '*%s*' -print0 | xargs -r -0 grep -H 'live.%s.%s/' | sort --version-sort | head -1 | awk '{print $1}' | cut -d '/' -f 5 | cut -d ':' -f 1" % (webserver, alias, repo, branch))
 
