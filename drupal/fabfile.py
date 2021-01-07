@@ -130,6 +130,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # This is the correct location for 'config_export' - note, respect the deprecated value as default
   config_export = common.ConfigFile.return_config_item(config, "Drupal", "config_export", "boolean", config_export)
   secure_user_one = common.ConfigFile.return_config_item(config, "Drupal", "secure_user_one", "boolean", True)
+  do_initial_status_check = common.ConfigFile.return_config_item(config, "Drupal", "do_initial_status_check", "boolean", True)
 
   # Can be set in the config.ini [Composer] section
   composer = common.ConfigFile.return_config_item(config, "Composer", "composer", "boolean", True)
@@ -302,7 +303,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
         # Otherwise it's an existing build
         # This does not bring sites online that have been taken offline but not yet deployed
         sites_deployed[alias] = site
-        existing_build_wrapper(url, www_root, application_directory, site_root, site_link, repo, branch, build, buildtype, previous_build, db_backup, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, secure_user_one, sites_deployed)
+        existing_build_wrapper(url, www_root, application_directory, site_root, site_link, repo, branch, build, buildtype, previous_build, db_backup, alias, site, no_dev, config, config_export, drupal_version, do_initial_status_check, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, secure_user_one, sites_deployed)
 
     # Now everything should be in a good state, let's enable environment indicator for this site, if present
     execute(Drupal.environment_indicator, www_root, repo, branch, build, buildtype, alias, site, drupal_version)
@@ -456,7 +457,7 @@ def initial_build_wrapper(url, www_root, application_directory, repo, branch, bu
 
 # Wrapper function for building an existing site
 @task
-def existing_build_wrapper(url, www_root, application_directory, site_root, site_link, repo, branch, build, buildtype, previous_build, db_backup, alias, site, no_dev, config, config_export, drupal_version, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, secure_user_one, sites_deployed):
+def existing_build_wrapper(url, www_root, application_directory, site_root, site_link, repo, branch, build, buildtype, previous_build, db_backup, alias, site, no_dev, config, config_export, drupal_version, do_initial_status_check, readonlymode, notifications_email, autoscale, do_updates, import_config, import_config_method, cimy_mapping, fra, run_cron, feature_branches, php_ini_file, build_hook_version, secure_user_one, sites_deployed):
   print "===> Looks like the site %s exists already. We'll try and launch a new build..." % url
   if buildtype == "custombranch":
     print "Site URL is http://%s" % url
@@ -472,7 +473,8 @@ def existing_build_wrapper(url, www_root, application_directory, site_root, site
     # Export the config if we need to (Drupal 8+)
     if config_export:
       execute(Drupal.config_export, repo, branch, build, drupal_version)
-    execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, db_backup, revert_settings=True, sites_deployed=sites_deployed)
+    if do_initial_status_check:
+      execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, db_backup, revert_settings=True, sites_deployed=sites_deployed)
 
     # Time to update the database!
     if do_updates == True:
