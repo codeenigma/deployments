@@ -130,7 +130,7 @@ def main(repo, repourl, build, branch, buildtype, keepbuilds=10, url=None, fresh
   # This is the correct location for 'config_export' - note, respect the deprecated value as default
   config_export = common.ConfigFile.return_config_item(config, "Drupal", "config_export", "boolean", config_export)
   secure_user_one = common.ConfigFile.return_config_item(config, "Drupal", "secure_user_one", "boolean", True)
-  do_initial_status_check = common.ConfigFile.return_config_item(config, "Drupal", "do_initial_status_check", "boolean", False)
+  do_initial_status_check = common.ConfigFile.return_config_item(config, "Drupal", "do_initial_status_check", "boolean", True)
 
   # Can be set in the config.ini [Composer] section
   composer = common.ConfigFile.return_config_item(config, "Composer", "composer", "boolean", True)
