@@ -473,7 +473,7 @@ def existing_build_wrapper(url, www_root, application_directory, site_root, site
     # Export the config if we need to (Drupal 8+)
     if config_export:
       execute(Drupal.config_export, repo, branch, build, drupal_version)
-    if do_initial_status_check == True:
+    if do_initial_status_check:
       execute(Drupal.drush_status, repo, branch, build, buildtype, site, None, alias, db_backup, revert_settings=True, sites_deployed=sites_deployed)
 
     # Time to update the database!
