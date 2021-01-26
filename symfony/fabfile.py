@@ -51,6 +51,9 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   if env_file == "False":
     env_file = False
 
+  # We need an initial build flag initialising for later in the script
+  initial_build = False
+
   # Can be set in the config.ini [Build] section
   ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
   notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
