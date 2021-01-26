@@ -104,7 +104,9 @@ def update_resources(repo, buildtype, build):
       if run("mkdir /var/www/%s_%s_%s/app/cache" % (repo, buildtype, build)).failed:
         raise SystemExit("########## Could not create cache directory")
 
-      fix_system_perms(repo, buildtype, build)
+      # We need to fix up permissions for composer to run as jenkins
+      fix_cache_perms(repo, buildtype, build)
+      fix_shared_perms(repo, buildtype, build)
 
 
 # Symfony3 or higher only
@@ -192,14 +194,15 @@ def clear_cache(repo, buildtype, build, console_buildtype):
         raise SystemExit("########## Could not clear cache. Abort, just to be safe.")
       else:
         print "===> %s cache cleared! Fixing up perms and ownership..." % console_buildtype
-        fix_system_perms(repo, buildtype, build)
+        fix_cache_perms(repo, buildtype, build)
+        fix_shared_perms(repo, buildtype, build)
 
 
 @task
 @roles('app_all')
-def fix_system_perms(repo, buildtype, build):
+def fix_cache_perms(repo, buildtype, build):
   # Needs to run on each app server because cache is local
-  print "===> Ensuring www-data:jenkins can write to cache and logs"
+  print "===> Ensuring www-data:jenkins can write to cache on all servers"
   with settings(warn_only=True):
     if sudo("chown -R www-data:jenkins /var/www/%s_%s_%s/app/cache" % (repo, buildtype, build)).failed:
       print "########## Could not set cache ownership."
@@ -207,26 +210,34 @@ def fix_system_perms(repo, buildtype, build):
     else:
       sudo("find /var/www/%s_%s_%s/app/cache -type d -print0 | xargs -r -0 chmod 775" % (repo, buildtype, build))
       sudo("find /var/www/%s_%s_%s/app/cache -type f -print0 | xargs -r -0 chmod 664" % (repo, buildtype, build))
+
+
+@task
+@roles('app_primary')
+def fix_shared_perms(repo, buildtype, build):
+  # These are shared on a NAS so can be run once on app_primary
+  print "===> Ensuring www-data:jenkins can write to sessions and logs"
+  with settings(warn_only=True):
     if sudo("chown -R www-data:jenkins /var/www/shared/%s_%s_logs" % (repo, buildtype)).failed:
       print "########## Could not set logs ownership."
       raise SystemExit("########## Could not set logs ownership.")
     else:
       sudo("find /var/www/shared/%s_%s_logs -type d -print0 | xargs -r -0 chmod 775" % (repo, buildtype))
       sudo("find /var/www/shared/%s_%s_logs -type f -print0 | xargs -r -0 chmod 664" % (repo, buildtype))
-
-
-@task
-@roles('app_primary')
-def fix_shared_perms(repo, buildtype, build):
-  # Files on a NAS, so only needs to run on app_primary
-  print "===> Ensuring www-data:jenkins can write to sessions and uploads on the NAS"
-  with settings(warn_only=True):
     if sudo("chown -R www-data:jenkins /var/www/shared/%s_%s_sessions" % (repo, buildtype)).failed:
       print "########## Could not set sessions ownership."
       raise SystemExit("########## Could not set session ownership.")
     else:
       sudo("find /var/www/shared/%s_%s_sessions -type d -print0 | xargs -r -0 chmod 770" % (repo, buildtype))
       sudo("find /var/www/shared/%s_%s_sessions -type f -print0 | xargs -r -0 chmod 660" % (repo, buildtype))
+
+
+@task
+@roles('app_primary')
+def fix_uploads_perms(repo, buildtype, build):
+  # Files on a NAS so only needs to run on app_primary
+  print "===> Ensuring www-data:jenkins can write to uploads on the NAS"
+  with settings(warn_only=True):
     if sudo("chown -R www-data:jenkins /var/www/shared/%s_%s_uploads" % (repo, buildtype)).failed:
       print "########## Could not set uploads ownership."
       raise SystemExit("########## Could not set uploads ownership.")
