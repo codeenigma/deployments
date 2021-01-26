@@ -109,7 +109,7 @@ def update_resources(repo, buildtype, build):
         raise SystemExit("Could not set cache permissions")
 
       print "===> Ensuring permissions are correct on cache, logs and session directories are correct..."
-      fix_perms_ownership(repo, buildtype, build)
+      fix_cache_perms(repo, buildtype, build)
 
 
 # Symfony3 or higher only
@@ -198,12 +198,13 @@ def clear_cache(repo, buildtype, build, console_buildtype):
         raise SystemExit("Could not clear cache. Abort, just to be safe.")
       else:
         print "%s cache cleared! Fixing up perms and ownership..." % console_buildtype
-        fix_perms_ownership(repo, buildtype, build)
+        fix_cache_perms(repo, buildtype, build)
 
 
 @task
 @roles('app_all')
-def fix_perms_ownership(repo, buildtype, build):
+def fix_cache_perms(repo, buildtype, build):
+  # Needs to run on each app server because cache is local
   with settings(warn_only=True):
     if sudo("chown -R www-data:jenkins /var/www/%s_%s_%s/app/cache" % (repo, buildtype, build)).failed:
       print "Could not set cache ownership."
@@ -211,6 +212,13 @@ def fix_perms_ownership(repo, buildtype, build):
     else:
       sudo("find /var/www/%s_%s_%s/app/cache -type d -print0 | xargs -r -0 chmod 775" % (repo, buildtype, build))
       sudo("find /var/www/%s_%s_%s/app/cache -type f -print0 | xargs -r -0 chmod 664" % (repo, buildtype, build))
+
+
+@task
+@roles('app_primary')
+def fix_shared_perms(repo, buildtype, build):
+  # Files on a NAS, so only needs to run on app_primary
+  with settings(warn_only=True):
     if sudo("chown -R www-data:jenkins /var/www/shared/%s_%s_logs" % (repo, buildtype)).failed:
       print "Could not set logs ownership."
       raise SystemExit("Could not set logs ownership.")
