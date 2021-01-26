@@ -124,7 +124,7 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   execute(Symfony.update_resources, repo, buildtype, build)
   # For initial builds only make sure the shared folders have correct perms
   if initial_build:
-    execute(Symfony.fix_shared_perms, repo, buildtype, build)
+    execute(Symfony.fix_uploads_perms, repo, buildtype, build)
   # Only Symfony3 or higher uses the 'var' directory for cache, sessions and logs
   if symfony_version != "2":
     execute(Symfony.symlink_resources, repo, buildtype, build)
