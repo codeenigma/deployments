@@ -163,6 +163,6 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
 
   # Let's allow developers to perform some post-build actions if they need to
-  execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='post', build_hook_version="1", alias=None, site=None previous_build=previous_build, hosts=env.roledefs['app_all'])
+  execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='post', build_hook_version="1", alias=None, site=None, previous_build=previous_build, hosts=env.roledefs['app_all'])
 
   execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, buildtype, hosts=env.roledefs['app_all'])
