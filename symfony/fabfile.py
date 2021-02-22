@@ -52,7 +52,7 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
     env_file = False
 
   # Record the link to the previous build
-  previous_build = common.Utils.get_previous_build(repo, branch, build)
+  previous_build = common.Utils.get_previous_build(repo, buildtype, build)
 
   # We need an initial build flag initialising for later in the script
   initial_build = False
