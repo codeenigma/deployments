@@ -394,9 +394,9 @@ def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage
             if build_hook_version == "1":
               fab_command = "fab -H %s -f %s main:repo=%s,branch=%s,build=%s" % (env.host, hook_file, repo, build_path, build)
             elif build_hook_version == "2":
-              fab_command = "fab -H %s -f %s main:repo=%s,branch=%s,build=%s,alias=%s,site=%s,previous_build=%s" % (env.host, hook_file, repo, build_path, build, alias, site, previous_build)
-            else:
               fab_command = "fab -H %s -f %s main:repo=%s,branch=%s,build=%s,alias=%s,site=%s" % (env.host, hook_file, repo, build_path, build, alias, site)
+            else:
+              fab_command = "fab -H %s -f %s main:repo=%s,branch=%s,build=%s,alias=%s,site=%s,previous_build=%s" % (env.host, hook_file, repo, build_path, build, alias, site, previous_build)
 
             if stage not in pre_stages:
               with settings(warn_only=True):
