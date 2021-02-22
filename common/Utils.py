@@ -351,7 +351,7 @@ def detect_malicious_strings(malicious_strings, input_string=None, check_locatio
 # Ultimately we can remove entirely and just use buildtype, once
 # Drupal scripts are repaired.
 @task
-def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage, build_hook_version="1", alias=None, site=None):
+def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage, build_hook_version="1", alias=None, site=None, previous_build=previous_build):
   cwd = os.getcwd()
   print "===> Looking for custom developer hooks at the %s stage for %s builds" % (stage, buildtype)
 

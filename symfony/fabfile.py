@@ -51,6 +51,9 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   if env_file == "False":
     env_file = False
 
+  # Record the link to the previous build
+  previous_build = common.Utils.get_previous_build(repo, branch, build)
+
   # Can be set in the config.ini [Build] section
   ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
   notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
@@ -160,6 +163,6 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
 
   # Let's allow developers to perform some post-build actions if they need to
-  execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
+  execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='post', build_hook_version="1", alias=None, site=None previous_build=previous_build, hosts=env.roledefs['app_all'])
 
   execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, buildtype, hosts=env.roledefs['app_all'])
