@@ -54,6 +54,9 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   # Record the link to the previous build
   previous_build = common.Utils.get_previous_build(repo, branch, build)
 
+  # We need an initial build flag initialising for later in the script
+  initial_build = False
+
   # Can be set in the config.ini [Build] section
   ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
   notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
@@ -111,6 +114,8 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
     if run("stat /var/www/config/%s_%s.parameters.yml" % (repo, console_buildtype)).failed:
       # Initial build
       execute(InitialBuild.initial_config, repo, buildtype, build)
+      # Set a flag for later
+      initial_build = True
       # Let's allow developers to perform some post-initial-build actions if they need to
       execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='post-initial', hosts=env.roledefs['app_all'])
     else:
@@ -120,6 +125,9 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   symfony_version = Symfony.determine_symfony_version(repo, buildtype, build)
   print "===> Checking symfony_version: %s" % symfony_version
   execute(Symfony.update_resources, repo, buildtype, build)
+  # For initial builds only make sure the shared folders have correct perms
+  if initial_build:
+    execute(Symfony.fix_uploads_perms, repo, buildtype, build)
   # Only Symfony3 or higher uses the 'var' directory for cache, sessions and logs
   if symfony_version != "2":
     execute(Symfony.symlink_resources, repo, buildtype, build)
