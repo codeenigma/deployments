@@ -60,6 +60,7 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   # Need to keep potentially passed in 'url' value as default
   url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
   php_ini_file = common.ConfigFile.return_config_item(config, "Build", "php_ini_file", "string", php_ini_file)
+  build_hook_version = common.ConfigFile.return_config_item(config, "Build", "build_hook_version", "string", "1")
 
   # Can be set in the config.ini [Composer] section
   composer = common.ConfigFile.return_config_item(config, "Composer", "composer", "boolean", True)
@@ -95,6 +96,9 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   else:
     console_buildtype = buildtype
 
+  # Record the link to the previous build
+  previous_build = common.Utils.get_previous_build(repo, buildtype, build)
+
   # Check the php_ini_file string isn't doing anything naughty
   malicious_code = False
   malicious_code = common.Utils.detect_malicious_strings([';', '&&'], php_ini_file)
@@ -105,7 +109,7 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   execute(common.Utils.clone_repo, repo, repourl, branch, build, buildtype, ssh_key, hosts=env.roledefs['app_all'])
 
   # Let's allow developers to perform some early actions if they need to
-  execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='pre', hosts=env.roledefs['app_all'])
+  execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='pre', build_hook_version=build_hook_version, hosts=env.roledefs['app_all'])
 
   with settings(warn_only=True):
     if run("stat /var/www/config/%s_%s.parameters.yml" % (repo, console_buildtype)).failed:
@@ -114,7 +118,7 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
       # Set a flag for later
       initial_build = True
       # Let's allow developers to perform some post-initial-build actions if they need to
-      execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='post-initial', hosts=env.roledefs['app_all'])
+      execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='post-initial', build_hook_version=build_hook_version, hosts=env.roledefs['app_all'])
     else:
       if keepbackup:
         execute(Symfony.backup_db, repo, console_buildtype, build)
@@ -139,7 +143,7 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
     execute(AdjustConfiguration.adjust_env_file, repo, buildtype, build)
 
   # Let's allow developers to perform some actions right after the app is built
-  execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='mid', hosts=env.roledefs['app_all'])
+  execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='mid', build_hook_version=build_hook_version, hosts=env.roledefs['app_all'])
 
   # Only run composer if there is no vendor directory
   with settings(warn_only=True):
@@ -168,6 +172,6 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   execute(common.Services.clear_varnish_cache, hosts=env.roledefs['app_all'])
 
   # Let's allow developers to perform some post-build actions if they need to
-  execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='post', hosts=env.roledefs['app_all'])
+  execute(common.Utils.perform_client_deploy_hook, repo, buildtype, build, buildtype, config, stage='post', build_hook_version=build_hook_version, alias=None, site=None, previous_build=previous_build, hosts=env.roledefs['app_all'])
 
   execute(common.Utils.remove_old_builds, repo, branch, keepbuilds, buildtype, hosts=env.roledefs['app_all'])

@@ -351,7 +351,7 @@ def detect_malicious_strings(malicious_strings, input_string=None, check_locatio
 # Ultimately we can remove entirely and just use buildtype, once
 # Drupal scripts are repaired.
 @task
-def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage, build_hook_version="1", alias=None, site=None):
+def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage, build_hook_version="1", alias=None, site=None, previous_build=None):
   cwd = os.getcwd()
   print "===> Looking for custom developer hooks at the %s stage for %s builds" % (stage, buildtype)
 
@@ -393,8 +393,10 @@ def perform_client_deploy_hook(repo, build_path, build, buildtype, config, stage
 
             if build_hook_version == "1":
               fab_command = "fab -H %s -f %s main:repo=%s,branch=%s,build=%s" % (env.host, hook_file, repo, build_path, build)
-            else:
+            elif build_hook_version == "2":
               fab_command = "fab -H %s -f %s main:repo=%s,branch=%s,build=%s,alias=%s,site=%s" % (env.host, hook_file, repo, build_path, build, alias, site)
+            else:
+              fab_command = "fab -H %s -f %s main:repo=%s,branch=%s,build=%s,alias=%s,site=%s,previous_build=%s" % (env.host, hook_file, repo, build_path, build, alias, site, previous_build)
 
             if stage not in pre_stages:
               with settings(warn_only=True):
