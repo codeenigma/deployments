@@ -51,9 +51,6 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
   if env_file == "False":
     env_file = False
 
-  # Record the link to the previous build
-  previous_build = common.Utils.get_previous_build(repo, buildtype, build)
-
   # We need an initial build flag initialising for later in the script
   initial_build = False
 
@@ -98,6 +95,9 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
     console_buildtype = buildtype_override
   else:
     console_buildtype = buildtype
+
+  # Record the link to the previous build
+  previous_build = common.Utils.get_previous_build(repo, buildtype, build)
 
   # Check the php_ini_file string isn't doing anything naughty
   malicious_code = False
