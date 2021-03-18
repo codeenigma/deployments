@@ -88,7 +88,7 @@ def main(shortname, staging_branch, prod_branch, synctype='both', fresh_database
       # Database syncing
       if synctype == 'db' or synctype == 'both':
         Sync.backup_db(staging_shortname, staging_branch, stage_drupal_root, site, extra)
-        Sync.sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config, drupal_version, stage_drupal_root, app_dir, site, db_import_method)
+        Sync.sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config, drupal_version, stage_drupal_root, app_dir, site, db_import_method, extra)
         # Allow developer to run a script mid-way through a sync
         common.Utils.perform_client_sync_hook(path_to_drupal, staging_branch, 'mid-db', config_filename)
         Sync.drush_updatedb(orig_host, staging_shortname, staging_branch, stage_drupal_root, site)
