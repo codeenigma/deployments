@@ -123,9 +123,9 @@ def mysql_import_dump(site_root, db_name, dump_file, db_host=None, rds=False, my
     if extension == 'sql':
       sudo("mysql --defaults-file=%s %s < %s" % (mysql_config, db_name, dump_file))
     elif extension == '.gz' or extension == 'zip':
-      sudo("zcat %s | mysql --defaults-file=%s %s" % (dump_file, mysql_config, db_name))
+      sudo("zcat %s | sed -e 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/' | sed -e 's/^SET @@SESSION.SQL_LOG_BIN/-- &/' | sed -e 's/^SET @@GLOBAL.GTID_PURGED=/-- &/' | mysql --defaults-file=%s %s" % (dump_file, mysql_config, db_name))
     elif extension == 'bz2':
-      sudo("bzcat %s | mysql --defaults-file=%s %s" % (dump_file, mysql_config, db_name))
+      sudo("bzcat %s | sed -e 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/' | sed -e 's/^SET @@SESSION.SQL_LOG_BIN/-- &/' | sed -e 's/^SET @@GLOBAL.GTID_PURGED=/-- &/' | mysql --defaults-file=%s %s" % (dump_file, mysql_config, db_name))
     else:
       SystemExit("###### Don't recognise the format of this database dump, assuming it's critical and aborting!")
   else:
