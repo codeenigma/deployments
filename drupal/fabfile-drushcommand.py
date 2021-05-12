@@ -24,7 +24,7 @@ def main(shortname, branch, command, backup=True):
   common.Utils.define_roles(None, False)
   # Run the command
   with settings(warn_only=True):
-    if run('drush sa | grep ^@%s_%s$ > /dev/null' % (shortname, branch)).failed:
+    if run("readlink /var/www/live.%s.%s" % (shortname, branch)).failed:
       raise SystemError("You can't run a command on a site that doesn't exist! Alias @%s_%s not recognised." % (shortname, branch))
 
   # Take a database backup first if told to.  
@@ -44,12 +44,12 @@ def main(shortname, branch, command, backup=True):
   command = command.replace("<", "")
   command = command.replace(">", "")
 
-  print "Command is drush @%s_%s %s" % (shortname, branch, command)
+  print "Command is drush %s against the %s site" % (command, branch)
 
   BLACKLISTED_CMDS = ['sql-drop', 'site-install', 'si', 'sudo', 'rm', 'shutdown', 'reboot', 'halt', 'chown', 'chmod', 'cp', 'mv', 'nohup', 'echo', 'cat', 'tee', 'php-eval', 'variable-set', 'vset']
   blacklisted = False
   blacklisted = common.Utils.detect_malicious_strings(BLACKLISTED_CMDS, command)
   if blacklisted:
-    raise SystemError("Surely you jest... I won't run drush @%s_%s %s. Ask a sysadmin instead." % (shortname, branch, command))
+    raise SystemError("Surely you jest... I won't run drush %s against the %s site. Ask a sysadmin instead." % (command, branch))
 
-  run("drush -y @%s_%s %s" % (shortname, branch, command) )
+  run("cd /var/www/live.%s.%s/www && drush -y %s" % (shortname, branch, command))
