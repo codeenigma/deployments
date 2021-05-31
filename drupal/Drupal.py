@@ -270,7 +270,7 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
           db_pass = db_pass_output.translate(None, "',")
           db_host = db_host_output.translate(None, "',")
 
-          run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, alias, now))
+          run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (db_user, db_pass, db_host, db_name, alias, now))
     else:
       run('cd /var/www/live.%s.%s/www/sites/%s && drush -l %s -y sql-dump | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (repo, syncbranch, site, site, alias, now))
 
