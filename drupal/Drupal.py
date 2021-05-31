@@ -258,16 +258,17 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
       else:
         print "===> Obfuscate script copied to %s:/home/jenkins/drupal-obfuscate.rb - obfuscating data" % env.host
         with settings(hide('running', 'stdout', 'stderr')):
-          drush_runtime_location = "/var/www/live.%s.%s/www/sites/%s" % (repo, syncbranch, site)
-          dbname_output = DrupalUtils.drush_command("status -l %s Database\ name" % site, drush_site=None, drush_runtime_location=drush_runtime_location, drush_sudo=False, drush_format=None, drush_path=None, www_user=False)
-          dbuser_output = DrupalUtils.drush_command("status -l %s Database\ user" % site, drush_site=None, drush_runtime_location=drush_runtime_location, drush_sudo=False, drush_format=None, drush_path=None, www_user=False)
-          dbpass_output = DrupalUtils.drush_command("--show-passwords status -l %s Database\ pass" % site, drush_site=None, drush_runtime_location=drush_runtime_location, drush_sudo=False, drush_format=None, drush_path=None, www_user=False)
-          dbhost_output = DrupalUtils.drush_command("status -l %s Database\ host" % site, drush_site=None, drush_runtime_location=drush_runtime_location, drush_sudo=False, drush_format=None, drush_path=None, www_user=False)
 
-          dbname = run("echo \"%s\" | awk {'print $4'} | head -1" % dbname_output)
-          dbuser = run("echo \"%s\" | awk {'print $4'} | head -1" % dbuser_output)
-          dbpass = run("echo \"%s\" | awk {'print $4'} | head -1" % dbpass_output)
-          dbhost = run("echo \"%s\" | awk {'print $4'} | head -1" % dbhost_output)
+          with cd("/var/www/live.%s.%s/www/sites/%s" % (alias, branch, site)):
+            db_name_output = sudo("grep -v \"*\" settings.php | grep \"'database' => '%s*\" | cut -d \">\" -f 2" % alias)
+            db_user_output = sudo("grep -v \"*\" settings.php | grep \"'username' => \" | cut -d \">\" -f 2" )
+            db_pass_output = sudo("grep -v \"*\" settings.php | grep \"'password' => \" | cut -d \">\" -f 2" )
+            db_host_output = sudo("grep -v \"*\" settings.php | grep \"'host' => \" | cut -d \">\" -f 2" )
+
+          db_name = db_name_output.translate(None, "',")
+          db_user = db_user_output.translate(None, "',")
+          db_pass = db_pass_output.translate(None, "',")
+          db_host = db_host_output.translate(None, "',")
 
           run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/drupal-obfuscate.rb | bzip2 -f > ~jenkins/dbbackups/custombranch_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, alias, now))
     else:
