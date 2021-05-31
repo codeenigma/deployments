@@ -259,7 +259,7 @@ def prepare_database(repo, branch, build, buildtype, alias, site, syncbranch, or
         print "===> Obfuscate script copied to %s:/home/jenkins/drupal-obfuscate.rb - obfuscating data" % env.host
         with settings(hide('running', 'stdout', 'stderr')):
 
-          with cd("/var/www/live.%s.%s/www/sites/%s" % (alias, branch, site)):
+          with cd("/var/www/live.%s.%s/www/sites/%s" % (alias, syncbranch, site)):
             db_name_output = sudo("grep -v \"*\" settings.php | grep \"'database' => '%s*\" | cut -d \">\" -f 2" % alias)
             db_user_output = sudo("grep -v \"*\" settings.php | grep \"'username' => \" | cut -d \">\" -f 2" )
             db_pass_output = sudo("grep -v \"*\" settings.php | grep \"'password' => \" | cut -d \">\" -f 2" )
