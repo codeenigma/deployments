@@ -155,7 +155,7 @@ def get_db_user(repo, branch, site, drush_output):
 # Generate a crontab for running drush cron on this site
 @task
 @roles('app_primary')
-def generate_drush_cron(alias, branch, autoscale=None):
+def generate_drush_cron(repo, alias, branch, site, autoscale=None):
   if exists("/etc/cron.d/%s_%s_cron" % (alias, branch)):
     print "===> Cron already exists, moving along"
   else:
@@ -163,7 +163,7 @@ def generate_drush_cron(alias, branch, autoscale=None):
       print "===> No cron job, creating one now"
       now = datetime.datetime.now()
       sudo("touch /etc/cron.d/%s_%s_cron" % (alias, branch))
-      append_string = """%s * * * *       www-data  /usr/local/bin/drush @%s_%s cron > /dev/null 2>&1""" % (now.minute, alias, branch)
+      append_string = """%s * * * *       www-data  cd /var/www/live.%s.%s/www && /usr/local/bin/drush -l %s cron > /dev/null 2>&1""" % (now.minute, repo, branch, site)
       append("/etc/cron.d/%s_%s_cron" % (alias, branch), append_string, use_sudo=True)
       print "===> New Drupal cron job created at /etc/cron.d/%s_%s_cron" % (alias, branch)
     else:
