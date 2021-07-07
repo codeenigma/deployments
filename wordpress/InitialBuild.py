@@ -4,12 +4,13 @@ import random
 import string
 # Custom Code Enigma modules
 import common.Utils
+import common.MySQL
 # Needed to get variables set in modules back into the main script
 from common.Utils import *
 
 # Stuff to do when this is the initial build
 @task
-def initial_build(repo, url, branch, build, profile, webserverport):
+def initial_build(repo, url, branch, build, buildtype, profile, webserver, webserverport, config, db_name, db_username, db_password, mysql_version, mysql_config, install_type, cluster=False, autoscale=False, rds=False):
   print "===> This looks like the first build! We have some things to do.."
 
   print "===> Setting the live document root symlink"
@@ -23,38 +24,46 @@ def initial_build(repo, url, branch, build, profile, webserverport):
   print "===> Preparing the database"
   # this process creates a database, database user/pass, imports the db dump from the repo
   # and generates the wp-config.php database file.
-  newpass = common.Utils._gen_passwd()
 
-  # Check if a db/ directory exists first.
-  db_dir = False
+  # We can default these to None, mysql_new_database() will sort itself out
+  list_of_app_servers = None
+  db_host = None
+  # For clusters we need to do some extra things
+  if cluster or autoscale:
+    # This is the Database host that we need to insert into wordpress config. It is different from the main db host because it might be a floating IP
+    db_host = config.get('WPDBHost', 'dbhost')
+    print "db is %s" % (db_host)
+    # Convert a list of apps back into a string, to pass to the MySQL new database function for setting appropriate GRANTs to the database
+    list_of_app_servers = env.roledefs['app_all']
+    print "app list is %s" % (list_of_app_servers)
+  if cluster and config.has_section('AppIPs'):
+    list_of_app_servers = env.roledefs['app_ip_all']
+
+  # Prepare the database
+  # We'll get back db_name, db_username, db_password and db_host from this call as a list in new_database
+  new_database = common.MySQL.mysql_new_database(repo, buildtype, rds, db_name, db_host, db_username, mysql_version, db_password, mysql_config, list_of_app_servers)
+
+  print "===> Waiting 10 seconds to let MySQL internals catch up"
+  time.sleep(10)
+
+  # Copy wp-config.php into place
   with settings(warn_only=True):
-    if run("find /var/www/%s_%s_%s -maxdepth 1 -type d -name db | egrep '.*'" % (repo, branch, build)).return_code == 0:
-      db_dir = True
-
-  if db_dir:
-    sudo("bunzip2 /var/www/%s_%s_%s/db/*.sql.bz2" % (repo, branch, build))
-    # Copying the database script to the server.
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    if put(script_dir + '/../util/mysqlprepare_wp.sh', '/home/jenkins', mode=0755).failed:
-      raise SystemExit("Could not copy the database script to the application server, aborting because we won't be able to make a database")
+    if run("stat /var/www/live.%s.%s/wp-config.php.%s" % (repo, branch, branch)).return_code == 0:
+      sudo("cp /var/www/live.%s.%s/wp-config.php.%s /var/www/live.%s.%s/wp-config.php" % (repo, branch, branch, repo, branch))
     else:
-      print "===> Database preparation script mysqlprepare_wp.sh copied to %s:/home/jenkins/mysqlprepare_wp.sh" % (env.host)
-    # Note, Wordpress version of script, mysqlprepare_wp.sh <databasename> <databasepass> <site_root> <branch> <dumpfile>
-    sudo("/home/jenkins/mysqlprepare_wp.sh %s %s /var/www/live.%s.%s %s $(find /var/www/%s_%s_%s/db -type f -name *.sql)" % (repo, newpass, repo, branch, branch, repo, branch, build))
+      print "No wp-config.php.%s file, continuing..." % branch
+
+
+  # wp-cli site install.
+  if install_type == "www":
+    install_path = "/var/www/live.%s.%s/www" % (repo, branch)
   else:
-    sitedir = "/var/www/%s_%s_%s/www" % (repo, branch, build)
-    # Copying the database script to the server.
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    if put(script_dir + '/../util/mysqlpreparenoimport_wp.sh', '/home/jenkins', mode=0755).failed:
-      raise SystemExit("Could not copy the database script to the application server, aborting because we won't be able to make a database")
-    else:
-      print "===> Database preparation script mysqlpreparenoimport_wp.sh copied to %s:/home/jenkins/mysqlpreparenoimport_wp.sh" % (env.host)
-    sudo("/home/jenkins/mysqlpreparenoimport_wp.sh %s %s %s %s %s %s" % (repo, newpass, sitedir, branch, profile, url))
-
-  webserver = "nginx"
+    install_path = "/var/www/live.%s.%s" % (repo, branch)
+  sudo("wp --path=%s --allow-root core config --dbname=%s --dbuser=%s --dbpass=%s --dbhost=%s" % (install_path, new_database[0], new_database[1], new_database[2], new_database[3]))
+  sudo("wp --path=%s --allow-root core install --url=%s --title=%s --admin_user=codeenigma --admin_email=sysadm@codeenigma.com --admin_password=%s" % (install_path, url, new_database[0], new_database[2]))
 
   print "===> Setting up an %s vhost" % webserver
-  # Copy Nginx vhost to server(s)
+  # Copy vhost to server(s)
   print "===> Placing new copies of dummy vhosts for %s before proceeding" % webserver
   script_dir = os.path.dirname(os.path.realpath(__file__))
   if put(script_dir + '/../util/vhosts/%s/wp-*' % webserver, '/etc/%s/sites-available' % webserver, mode=0755, use_sudo=True).failed:

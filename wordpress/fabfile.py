@@ -22,15 +22,23 @@ from WordPress import *
 # pesky 'stdin is not a tty' messages when using sudo
 env.shell = '/bin/bash -c'
 
-# Read the config.ini file from repo, if it exists
-config = common.ConfigFile.read_config_file()
+
 
 
 ######
 # New 'main()' task which should replace the deployment.sh wrapper, and support repo -> host mapping
 #####
 @task
-def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserverport='8080', php_ini_file=None):
+def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profile="minimal", webserver='nginx', webserverport='8080', php_ini_file=None, mysql_version=5.5, mysql_config='/etc/mysql/debian.cnf', config_filename='config.ini', config_fullpath=False, install_type='', cluster=False, autoscale=None, rds=False):
+
+  if config_fullpath == "False":
+    config_fullpath = False
+  if config_fullpath == "True":
+    config_fullpath = True
+
+  # Read the config.ini file from repo, if it exists
+  config = common.ConfigFile.buildtype_config_file(buildtype, config_filename, fullpath=config_fullpath)
+
   # We need to iterate through the options in the map and find the right host based on
   # whether the repo name matches any of the options, as they may not be exactly identical
   if config.has_section(buildtype):
@@ -42,6 +50,9 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
            env.host = entry.strip()
            print "===> Host is %s" % env.host
            break
+  aws_credentials = common.ConfigFile.return_config_item(config, "AWS", "aws_credentials", "string", "/home/jenkins/.aws/credentials")
+  aws_autoscale_group = common.ConfigFile.return_config_item(config, "AWS", "aws_autoscale_group", "string", "prod-asg-prod")
+  common.Utils.define_roles(config, cluster, autoscale, aws_credentials, aws_autoscale_group)
 
   # Didn't find any host in the map for this project.
   if env.host is None:
@@ -56,9 +67,15 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
   # Can be set in the config.ini [Build] section
   ssh_key = common.ConfigFile.return_config_item(config, "Build", "ssh_key")
   notifications_email = common.ConfigFile.return_config_item(config, "Build", "notifications_email")
+  php_ini_file = common.ConfigFile.return_config_item(config, "Build", "php_ini_file", "string", php_ini_file)
+  db_name = common.ConfigFile.return_config_item(config, "Database", "db_name")
+  db_username = common.ConfigFile.return_config_item(config, "Database", "db_username")
+  db_password = common.ConfigFile.return_config_item(config, "Database", "db_password")
   # Need to keep potentially passed in 'url' value as default
   url = common.ConfigFile.return_config_item(config, "Build", "url", "string", url)
-  php_ini_file = common.ConfigFile.return_config_item(config, "Build", "php_ini_file", "string", php_ini_file)
+
+  # Need to keep potentially passed in MySQL version and config path as defaults
+  mysql_version = common.ConfigFile.return_config_item(config, "Database", "mysql_version", "string", mysql_version)
 
   # Set a URL if one wasn't already provided
   if url is None:
@@ -86,7 +103,8 @@ def main(repo, repourl, build, branch, buildtype, url=None, keepbuilds=20, profi
     print "===> Looks like the site %s doesn't exist. We'll try and install it..." % url
     try:
       common.Utils.clone_repo(repo, repourl, branch, build, None, ssh_key)
-      InitialBuild.initial_build(repo, url, branch, build, profile, webserverport)
+      InitialBuild.initial_build(repo, url, branch, build, buildtype, profile, webserver, webserverport, config, db_name, db_username, db_password, mysql_version, mysql_config, install_type, cluster, autoscale, rds)
+
       # Unset CLI PHP version if we need to
       if php_ini_file:
         run("export PHPRC=''")
