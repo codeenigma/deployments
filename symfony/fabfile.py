@@ -151,7 +151,7 @@ def main(repo, repourl, branch, build, buildtype, siteroot, keepbuilds=10, url=N
     if composer:
       # Generally we want to run with SYMFONY_ENV=prod because dev just enables developer tools
       # If someone wants to override this, we can pass "dev" as buildtype_override above
-      execute(common.PHP.composer_command, site_root, "install", None, no_dev, composer_lock, False, False, console_buildtype, optimize_autoloader, through_ssh=through_ssh)
+      execute(common.PHP.composer_command, site_root, "install", None, no_dev, composer_lock, False, False, console_buildtype, through_ssh, optimize_autoloader)
 
   if migrations:
     execute(Symfony.run_migrations, repo, buildtype, build, console_buildtype)
