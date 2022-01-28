@@ -3,6 +3,9 @@
 .project
 .metadata
 
+# vscode crud
+.vscode
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -12,12 +12,12 @@ import common.Utils
 
 # Take a database backup of the staging site before we replace its database.
 @task
-def backup_db(shortname, staging_branch, stage_drupal_root, site='default'):
+def backup_db(shortname, staging_branch, stage_drupal_root, site='default', extra=''):
   now = time.strftime("%Y%m%d%H%M%S", time.gmtime())
   print "===> Ensuring backup directory exists"
   run("mkdir -p ~jenkins/dbbackups")
   print "===> Taking a database backup of the Drupal database..."
-  run("cd %s && drush -l %s sql-dump --result-file=/dev/stdout --result-file=/dev/stdout | bzip2 -f > ~jenkins/dbbackups/%s_%s_prior_to_sync_%s.sql.bz2" % (stage_drupal_root, site, shortname, staging_branch, now))
+  run("cd %s && drush -l %s sql-dump --result-file=/dev/stdout --extra=%s | bzip2 -f > ~jenkins/dbbackups/%s_%s_prior_to_sync_%s.sql.bz2" % (stage_drupal_root, site, extra, shortname, staging_branch, now))
 
 
 # Sync uploaded assets from production to staging
@@ -36,7 +36,7 @@ def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_br
 
   if sync_dir is None:
     sync_dir = '/tmp'
- 
+
   # Sync down the assets to the Jenkins machine, before sending them upstream to the staging server.
   print "===> Finding the remote files directories to rsync from..."
   if run('cd %s && drush -l %s dd files' % (prod_drupal_root, site)).failed:
@@ -49,7 +49,7 @@ def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_br
     else:
       sync_dir_name = staging_shortname + '_' + site
     local("rsync -e 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' -aHPv %s@%s:%s/ %s/%s_drupal_files/" % (env.user, env.host, remote_files_dir, sync_dir, sync_dir_name))
-  
+
   # Switch the host to the staging server, it's time to send the assets upstream
   env.host_string = orig_host
 
@@ -61,7 +61,7 @@ def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_br
     with settings(warn_only=True):
       if sudo("readlink %s" % staging_files_dir).return_code == 0:
         staging_files_dir = sudo("readlink %s" % staging_files_dir)
-  
+
   sudo("chown -R jenkins %s" % staging_files_dir)
   # Rsync up the files
   local("rsync -aHPv %s/%s_drupal_files/ %s:%s" % (sync_dir, sync_dir_name, env.host_string, staging_files_dir))
@@ -74,7 +74,7 @@ def sync_assets(orig_host, shortname, staging_shortname, staging_branch, prod_br
 
 # Sync databases from production to staging
 @task
-def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config, drupal_version, stage_drupal_root, app_dir, site='default', db_import_method='drush'):
+def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch, fresh_database, sanitise, sanitised_password, sanitised_email, config, drupal_version, stage_drupal_root, app_dir, site='default', db_import_method='drush', extra=''):
   now = time.strftime("%Y%m%d%H%M%S", time.gmtime())
   # Switch to operating to the production server as a target
   env.host = config.get(shortname, 'host')
@@ -165,7 +165,7 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
             dbhost = run("drush -l %s status | egrep \"DB host|Database host\" | awk {'print $4'} | head -1" % site)
           run('mysqldump --single-transaction -c --opt -Q --hex-blob -u%s -p%s -h%s %s | /home/jenkins/%s | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (dbuser, dbpass, dbhost, dbname, obfuscate_script, shortname, now))
     else:
-      run('cd %s && drush -l %s sql-dump --result-file=/dev/stdout --result-file=/dev/stdout | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (prod_drupal_root, site, shortname, now))
+      run('cd %s && drush -l %s sql-dump --result-file=/dev/stdout --extra=%s | bzip2 -f > ~jenkins/dbbackups/drupal_%s_%s.sql.bz2' % (prod_drupal_root, site, extra, shortname, now))
     print "===> Fetching the drupal database backup from production..."
 
   # Fetch the database backup from prod
@@ -202,7 +202,7 @@ def sync_db(orig_host, shortname, staging_shortname, staging_branch, prod_branch
         import_command = "mysql --defaults-file=/etc/mysql/debian.cnf %s" % dest_db_name
       else:
         import_command = "drush -l %s sql-cli" % site
-      sudo("bzcat /home/jenkins/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | %s " % (shortname, now, import_command))
+      sudo("bzcat /home/jenkins/dbbackups/drupal_%s_%s_from_prod.sql.bz2 | sed -e 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/' | sed -e 's/^SET @@SESSION.SQL_LOG_BIN/-- &/' | sed -e 's/^SET @@GLOBAL.GTID_PURGED=/-- &/' | %s " % (shortname, now, import_command))
       # Set all users to the supplied e-mail address/password for stage testing
       if sanitise == 'yes':
         if sanitised_password is None:

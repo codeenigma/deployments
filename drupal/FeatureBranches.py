@@ -193,7 +193,7 @@ def remove_site(repo, branch, alias, site, mysql_config, mysql_user_ip):
 
   print "===> Dropping database %s and user %s" % (dbname, dbuser)
   sudo("mysql --defaults-file=%s -e 'DROP DATABASE IF EXISTS `%s`;'" % (mysql_config, dbname))
-  sudo("mysql --defaults-file=%s -e \"DROP USER \'%s\'@\'%s\';\"" % (mysql_config, dbuser, mysql_user_ip))
+  sudo("mysql --defaults-file=%s -e \"DROP USER IF EXISTS \'%s\'@\'%s\';\"" % (mysql_config, dbuser, mysql_user_ip))
 
   with settings(warn_only=True):
     # Remove files directories
