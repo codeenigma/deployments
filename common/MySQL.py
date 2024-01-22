@@ -88,8 +88,10 @@ def mysql_new_database(repo, buildtype, rds=False, db_name=None, db_host=None, d
         sudo("mysql --defaults-file=%s -e 'CREATE DATABASE `%s`'" % (mysql_config, db_name))
         # Set MySQL grants for each app server
         for host in app_hosts:
+          print "===> Creating a user %s." % db_username
+          sudo("mysql --defaults-file=%s -e 'CREATE USER \"%s\"@\"%s\" IDENTIFIED BY \"%s\"'" % (mysql_config, db_username, host, db_password))
           print "===> Creating a grant host %s." % host
-          sudo("mysql --defaults-file=%s -e 'GRANT ALL ON `%s`.* TO \"%s\"@\"%s\" IDENTIFIED BY \"%s\"'" % (mysql_config, db_name, db_username, host, db_password))
+          sudo("mysql --defaults-file=%s -e 'GRANT ALL ON `%s`.* TO \"%s\"@\"%s\"'" % (mysql_config, db_name, db_username, host))
         print "===> Flush privileges."
         sudo("mysql --defaults-file=%s -e 'FLUSH PRIVILEGES'" % mysql_config)
         # We're done here, break out of the loop
